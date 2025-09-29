@@ -2,6 +2,9 @@
 
 <p align="left">
   <img alt="tests" src="https://github.com/mujocolab/mjlab/actions/workflows/ci.yml/badge.svg" />
+  <a href="https://pypi.org/project/mjlab/">
+    <img alt="pyversions" src="https://img.shields.io/pypi/pyversions/mjlab" />
+  </a>
 </p>
 
 mjlab combines [Isaac Lab](https://github.com/isaac-sim/IsaacLab)'s proven API with best-in-class [MuJoCo](https://github.com/google-deepmind/mujoco_warp) physics to provide lightweight, modular abstractions for RL robotics research and sim-to-real deployment.
