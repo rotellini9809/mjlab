@@ -155,3 +155,9 @@ When distributing or modifying mjlab, comply with:
 2. The respective licenses in `third_party/` for those files
 
 See individual `LICENSE` files for complete terms.
+
+## Acknowledgments
+
+mjlab wouldn’t exist without the excellent work of the Isaac Lab team, whose API design and abstractions mjlab builds upon.
+
+Thanks to the MuJoCo Warp team — especially Erik Frey and Taylor Howell — for answering our questions, giving helpful feedback, and implementing features based on our requests countless times.
