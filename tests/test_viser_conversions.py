@@ -1,7 +1,6 @@
 """Test viser conversion functions with various robot models."""
 
 from pathlib import Path
-from typing import Callable
 
 import mujoco
 
@@ -246,7 +245,7 @@ if __name__ == "__main__":
   print("Testing Viser Conversions")
   print("=" * 60)
 
-  tests: list[Callable[[], None]] = [
+  tests = [
     test_unitree_g1_conversion,
     test_unitree_go1_conversion,
     test_texture_extraction,
@@ -260,11 +259,12 @@ if __name__ == "__main__":
     try:
       test()
     except Exception as e:
-      print(f"✗ {test.__name__}: {e}")
+      test_name = test.__name__ if hasattr(test, "__name__") else str(test)
+      print(f"✗ {test_name}: {e}")
       import traceback
 
       traceback.print_exc()
-      failed.append(test.__name__)
+      failed.append(test_name)
 
   print("\n" + "=" * 60)
   if failed:

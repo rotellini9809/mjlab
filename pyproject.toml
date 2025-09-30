@@ -58,6 +58,7 @@ dev = [
   "pyright>=1.1.386",
   "pytest>=8.4.2",
   "ruff>=0.13.1",
+  "ty>=0.0.1a21",
 ]
 
 [project.optional-dependencies]
@@ -108,8 +109,8 @@ pythonVersion = "3.10"
 ignore = ["./typings", "./src/mjlab/third_party"]
 stubPath = "typings"
 
-[tool.ty.rules]
-unresolved-attribute = "ignore"
+[tool.ty.environment]
+extra-paths = ["typings"]
 
 [tool.ty.src]
 include = ["src", "tests"]
