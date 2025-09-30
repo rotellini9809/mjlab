@@ -1,6 +1,7 @@
 """Test viser conversion functions with various robot models."""
 
 from pathlib import Path
+from typing import Callable
 
 import mujoco
 
@@ -245,7 +246,7 @@ if __name__ == "__main__":
   print("Testing Viser Conversions")
   print("=" * 60)
 
-  tests = [
+  tests: list[Callable[[], None]] = [
     test_unitree_g1_conversion,
     test_unitree_go1_conversion,
     test_texture_extraction,
