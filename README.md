@@ -2,16 +2,9 @@
 
 <p align="left">
   <img alt="tests" src="https://github.com/mujocolab/mjlab/actions/workflows/ci.yml/badge.svg" />
-  <a href="https://pypi.org/project/mjlab/">
-    <img alt="pyversions" src="https://img.shields.io/pypi/pyversions/mjlab" />
-  </a>
 </p>
 
 mjlab combines [Isaac Lab](https://github.com/isaac-sim/IsaacLab)'s proven API with best-in-class [MuJoCo](https://github.com/google-deepmind/mujoco_warp) physics to provide lightweight, modular abstractions for RL robotics research and sim-to-real deployment.
-
-```bash
-uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp" demo
-```
 
 > **⚠️ BETA PREVIEW**
 >
@@ -19,70 +12,45 @@ uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mu
 
 ## Why mjlab?
 
-- **Familiar APIs**: If you know Isaac Lab or MuJoCo, you already know mjlab
-- **Instant Feedback**: Fast startup and kernel caching. Drop a breakpoint anywhere and debug immediately
+- **Already familiar**: Know Isaac Lab or MuJoCo? You already know mjlab
+- **PyTorch-native**: PyTorch interface to MuJoCo Warp for intuitive development and debugging
+- **Optimized Performance**: JIT-compiled kernels with caching make subsequent runs blazingly fast
 - **Massively Parallel**: MuJoCo Warp enables efficient GPU-accelerated simulation at scale
-- **Zero Friction**: Pure Python, minimal dependencies. Just `uv run` and go
+- **Zero Setup Friction**: Pure Python with minimal dependencies. Just `uv run` and start training
 
 **[Read the full comparison →](docs/motivation.md)**
 
-## Documentation
-
-- **[Why mjlab?](docs/motivation.md)** - When to use mjlab (and when to use Isaac Lab, Newton, etc.)
-- **[Migration Guide](docs/migration_guide.md)** - Moving from Isaac Lab
-- **[FAQ & Troubleshooting](docs/faq.md)** - Common questions and answers
-
 ## Quick Start
 
-Install [uv](https://docs.astral.sh/uv/) if you haven't already:
+The fastest way to see mjlab in action is to run the demo:
 
 ```bash
+# Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Run the interactive demo (no installation needed)
+uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9" demo
 ```
 
-### Option 1: Install from PyPI
+This launches an interactive viewer where you can see a pre-trained Unitree G1 agent tracking a reference dance motion in the MuJoCo Warp sim live.
 
-**Run the demo directly:**
+### Installation
 
-```bash
-uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp" demo
-```
-
-**Add mjlab as a dependency to your project:**
+**Install from source** (recommended during beta):
 
 ```bash
-uv add mjlab
-```
-
-### Option 2: Install from Source (Recommended)
-
-As we are still in beta, it is recommended to install from source.
-
-**Clone the repository:**
-
-```bash
-git clone git@github.com:mujocolab/mjlab.git && cd mjlab
-```
-
-**Run commands directly** (recommended for development):
-
-```bash
+git clone https://github.com/mujocolab/mjlab.git
+cd mjlab
 uv run demo
 ```
 
-This automatically manages dependencies in an isolated environment. Use `uv run` to execute any script or command in the mjlab repo.
-
-**Add mjlab as a dependency to your project:**
+**Install from PyPI** (stable releases):
 
 ```bash
-uv add "mjlab @ git+https://github.com/mujocolab/mjlab"
+uv add mjlab "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9"
 ```
 
-**Legacy pip interface:**
-
-```bash
-uv pip install -e .
-```
+For detailed installation instructions and troubleshooting, see the [Installation Guide](docs/installation.md).
 
 ## Training Examples
 
@@ -138,6 +106,13 @@ uv run play \
   --wandb-run-path your-org/mjlab/run-id
 ```
 
+## Documentation
+
+- **[Installation Guide](docs/installation.md)** - Detailed setup instructions
+- **[Why mjlab?](docs/motivation.md)** - When to use mjlab (and when to use Isaac Lab, Newton, etc.)
+- **[Migration Guide](docs/migration.md)** - Moving from Isaac Lab
+- **[FAQ & Troubleshooting](docs/faq.md)** - Common questions and answers
+
 ## Development
 
 ### Running Tests
@@ -149,10 +124,10 @@ make test
 ### Code Formatting
 
 ```bash
-# Install pre-commit hook.
+# Install pre-commit hook
 uvx pre-commit install
 
-# Format manually.
+# Format manually
 make format
 ```
 
@@ -174,6 +149,6 @@ See individual `LICENSE` files for complete terms.
 
 ## Acknowledgments
 
-mjlab wouldn’t exist without the excellent work of the Isaac Lab team, whose API design and abstractions mjlab builds upon.
+mjlab wouldn't exist without the excellent work of the Isaac Lab team, whose API design and abstractions mjlab builds upon.
 
 Thanks to the MuJoCo Warp team — especially Erik Frey and Taylor Howell — for answering our questions, giving helpful feedback, and implementing features based on our requests countless times.
