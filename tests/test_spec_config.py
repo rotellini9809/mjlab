@@ -209,7 +209,14 @@ def test_actuator_validation(simple_robot_xml, param, value, expected_error):
     }
     params[param] = value
 
-    actuator_cfg = ActuatorCfg(**params)
+    actuator_cfg = ActuatorCfg(
+      joint_names_expr=params["joint_names_expr"],
+      effort_limit=params["effort_limit"],
+      stiffness=params["stiffness"],
+      damping=params["damping"],
+      frictionloss=params["frictionloss"],
+      armature=params["armature"],
+    )
     cfg = EntityCfg(
       spec_fn=lambda: mujoco.MjSpec.from_string(simple_robot_xml),
       articulation=EntityArticulationInfoCfg(actuators=(actuator_cfg,)),
@@ -349,7 +356,13 @@ def test_collision_validation(param, value, expected_error):
   with pytest.raises(ValueError, match=expected_error):
     params: dict = {"geom_names_expr": ["test"]}
     params[param] = value
-    cfg = CollisionCfg(**params)
+    cfg = CollisionCfg(
+      geom_names_expr=params["geom_names_expr"],
+      contype=params.get("contype", 1),
+      conaffinity=params.get("conaffinity", 1),
+      condim=params.get("condim", 3),
+      priority=params.get("priority", 0),
+    )
     cfg.validate()
 
 
