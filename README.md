@@ -22,12 +22,14 @@ mjlab combines [Isaac Lab](https://github.com/isaac-sim/IsaacLab)'s proven API w
 
 ## Quick Start
 
-The fastest way to see mjlab in action is to run the demo:
-
 ```bash
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
+The fastest way to see mjlab in action is to run the demo:
+
+```bash
 # Run the interactive demo (no installation needed)
 uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9" demo
 ```
