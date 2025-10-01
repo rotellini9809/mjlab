@@ -60,30 +60,27 @@ parameters, the first matching pattern wins for each geom.
 _foot_regex = "^[FR][LR]_foot_collision$"
 
 FEET_ONLY_COLLISION = CollisionCfg(
-  geom_names_expr=[_foot_regex],  # Only match foot collision geoms
-  contype=0,                      # No self-collision within feet
-  conaffinity=1,                  # Can collide with environment
-  condim=3,                       # Regular frictional contact
-  priority=1,                     # High priority for foot contacts
-  friction=(0.6,),                # Sliding friction coefficient
-  solimp=(0.9, 0.95, 0.023),      # Solver impedance parameters
+  geom_names_expr=[_foot_regex],  # Only match foot collision geoms.
+  contype=0, conaffinity=1,       # Disable self-collisions.
+  condim=3,
+  priority=1,                     # Higher priority for foot contacts.
+  friction=(0.6,),                # Sliding friction coefficient.
+  solimp=(0.9, 0.95, 0.023),      # Solver impedance parameters.
 )
 ```
 
-**G1 Humanoid - Full Collision with Foot Specialization:**
+**G1 Humanoid - Full Collision with special foot configuration:**
 ```python
 # From g1_constants.py
 FULL_COLLISION = CollisionCfg(
-  geom_names_expr=[".*_collision"],  # Match ALL collision geoms
+  geom_names_expr=[".*_collision"],  # Match ALL collision geoms.
   condim={
-    r"^(left|right)_foot[1-7]_collision$": 3,  # Feet: frictional contact
-    ".*_collision": 1                           # Others: frictionless (self-collision)
+    r"^(left|right)_foot[1-7]_collision$": 3,
+    ".*_collision": 1,
   },
-  priority={
-    r"^(left|right)_foot[1-7]_collision$": 1   # Feet get high priority
-  },
+  priority={r"^(left|right)_foot[1-7]_collision$": 1},
   friction={
-    r"^(left|right)_foot[1-7]_collision$": (0.6,)  # Custom friction for feet
+    r"^(left|right)_foot[1-7]_collision$": (0.6,)  # Custom friction for feet.
   }
 )
 ```
@@ -92,11 +89,11 @@ FULL_COLLISION = CollisionCfg(
 ```python
 FULL_COLLISION_WITHOUT_SELF = CollisionCfg(
   geom_names_expr=[".*_collision"],
-  contype=0,                      # Disable self-collision
-  conaffinity=1,                  # Enable environment collision
+  contype=0,
+  conaffinity=1,
   condim={
-    r"^(left|right)_foot[1-7]_collision$": 3,  # Feet: frictional contact
-    ".*_collision": 1                           # Others: frictionless
+    r"^(left|right)_foot[1-7]_collision$": 3,
+    ".*_collision": 1,
   },
   priority={
     r"^(left|right)_foot[1-7]_collision$": 1
@@ -115,34 +112,14 @@ FULL_COLLISION_WITHOUT_SELF = CollisionCfg(
 | `contype` | `int` or `dict[str, int]` | `1` | Collision type bitmask |
 | `conaffinity` | `int` or `dict[str, int]` | `1` | Collision affinity bitmask |
 | `condim` | `int` or `dict[str, int]` | `3` | Contact dimensions: `1`, `3`, `4`, `6` |
-| `priority` | `int` or `dict[str, int]` | `0` | Collision priority (0-5, higher processed first) |
+| `priority` | `int` or `dict[str, int]` | `0` | Collision priority |
 | `friction` | `tuple` or `dict[str, tuple]` | `None` | Friction coefficients (sliding, torsional, rolling) |
 | `solref` | `tuple` or `dict[str, tuple]` | `None` | Solver reference parameters |
 | `solimp` | `tuple` or `dict[str, tuple]` | `None` | Solver impedance parameters |
-| `disable_other_geoms` | `bool` | `True` | Set contype=0, conaffinity=0 for non-matching geoms |
+| `disable_other_geoms` | `bool` | `True` | Disables collisions for all non-matching geoms |
 
-#### Collision Parameters
-
-**Contact Dimensions (`condim`):**
-- `1`: Frictionless contact (normal force only)
-- `3`: Regular frictional contact (normal + tangential friction)
-- `4`: Frictional contact with torsional friction
-- `6`: Full friction contact (normal + tangential + torsional + rolling)
-
-**Collision Type (`contype`) & Affinity (`conaffinity`):**
-- Bitmasks determining which geoms collide
-- Two geoms collide if `(geom1.contype & geom2.conaffinity) != 0`
-- Common patterns:
-  - `contype=1, conaffinity=1`: Standard collision
-  - `contype=0, conaffinity=1`: Environment only (no self-collision)
-  - `contype=1, conaffinity=0`: Self-collision only
-
-**Priority:**
-- Higher priority contacts resolved first (0-5 range)
-- MuJoCo uses higher priority geom's friction for the pair
-- Useful for feet: set `priority=1` to randomize foot friction independently
-
-**Reference:** See [MuJoCo Contact Documentation](https://mujoco.readthedocs.io/en/stable/computation/index.html#contact) for details.
+For a detailed explanation of the above collision parameters,
+see the [MuJoCo Contact Documentation](https://mujoco.readthedocs.io/en/stable/computation/index.html#contact).
 
 ---
 
@@ -154,9 +131,9 @@ Configures PD-controlled position actuators for joints.
 ```python
 ActuatorCfg(
   joint_names_expr=["shoulder_joint", "elbow_joint"],
-  effort_limit=25.0,   # Maximum torque (Nm)
-  stiffness=100.0,     # Position gain (P)
-  damping=10.0         # Velocity gain (D)
+  effort_limit=25.0,   # Maximum torque (Nm).
+  stiffness=100.0,     # Position gain (P).
+  damping=10.0         # Velocity gain (D).
 )
 ```
 
@@ -218,7 +195,7 @@ Define one `ActuatorCfg` per actuator type, matching joints to their physical
 actuators using regex patterns:
 
 ```python
-# Define configurations for each actuator model on your robot
+# Taken from the Unitree G1/
 ACTUATOR_7520_22 = ActuatorCfg(
   joint_names_expr=[".*_hip_roll_joint", ".*_knee_joint"],
   effort_limit=139.0,
@@ -254,7 +231,7 @@ double the effort limits and gains:
 G1_ACTUATOR_ANKLE = ActuatorCfg(
   joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
   effort_limit=ACTUATOR_5020.effort_limit * 2,
-  armature=ACTUATOR_5020.reflected_inertia * 2,
+  armature=ACTUATOR_5020.armature * 2,
   stiffness=STIFFNESS_5020 * 2,
   damping=DAMPING_5020 * 2,
 )
@@ -264,26 +241,25 @@ G1_ACTUATOR_ANKLE = ActuatorCfg(
 
 ### ActuatorSetCfg
 
-Applies multiple actuator configurations. Later configs override earlier ones
-for the same joint. Actuators are created in spec joint order for deterministic
-behavior.
+Applies multiple actuator configurations. Actuators are created in spec joint
+order for deterministic behavior.
 
 #### Example
 ```python
 EntityArticulationInfoCfg(actuators=(
-  # Arm actuators
+  # Unitree 7520 motors (hips and knees).
   ActuatorCfg(
-    joint_names_expr=[".*_arm_.*"],
-    effort_limit=50.0,
+    joint_names_expr=[".*_hip_.*", ".*_knee_.*"],
+    effort_limit=139.0,
     stiffness=150.0,
     damping=15.0
   ),
-  # Stronger shoulder actuators (overrides previous for shoulder joints)
+  # Unitree 5020 motors (shoulders and elbows).
   ActuatorCfg(
-    joint_names_expr=[".*_shoulder_.*"],
-    effort_limit=100.0,
-    stiffness=250.0,
-    damping=25.0
+    joint_names_expr=[".*_shoulder_.*", ".*_elbow_.*"],
+    effort_limit=25.0,
+    stiffness=50.0,
+    damping=5.0
   ),
 ))
 ```
@@ -329,6 +305,7 @@ SensorCfg(
 | `framepos` | Position | 3 |
 | `framelinvel` | Linear velocity | 3 |
 | `frameangvel` | Angular velocity | 3 |
+| `upvector` | Up vector | 3 |
 | `framezaxis` | Up vector | 3 |
 | `subtreeangmom` | Angular momentum | 3 |
 
@@ -415,7 +392,7 @@ MaterialCfg(
   texuniform=True,
   texrepeat=(2, 2),
   reflectance=0.5,
-  texture="checker"  # References texture by name
+  texture="checker"  # References texture by name.
 )
 ```
 
@@ -436,11 +413,12 @@ LightCfg(
 
 #### CameraCfg
 
-Adds camera viewpoints.
+Adds a camera.
 
 ```python
 CameraCfg(
   name="front_cam",
+  # Adds the camera to the world body.
   body="world",
   fovy=60.0,
   pos=(3.0, 0.0, 1.5),
@@ -463,7 +441,7 @@ def get_custom_spec() -> mujoco.MjSpec:
   """Create a spec with custom modifications."""
   spec = mujoco.MjSpec.from_file("robot.xml")
 
-  # Custom modifications using raw MuJoCo API
+  # Custom modifications.
   for geom in spec.geoms:
     if "foot" in geom.name:
       geom.friction = (0.8, 0.1, 0.005)
@@ -473,40 +451,9 @@ def get_custom_spec() -> mujoco.MjSpec:
 
 robot_cfg = EntityCfg(
   spec_fn=get_custom_spec,
-  collisions=(CollisionCfg(...),),  # Applied after custom function
+  collisions=(CollisionCfg(...),),  # Applied after custom function.
 )
 ```
-
-### Combining Custom and Declarative Approaches
-
-```python
-def get_hybrid_spec() -> mujoco.MjSpec:
-  """Custom spec with some modifications, config classes handle the rest."""
-  spec = mujoco.MjSpec.from_file("robot.xml")
-
-  # Custom modifications hard to express declaratively
-  for joint in spec.joints:
-    if joint.type == mujoco.mjtJoint.mjJNT_HINGE:
-      joint.axis = (0, 0, 1)
-
-  return spec
-
-robot_cfg = EntityCfg(
-  spec_fn=get_hybrid_spec,
-  collisions=(CollisionCfg(...),),  # Declarative collision config
-  articulation=EntityArticulationInfoCfg(...)  # Declarative actuators
-)
-```
-
-### When to Use Custom Spec Functions
-
-Use custom `spec_fn` when you need to:
-
-- Modify geometry (add/remove bodies, joints, or geoms)
-- Add custom sensors not supported by `SensorCfg`
-- Use advanced MuJoCo features not exposed by config classes
-- Integrate legacy MuJoCo code
-- Maximize performance with direct API access
 
 ---
 
