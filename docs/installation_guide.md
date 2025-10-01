@@ -9,10 +9,10 @@
   - Windows (untested)
 - **GPU**: NVIDIA GPU strongly recommended
   - **CUDA Compatibility**: Not all CUDA versions are supported by MuJoCo Warp
-    - Check [mujoco_warp#101](https://github.com/google-deepmind/mujoco_warp/issues/101) for your CUDA version compatibility
+    - Check [mujoco_warp#101](https://github.com/google-deepmind/mujoco_warp/issues/101) for CUDA version compatibility
     - **Recommended**: CUDA 12.4+ (for conditional CUDA graph support)
 
-> **⚠️ Important Note on macOS**: mjlab is designed for training RL policies, which requires significant compute. While macOS is technically supported, it is **not recommended for training**. Without an NVIDIA GPU, training will be extremely slow. macOS can be used to run and evaluate pre-trained policies, but for actual training workloads, use Linux with an NVIDIA GPU.
+> **⚠️ Important Note on macOS**: mjlab is designed for training RL policies, which requires a GPU. While macOS is technically supported, it is **not recommended**. Policy evaluation on macOS is also currently slow. We are working on adding a C-based MuJoCo backend, which will significantly speed up evaluation on macOS. Stay tuned for updates.
 
 ## Prerequisites
 
