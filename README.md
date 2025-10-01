@@ -41,8 +41,7 @@ This launches an interactive viewer where you can see a pre-trained Unitree G1 a
 **Install from source** (recommended during beta):
 
 ```bash
-git clone https://github.com/mujocolab/mjlab.git
-cd mjlab
+git clone https://github.com/mujocolab/mjlab.git && cd mjlab
 uv run demo
 ```
 
