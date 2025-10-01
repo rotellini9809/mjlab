@@ -13,8 +13,8 @@ mjlab combines [Isaac Lab](https://github.com/isaac-sim/IsaacLab)'s proven API w
 uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp" demo
 ```
 
-> **⚠️ BETA PREVIEW** 
-> 
+> **⚠️ BETA PREVIEW**
+>
 > This project is in beta. There might be breaking changes and missing features.
 
 ## Why mjlab?
@@ -34,39 +34,55 @@ uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mu
 
 ## Quick Start
 
-### Option 1: Install from PyPI
-
 Install [uv](https://docs.astral.sh/uv/) if you haven't already:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Run the demo directly:
+### Option 1: Install from PyPI
+
+**Run the demo directly:**
 
 ```bash
 uvx --from mjlab --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp" demo
 ```
 
+**Add mjlab as a dependency to your project:**
+
+```bash
+uv add mjlab
+```
+
 ### Option 2: Install from Source (Recommended)
 
-Clone the repository:
+As we are still in beta, it is recommended to install from source.
+
+**Clone the repository:**
 
 ```bash
 git clone git@github.com:mujocolab/mjlab.git && cd mjlab
 ```
 
-Then either:
+**Run commands directly** (recommended for development):
 
-- **Run commands directly** (recommended for development):
-  ```bash
-  uv run demo
-  ```
+```bash
+uv run demo
+```
 
-- **Install as editable package** (if you need to import mjlab elsewhere):
-  ```bash
-  uv pip install -e . "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp"
-  ```
+This automatically manages dependencies in an isolated environment. Use `uv run` to execute any script or command in the mjlab repo.
+
+**Add mjlab as a dependency to your project:**
+
+```bash
+uv add "mjlab @ git+https://github.com/mujocolab/mjlab"
+```
+
+**Legacy pip interface:**
+
+```bash
+uv pip install -e .
+```
 
 ## Training Examples
 
