@@ -1,22 +1,5 @@
 # Spec Configuration Classes
 
-## Table of Contents
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Configuration Classes](#configuration-classes)
-  - [CollisionCfg](#collisioncfg)
-  - [ActuatorCfg](#actuatorcfg)
-  - [Design Philosophy: Per-Actuator Configuration](#design-philosophy-per-actuator-configuration)
-  - [ActuatorSetCfg](#actuatorsetcfg)
-  - [SensorCfg](#sensorcfg)
-  - [ContactSensorCfg](#contactsensorcfg)
-  - [Visual Elements](#visual-elements)
-- [Custom Spec Functions](#custom-spec-functions)
-  - [Basic Custom Spec Function](#basic-custom-spec-function)
-  - [Combining Custom and Declarative Approaches](#combining-custom-and-declarative-approaches)
-  - [When to Use Custom Spec Functions](#when-to-use-custom-spec-functions)
-- [Architecture](#architecture)
-
 ## Overview
 
 The spec configuration system provides a declarative, pattern-based interface
