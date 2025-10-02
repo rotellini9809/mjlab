@@ -51,7 +51,7 @@ uv run demo
 uv add mjlab "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9"
 ```
 
-For detailed installation instructions and troubleshooting, see the [Installation Guide](docs/installation.md).
+For detailed installation instructions and troubleshooting, see the [Installation Guide](docs/installation_guide.md).
 
 ## Training Examples
 
