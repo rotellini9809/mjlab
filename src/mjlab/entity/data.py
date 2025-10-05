@@ -188,23 +188,12 @@ class EntityData:
     return env_ids
 
   # Root properties
-  #
-  # NOTE ON CLONES:
-  # We intentionally keep .clone() on the root_* reads below because they use
-  # basic indexing with a single integer (e.g., [:, root_body_id]), which returns
-  # a *view* into the underlying sim buffers. Returning a view makes it easier for
-  # downstream in-place ops to accidentally mutate sim state.
-  #
-  # Everywhere else we omit .clone() because:
-  #  - Advanced indexing (e.g., [:, long_index_tensor]) already returns a new tensor.
-  #  - Follow-up ops like torch.cat / quat_* / quat_from_matrix allocate new tensors.
-  # In those cases, an extra .clone() would add an unnecessary device-to-device copy.
 
   @property
   def root_link_pose_w(self) -> torch.Tensor:
     """Root link pose in simulation world frame. Shape (num_envs, 7)."""
-    pos_w = self.data.xpos[:, self.indexing.root_body_id].clone()  # (num_envs, 3)
-    quat_w = self.data.xquat[:, self.indexing.root_body_id].clone()  # (num_envs, 4)
+    pos_w = self.data.xpos[:, self.indexing.root_body_id]  # (num_envs, 3)
+    quat_w = self.data.xquat[:, self.indexing.root_body_id]  # (num_envs, 4)
     return torch.cat([pos_w, quat_w], dim=-1)  # (num_envs, 7)
 
   @property
@@ -214,17 +203,17 @@ class EntityData:
     # will be in body frame and needs to be rotated to world frame.
     # Note also that an extra forward() call might be required to make
     # both values equal.
-    pos = self.data.xpos[:, self.indexing.root_body_id].clone()  # (num_envs, 3)
-    subtree_com = self.data.subtree_com[:, self.indexing.root_body_id].clone()
-    cvel = self.data.cvel[:, self.indexing.root_body_id].clone()  # (num_envs, 6)
+    pos = self.data.xpos[:, self.indexing.root_body_id]  # (num_envs, 3)
+    subtree_com = self.data.subtree_com[:, self.indexing.root_body_id]
+    cvel = self.data.cvel[:, self.indexing.root_body_id]  # (num_envs, 6)
     return compute_velocity_from_cvel(pos, subtree_com, cvel)  # (num_envs, 6)
 
   @property
   def root_com_pose_w(self) -> torch.Tensor:
     """Root center-of-mass pose in simulation world frame. Shape (num_envs, 7)."""
-    pos_w = self.data.xipos[:, self.indexing.root_body_id].clone()
-    quat = self.data.xquat[:, self.indexing.root_body_id].clone()
-    body_iquat = self.model.body_iquat[:, self.indexing.root_body_id].clone()
+    pos_w = self.data.xipos[:, self.indexing.root_body_id]
+    quat = self.data.xquat[:, self.indexing.root_body_id]
+    body_iquat = self.model.body_iquat[:, self.indexing.root_body_id]
     assert body_iquat is not None
     quat_w = quat_mul(quat, body_iquat[None])
     return torch.cat([pos_w, quat_w], dim=-1)
@@ -233,9 +222,9 @@ class EntityData:
   def root_com_vel_w(self) -> torch.Tensor:
     """Root center-of-mass velocity in world frame. Shape (num_envs, 6)."""
     # NOTE: Equivalent sensor is framelinvel/frameangvel with objtype="body".
-    pos = self.data.xipos[:, self.indexing.root_body_id].clone()  # (num_envs, 3)
-    subtree_com = self.data.subtree_com[:, self.indexing.root_body_id].clone()
-    cvel = self.data.cvel[:, self.indexing.root_body_id].clone()  # (num_envs, 6)
+    pos = self.data.xipos[:, self.indexing.root_body_id]  # (num_envs, 3)
+    subtree_com = self.data.subtree_com[:, self.indexing.root_body_id]
+    cvel = self.data.cvel[:, self.indexing.root_body_id]  # (num_envs, 6)
     return compute_velocity_from_cvel(pos, subtree_com, cvel)  # (num_envs, 6)
 
   # Body properties
