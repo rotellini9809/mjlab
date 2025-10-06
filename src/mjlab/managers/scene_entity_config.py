@@ -1,6 +1,6 @@
 """Configuration for scene entities used by manager terms."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from mjlab.entity import Entity
@@ -50,16 +50,16 @@ class SceneEntityCfg:
   name: str
 
   joint_names: str | list[str] | None = None
-  joint_ids: list[int] | slice = slice(None)
+  joint_ids: list[int] | slice = field(default_factory=lambda: slice(None))
 
   body_names: str | list[str] | None = None
-  body_ids: list[int] | slice = slice(None)
+  body_ids: list[int] | slice = field(default_factory=lambda: slice(None))
 
   geom_names: str | list[str] | None = None
-  geom_ids: list[int] | slice = slice(None)
+  geom_ids: list[int] | slice = field(default_factory=lambda: slice(None))
 
   site_names: str | list[str] | None = None
-  site_ids: list[int] | slice = slice(None)
+  site_ids: list[int] | slice = field(default_factory=lambda: slice(None))
 
   preserve_order: bool = False
 
