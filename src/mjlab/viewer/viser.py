@@ -15,7 +15,7 @@ import trimesh.visual
 import viser
 import viser.transforms as vtf
 from mujoco import mj_id2name, mjtGeom, mjtObj  # type: ignore
-from typing_extensions import assert_never, override
+from typing_extensions import override
 
 from mjlab.sim.sim import Simulation
 from mjlab.viewer.base import BaseViewer, EnvProtocol, PolicyProtocol, VerbosityLevel
@@ -53,16 +53,13 @@ class ViserViewer(BaseViewer):
     self._show_contact_forces = False
     self._meansize_override: float | None = None
     self._camera_tracking = False
-    self._camera_track_env_idx = 0
     self._camera_distance = 3.0
     self._camera_azimuth = 90.0  # degrees
     self._camera_elevation = -20.0  # degrees
 
     self._counter = 0
     self._env_idx = 0
-    self._show_only_selected_env = (
-      False  # Track whether to show only selected environment
-    )
+    self._show_only_selected_env = False
 
     # Set up lighting.
     self._server.scene.configure_environment_map(environment_intensity=0.8)
@@ -119,14 +116,12 @@ class ViserViewer(BaseViewer):
             self.increase_speed()
           self._update_status_display()
 
-      # Environment selection moved to Reward Plots tab
-
-      # Display settings
-      with self._server.gui.add_folder("Display Settings"):
+      # Visualization settings
+      with self._server.gui.add_folder("Visualization"):
+        cb_visual = self._server.gui.add_checkbox("Visual geom", initial_value=True)
         cb_collision = self._server.gui.add_checkbox(
           "Collision geom", initial_value=False
         )
-        cb_visual = self._server.gui.add_checkbox("Visual geom", initial_value=True)
         slider_fov = self._server.gui.add_slider(
           "FOV (°)",
           min=20,
@@ -135,48 +130,15 @@ class ViserViewer(BaseViewer):
           initial_value=90,
           hint="Vertical FOV of viewer camera, in degrees.",
         )
-        cb_contact_points = self._server.gui.add_checkbox(
-          "Contact points", initial_value=False
-        )
-        cb_contact_forces = self._server.gui.add_checkbox(
-          "Contact forces", initial_value=False
-        )
-        meansize_input = self._server.gui.add_number(
-          "meansize",
-          min=0.001,
-          max=1.0,
-          step=0.001,
-          initial_value=mj_model.stat.meansize,
-        )
 
-        # Camera tracking controls
-        cb_camera_tracking = self._server.gui.add_checkbox(
-          "Camera tracking", initial_value=False
-        )
-        camera_track_env_input = self._server.gui.add_number(
-          "Track env", min=0, max=self.env.num_envs - 1, step=1, initial_value=0
-        )
-        camera_distance_slider = self._server.gui.add_slider(
-          "Camera distance",
-          min=0.5,
-          max=10.0,
-          step=0.1,
-          initial_value=3.0,
-        )
-        camera_azimuth_slider = self._server.gui.add_slider(
-          "Camera azimuth",
-          min=-180.0,
-          max=180.0,
-          step=5.0,
-          initial_value=90.0,
-        )
-        camera_elevation_slider = self._server.gui.add_slider(
-          "Camera elevation",
-          min=-89.0,
-          max=89.0,
-          step=5.0,
-          initial_value=-20.0,
-        )
+        @cb_visual.on_update
+        def _(_) -> None:
+          if cb_visual.value:
+            self._ensure_visual_handles_exist()
+
+          if self._mesh_visual_handles is not None:
+            for handle in self._mesh_visual_handles.values():
+              handle.visible = cb_visual.value
 
         @cb_collision.on_update
         def _(_) -> None:
@@ -186,20 +148,6 @@ class ViserViewer(BaseViewer):
 
           if self._mesh_collision_handles is not None:
             for handle in self._mesh_collision_handles.values():
-              # If hiding meshes: throw them off the screen, because when
-              # they're shown again the current positions will be outdated.
-              if not visibility:
-                handle.batched_positions = handle.batched_positions - 2000.0
-              handle.visible = visibility
-
-        @cb_visual.on_update
-        def _(_) -> None:
-          visibility = cb_visual.value
-          if visibility:
-            self._ensure_visual_handles_exist()
-
-          if self._mesh_visual_handles is not None:
-            for handle in self._mesh_visual_handles.values():
               # If hiding meshes: throw them off the screen, because when
               # they're shown again the current positions will be outdated.
               if not visibility:
@@ -217,6 +165,22 @@ class ViserViewer(BaseViewer):
         def _(client: viser.ClientHandle) -> None:
           client.camera.fov = np.radians(slider_fov.value)
 
+      # Contact visualization settings
+      with self._server.gui.add_folder("Contacts"):
+        cb_contact_points = self._server.gui.add_checkbox(
+          "Contact points", initial_value=False
+        )
+        cb_contact_forces = self._server.gui.add_checkbox(
+          "Contact forces", initial_value=False
+        )
+        meansize_input = self._server.gui.add_number(
+          "Scale",
+          min=0.001,
+          max=1.0,
+          step=0.001,
+          initial_value=mj_model.stat.meansize,
+        )
+
         @cb_contact_points.on_update
         def _(_) -> None:
           self._show_contact_points = cb_contact_points.value
@@ -229,13 +193,36 @@ class ViserViewer(BaseViewer):
         def _(_) -> None:
           self._meansize_override = meansize_input.value
 
+      # Camera tracking controls
+      with self._server.gui.add_folder("Camera"):
+        cb_camera_tracking = self._server.gui.add_checkbox(
+          "Enable tracking", initial_value=False
+        )
+        camera_distance_slider = self._server.gui.add_slider(
+          "Distance",
+          min=0.5,
+          max=10.0,
+          step=0.1,
+          initial_value=3.0,
+        )
+        camera_azimuth_slider = self._server.gui.add_slider(
+          "Azimuth",
+          min=-180.0,
+          max=180.0,
+          step=5.0,
+          initial_value=90.0,
+        )
+        camera_elevation_slider = self._server.gui.add_slider(
+          "Elevation",
+          min=-89.0,
+          max=89.0,
+          step=5.0,
+          initial_value=-20.0,
+        )
+
         @cb_camera_tracking.on_update
         def _(_) -> None:
           self._camera_tracking = cb_camera_tracking.value
-
-        @camera_track_env_input.on_update
-        def _(_) -> None:
-          self._camera_track_env_idx = int(camera_track_env_input.value)
 
         @camera_distance_slider.on_update
         def _(_) -> None:
@@ -249,52 +236,52 @@ class ViserViewer(BaseViewer):
         def _(_) -> None:
           self._camera_elevation = camera_elevation_slider.value
 
+      # Environment selection if multiple environments
+      if self.env.num_envs > 1:
+        with self._server.gui.add_folder("Environment"):
+          # Navigation buttons
+          env_nav_buttons = self._server.gui.add_button_group(
+            "Navigate",
+            options=["Previous", "Next"],
+          )
+
+          @env_nav_buttons.on_click
+          def _(event) -> None:
+            # Just update the slider, which will trigger its callback
+            if event.target.value == "Previous":
+              new_idx = (self._env_idx - 1) % self.env.num_envs
+            else:
+              new_idx = (self._env_idx + 1) % self.env.num_envs
+            self._env_slider.value = new_idx
+
+          # Environment slider for direct selection
+          self._env_slider = self._server.gui.add_slider(
+            "Select",
+            min=0,
+            max=self.env.num_envs - 1,
+            step=1,
+            initial_value=0,
+          )
+
+          @self._env_slider.on_update
+          def _(_) -> None:
+            self._env_idx = int(self._env_slider.value)
+            self._update_status_display()
+            if self._reward_plotter:
+              self._reward_plotter.clear_histories()
+
+          # Checkbox to show only selected environment
+          self._show_only_selected_cb = self._server.gui.add_checkbox(
+            "Show only this environment", initial_value=False
+          )
+
+          @self._show_only_selected_cb.on_update
+          def _(_) -> None:
+            self._show_only_selected_env = self._show_only_selected_cb.value
+
     # Reward plots tab
     if hasattr(self.env.unwrapped, "reward_manager"):
       with tabs.add_tab("Rewards", icon=viser.Icon.CHART_LINE):
-        # Environment selection if multiple environments
-        if self.env.num_envs > 1:
-          with self._server.gui.add_folder("Environment Selection"):
-            # Navigation buttons
-            env_nav_buttons = self._server.gui.add_button_group(
-              "Navigate",
-              options=["Previous", "Next"],
-            )
-
-            @env_nav_buttons.on_click
-            def _(event) -> None:
-              # Just update the slider, which will trigger its callback
-              if event.target.value == "Previous":
-                new_idx = (self._env_idx - 1) % self.env.num_envs
-              else:
-                new_idx = (self._env_idx + 1) % self.env.num_envs
-              self._env_slider.value = new_idx
-
-            # Environment slider for direct selection
-            self._env_slider = self._server.gui.add_slider(
-              "Select Environment",
-              min=0,
-              max=self.env.num_envs - 1,
-              step=1,
-              initial_value=0,
-            )
-
-            @self._env_slider.on_update
-            def _(_) -> None:
-              self._env_idx = int(self._env_slider.value)
-              self._update_status_display()
-              if self._reward_plotter:
-                self._reward_plotter.clear_histories()
-
-            # Checkbox to show only selected environment
-            self._show_only_selected_cb = self._server.gui.add_checkbox(
-              "Show only this environment", initial_value=False
-            )
-
-            @self._show_only_selected_cb.on_update
-            def _(_) -> None:
-              self._show_only_selected_env = self._show_only_selected_cb.value
-
         # Get reward term names and create reward plotter
         term_names = [
           name
@@ -304,11 +291,8 @@ class ViserViewer(BaseViewer):
         ]
         self._reward_plotter = ViserRewardPlotter(self._server, term_names)
 
-    # Get initial geometry positions to find natural center for floor grid
     sim = self.env.unwrapped.sim
     assert isinstance(sim, Simulation)
-    # wp_data = sim.wp_data
-    # geom_xpos = wp_data.geom_xpos.numpy()  # Shape: (batch_size, ngeom, 3)
 
     # Group geoms by their parent body and type (visual/collision)
     body_geoms_visual: dict[int, list[int]] = {}
@@ -384,9 +368,6 @@ class ViserViewer(BaseViewer):
               cast_shadow=False,
               receive_shadow=0.2,
             )
-      # Dynamic bodies - skip creation, will be handled lazily
-      else:
-        pass
 
     # Create visual handles by default on startup
     self._ensure_visual_handles_exist()
@@ -449,17 +430,10 @@ class ViserViewer(BaseViewer):
       body_id = mj_model.geom_bodyid[i]
       is_collision = mj_model.geom_contype[i] != 0 or mj_model.geom_conaffinity[i] != 0
 
-      # Determine if this geom should be included based on mesh_type
-      should_include: bool
-      if mesh_type == "collision":
-        should_include = is_collision
-      elif mesh_type == "visual":
-        should_include = not is_collision
-      else:
-        assert_never(mesh_type)
-
       # Add geom to body's list if it matches the type we're looking for
-      if should_include:
+      if (mesh_type == "collision" and is_collision) or (
+        mesh_type == "visual" and not is_collision
+      ):
         if body_id not in body_geoms:
           body_geoms[body_id] = []
         body_geoms[body_id].append(i)
@@ -538,8 +512,8 @@ class ViserViewer(BaseViewer):
       mj_data = sim.mj_data
 
       # Copy qpos and qvel for the tracked environment
-      mj_data.qpos[:] = wp_data.qpos.numpy()[self._camera_track_env_idx]
-      mj_data.qvel[:] = wp_data.qvel.numpy()[self._camera_track_env_idx]
+      mj_data.qpos[:] = wp_data.qpos.numpy()[self._env_idx]
+      mj_data.qvel[:] = wp_data.qvel.numpy()[self._env_idx]
 
       # Run forward to update body positions
       mujoco.mj_forward(mj_model, mj_data)
@@ -584,26 +558,13 @@ class ViserViewer(BaseViewer):
     body_xmat = wp_data.xmat.numpy()  # Shape: (batch_size, nbody, 3, 3)
 
     # Get contact data if contact visualization is enabled
+    # Only visualize contacts for the selected environment to reduce load
     contact_data = None
-    env_origins = None
+    env_origin = None
     if self._show_contact_points or self._show_contact_forces:
-      # Get world body (body 0) positions as environment origins
-      env_origins = body_xpos[:, 0, :]  # Shape: (batch_size, 3)
-
       contact_data = self._get_contact_data(sim, self._env_idx)
-      if self._show_only_selected_env and self.env.num_envs > 1:
-        # For single env display, replicate the contact data
-        contact_data = [contact_data] * self._batch_size
-        # All use the same origin (selected env's origin)
-        env_origins = np.tile(
-          env_origins[self._env_idx][None, :], (self._batch_size, 1)
-        )
-      else:
-        # Get contact data for all envs
-        all_contact_data = []
-        for env_idx in range(self._batch_size):
-          all_contact_data.append(self._get_contact_data(sim, env_idx))
-        contact_data = all_contact_data
+      # Get world body (body 0) position as environment origin
+      env_origin = body_xpos[self._env_idx, 0, :]  # Shape: (3,)
 
     def update_mujoco() -> None:
       with self._server.atomic():
@@ -637,8 +598,8 @@ class ViserViewer(BaseViewer):
               handle.batched_wxyzs = body_xquat[..., body_id, :]
 
         # Update contact visualization
-        if contact_data is not None and env_origins is not None:
-          self._update_contact_visualization(contact_data, env_origins)
+        if contact_data is not None and env_origin is not None:
+          self._update_contact_visualization(contact_data, env_origin)
 
         self._server.flush()
 
@@ -714,15 +675,15 @@ class ViserViewer(BaseViewer):
     return {"contacts": contacts}
 
   def _update_contact_visualization(
-    self, contact_data: list[dict], env_origins: np.ndarray
+    self, contact_data: dict, env_origin: np.ndarray
   ) -> None:
     """Update contact point and force visualization.
 
     Args:
-      contact_data: List of contact data dicts, one per environment
-      env_origins: Array of shape (batch_size, 3) with environment origins
+      contact_data: Contact data dict for the selected environment
+      env_origin: Array of shape (3,) with environment origin
     """
-    # Collect all contact points and forces across all environments
+    # Collect all contact points and forces for the selected environment
     all_positions = []
     all_orientations = []
     all_scales = []
@@ -733,112 +694,75 @@ class ViserViewer(BaseViewer):
     force_head_orientations = []
     force_head_scales = []
 
-    for env_idx, data in enumerate(contact_data):
-      contacts = data["contacts"]
+    contacts = contact_data["contacts"]
 
-      for contact in contacts:
-        if not contact["included"]:
-          continue
+    for contact in contacts:
+      if not contact["included"]:
+        continue
 
-        pos = contact["pos"]
-        frame = contact["frame"]  # 3x3 rotation matrix (rows are basis vectors)
-        force_contact_frame = contact["force"]  # Force in contact frame
+      pos = contact["pos"]
+      frame = contact["frame"]  # 3x3 rotation matrix (rows are basis vectors)
+      force_contact_frame = contact["force"]  # Force in contact frame
 
-        # Transform force from contact frame to world frame
-        # Frame rows are [normal, tangent1, tangent2], so transpose to convert
-        force_world = frame.T @ force_contact_frame
-        force_mag = np.linalg.norm(force_world)
+      # Transform force from contact frame to world frame
+      # Frame rows are [normal, tangent1, tangent2], so transpose to convert
+      force_world = frame.T @ force_contact_frame
+      force_mag = np.linalg.norm(force_world)
 
-        # Contact point visualization (cylinder)
-        if self._show_contact_points:
-          # Add environment origin offset
-          display_pos = pos + env_origins[env_idx]
-          all_positions.append(display_pos)
-          # Contact frame: first row is normal, need to align cylinder z-axis with normal
-          normal = frame[0, :]  # Contact normal (first row of contact frame)
-          # Create rotation matrix that aligns z-axis with normal
-          z_axis = np.array([0, 0, 1])
-          if np.allclose(normal, z_axis):
-            contact_rot = np.eye(3)
-          elif np.allclose(normal, -z_axis):
-            contact_rot = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])
-          else:
-            # Rodrigues rotation formula
-            v = np.cross(z_axis, normal)
-            s = np.linalg.norm(v)
-            c = np.dot(z_axis, normal)
-            vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-            contact_rot = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
-          quat = vtf.SO3.from_matrix(contact_rot).wxyz
-          all_orientations.append(quat)
-          # Use MuJoCo's contact visualization scale
-          sim = self.env.unwrapped.sim
-          assert isinstance(sim, Simulation)
-          mj_model = sim.mj_model
-          meansize = (
-            self._meansize_override
-            if self._meansize_override is not None
-            else mj_model.stat.meansize
-          )
-          contact_width = mj_model.vis.scale.contactwidth * meansize
-          contact_height = mj_model.vis.scale.contactheight * meansize
-          all_scales.append([contact_width, contact_width, contact_height])
+      # Contact point visualization (cylinder)
+      if self._show_contact_points:
+        # Add environment origin offset
+        display_pos = pos + env_origin
+        all_positions.append(display_pos)
+        # Contact frame: first row is normal, need to align cylinder z-axis with normal
+        normal = frame[0, :]  # Contact normal (first row of contact frame)
+        contact_rot = self._rotation_matrix_from_vectors(np.array([0, 0, 1]), normal)
+        quat = vtf.SO3.from_matrix(contact_rot).wxyz
+        all_orientations.append(quat)
+        # Use MuJoCo's contact visualization scale
+        sim = self.env.unwrapped.sim
+        assert isinstance(sim, Simulation)
+        meansize = self._get_meansize()
+        contact_width = sim.mj_model.vis.scale.contactwidth * meansize
+        contact_height = sim.mj_model.vis.scale.contactheight * meansize
+        all_scales.append([contact_width, contact_width, contact_height])
 
-        # Contact force visualization (arrow shaft + head)
-        if self._show_contact_forces and force_mag > 1e-6:
-          # Add environment origin offset
-          force_base_pos = pos + env_origins[env_idx]
+      # Contact force visualization (arrow shaft + head)
+      if self._show_contact_forces and force_mag > 1e-6:
+        # Add environment origin offset
+        force_base_pos = pos + env_origin
 
-          # Compute arrow orientation (arrow points in direction of force)
-          force_dir = force_world / force_mag
-          # Create rotation matrix to align arrow with force direction
-          # Arrow points along +z by default
-          z_axis = np.array([0, 0, 1])
-          if np.allclose(force_dir, z_axis):
-            force_rot = np.eye(3)
-          elif np.allclose(force_dir, -z_axis):
-            force_rot = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])
-          else:
-            # Use rodrigues rotation
-            v = np.cross(z_axis, force_dir)
-            s = np.linalg.norm(v)
-            c = np.dot(z_axis, force_dir)
-            vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-            force_rot = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
+        # Compute arrow orientation (arrow points in direction of force)
+        force_dir = force_world / force_mag
+        force_rot = self._rotation_matrix_from_vectors(np.array([0, 0, 1]), force_dir)
+        force_quat = vtf.SO3.from_matrix(force_rot).wxyz
 
-          force_quat = vtf.SO3.from_matrix(force_rot).wxyz
+        # Scale arrow by force magnitude
+        sim = self.env.unwrapped.sim
+        assert isinstance(sim, Simulation)
+        meansize = self._get_meansize()
+        # Use MuJoCo's force scaling: mju_scl3(vec, vec, m->vis.map.force/m->stat.meanmass)
+        # This scales the force vector by (map.force / meanmass) - that's the arrow length
+        force_scale = sim.mj_model.vis.map.force
+        mean_mass = sim.mj_model.stat.meanmass
+        if mean_mass > 0:
+          arrow_length = force_mag * (force_scale / mean_mass)
+        else:
+          arrow_length = force_mag
+        arrow_width = sim.mj_model.vis.scale.forcewidth * meansize
 
-          # Scale arrow by force magnitude
-          sim = self.env.unwrapped.sim
-          assert isinstance(sim, Simulation)
-          mj_model = sim.mj_model
-          meansize = (
-            self._meansize_override
-            if self._meansize_override is not None
-            else mj_model.stat.meansize
-          )
-          # Use MuJoCo's force scaling: mju_scl3(vec, vec, m->vis.map.force/m->stat.meanmass)
-          # This scales the force vector by (map.force / meanmass) - that's the arrow length
-          force_scale = mj_model.vis.map.force
-          mean_mass = mj_model.stat.meanmass
-          if mean_mass > 0:
-            arrow_length = force_mag * (force_scale / mean_mass)
-          else:
-            arrow_length = force_mag
-          arrow_width = mj_model.vis.scale.forcewidth * meansize
+        # Shaft: stretches in z-direction
+        force_shaft_positions.append(force_base_pos)
+        force_shaft_orientations.append(force_quat)
+        force_shaft_scales.append([arrow_width, arrow_width, arrow_length])
 
-          # Shaft: stretches in z-direction
-          force_shaft_positions.append(force_base_pos)
-          force_shaft_orientations.append(force_quat)
-          force_shaft_scales.append([arrow_width, arrow_width, arrow_length])
-
-          # Head: fixed size, positioned at the tip of the shaft
-          # Tip is at arrow_length in the force direction from base
-          head_pos = force_base_pos + force_dir * arrow_length
-          force_head_positions.append(head_pos)
-          force_head_orientations.append(force_quat)
-          # Head has fixed size based on arrow_width
-          force_head_scales.append([arrow_width, arrow_width, arrow_width])
+        # Head: fixed size, positioned at the tip of the shaft
+        # Tip is at arrow_length in the force direction from base
+        head_pos = force_base_pos + force_dir * arrow_length
+        force_head_positions.append(head_pos)
+        force_head_orientations.append(force_quat)
+        # Head has fixed size based on arrow_width
+        force_head_scales.append([arrow_width, arrow_width, arrow_width])
 
     # Update or create contact point handle
     if self._show_contact_points and len(all_positions) > 0:
@@ -922,6 +846,7 @@ class ViserViewer(BaseViewer):
           cast_shadow=False,
         )
       else:
+        assert self._contact_force_head_handle is not None
         self._contact_force_shaft_handle.batched_positions = shaft_positions_arr
         self._contact_force_shaft_handle.batched_wxyzs = shaft_orientations_arr
         self._contact_force_shaft_handle.batched_scales = shaft_scales_arr
@@ -932,6 +857,7 @@ class ViserViewer(BaseViewer):
         self._contact_force_head_handle.batched_scales = head_scales_arr
         self._contact_force_head_handle.visible = True
     elif self._contact_force_shaft_handle is not None:
+      assert self._contact_force_head_handle is not None
       self._contact_force_shaft_handle.visible = False
       self._contact_force_head_handle.visible = False
 
@@ -962,6 +888,31 @@ class ViserViewer(BaseViewer):
     for client in self._server.get_clients().values():
       client.camera.look_at = tuple(lookat.tolist())
       client.camera.position = tuple(camera_pos.tolist())
+
+  def _get_meansize(self) -> float:
+    """Get the meansize value, using override if set."""
+    if self._meansize_override is not None:
+      return self._meansize_override
+    sim = self.env.unwrapped.sim
+    assert isinstance(sim, Simulation)
+    return sim.mj_model.stat.meansize
+
+  @staticmethod
+  def _rotation_matrix_from_vectors(
+    from_vec: np.ndarray, to_vec: np.ndarray
+  ) -> np.ndarray:
+    """Create rotation matrix that rotates from_vec to to_vec using Rodrigues formula."""
+    if np.allclose(from_vec, to_vec):
+      return np.eye(3)
+    if np.allclose(from_vec, -to_vec):
+      return np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])
+
+    # Rodrigues rotation formula
+    v = np.cross(from_vec, to_vec)
+    s = np.linalg.norm(v)
+    c = np.dot(from_vec, to_vec)
+    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
 
   @staticmethod
   def _create_mesh(mj_model, idx: int) -> trimesh.Trimesh:
