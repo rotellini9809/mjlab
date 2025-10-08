@@ -8,6 +8,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from typing import Literal, Optional
 
+import mujoco
 import numpy as np
 import trimesh
 import trimesh.visual
@@ -42,8 +43,14 @@ class ViserViewer(BaseViewer):
     # Separate handle storage for visual and collision meshes
     self._mesh_visual_handles: dict[int, viser.BatchedGlbHandle] | None = None
     self._mesh_collision_handles: dict[int, viser.BatchedGlbHandle] | None = None
+    # Contact visualization handles
+    self._contact_point_handle: viser.BatchedGlbHandle | None = None
+    self._contact_force_handle: viser.BatchedGlbHandle | None = None
     self._threadpool = ThreadPoolExecutor(max_workers=1)
     self._batch_size = self.env.num_envs
+    self._show_contact_points = False
+    self._show_contact_forces = False
+    self._meansize_override: float | None = None
 
     self._counter = 0
     self._env_idx = 0
@@ -122,6 +129,19 @@ class ViserViewer(BaseViewer):
           initial_value=90,
           hint="Vertical FOV of viewer camera, in degrees.",
         )
+        cb_contact_points = self._server.gui.add_checkbox(
+          "Contact points", initial_value=False
+        )
+        cb_contact_forces = self._server.gui.add_checkbox(
+          "Contact forces", initial_value=False
+        )
+        meansize_input = self._server.gui.add_number(
+          "meansize",
+          min=0.001,
+          max=1.0,
+          step=0.001,
+          initial_value=mj_model.stat.meansize,
+        )
 
         @cb_collision.on_update
         def _(_) -> None:
@@ -161,6 +181,18 @@ class ViserViewer(BaseViewer):
         @self._server.on_client_connect
         def _(client: viser.ClientHandle) -> None:
           client.camera.fov = np.radians(slider_fov.value)
+
+        @cb_contact_points.on_update
+        def _(_) -> None:
+          self._show_contact_points = cb_contact_points.value
+
+        @cb_contact_forces.on_update
+        def _(_) -> None:
+          self._show_contact_forces = cb_contact_forces.value
+
+        @meansize_input.on_update
+        def _(_) -> None:
+          self._meansize_override = meansize_input.value
 
     # Reward plots tab
     if hasattr(self.env.unwrapped, "reward_manager"):
@@ -460,6 +492,28 @@ class ViserViewer(BaseViewer):
     body_xpos = wp_data.xpos.numpy()  # Shape: (batch_size, nbody, 3)
     body_xmat = wp_data.xmat.numpy()  # Shape: (batch_size, nbody, 3, 3)
 
+    # Get contact data if contact visualization is enabled
+    contact_data = None
+    env_origins = None
+    if self._show_contact_points or self._show_contact_forces:
+      # Get world body (body 0) positions as environment origins
+      env_origins = body_xpos[:, 0, :]  # Shape: (batch_size, 3)
+
+      contact_data = self._get_contact_data(sim, self._env_idx)
+      if self._show_only_selected_env and self.env.num_envs > 1:
+        # For single env display, replicate the contact data
+        contact_data = [contact_data] * self._batch_size
+        # All use the same origin (selected env's origin)
+        env_origins = np.tile(
+          env_origins[self._env_idx][None, :], (self._batch_size, 1)
+        )
+      else:
+        # Get contact data for all envs
+        all_contact_data = []
+        for env_idx in range(self._batch_size):
+          all_contact_data.append(self._get_contact_data(sim, env_idx))
+        contact_data = all_contact_data
+
     def update_mujoco() -> None:
       with self._server.atomic():
         body_xquat = vtf.SO3.from_matrix(body_xmat).wxyz
@@ -490,6 +544,11 @@ class ViserViewer(BaseViewer):
               # Show all environments with offsets
               handle.batched_positions = body_xpos[..., body_id, :]
               handle.batched_wxyzs = body_xquat[..., body_id, :]
+
+        # Update contact visualization
+        if contact_data is not None and env_origins is not None:
+          self._update_contact_visualization(contact_data, env_origins)
+
         self._server.flush()
 
     self._threadpool.submit(update_mujoco)
@@ -528,6 +587,221 @@ class ViserViewer(BaseViewer):
         <strong>Speed:</strong> {self._time_multiplier:.0%}
       </div>
       """
+
+  def _get_contact_data(self, sim: Simulation, env_idx: int) -> dict:
+    """Extract contact data for a specific environment."""
+    # Copy state from warp to mujoco and run forward to get contacts
+    mj_model = sim.mj_model
+    mj_data = sim.mj_data
+    wp_data = sim.wp_data
+
+    # Copy qpos and qvel for this environment
+    mj_data.qpos[:] = wp_data.qpos.numpy()[env_idx]
+    mj_data.qvel[:] = wp_data.qvel.numpy()[env_idx]
+
+    # Run forward to update contacts
+    mujoco.mj_forward(mj_model, mj_data)
+
+    # Extract contact information
+    contacts = []
+    for i in range(mj_data.ncon):
+      con = mj_data.contact[i]
+      # Get contact force
+      force = np.zeros(6)
+      mujoco.mj_contactForce(mj_model, mj_data, i, force)
+
+      contacts.append(
+        {
+          "pos": con.pos.copy(),
+          "frame": con.frame.copy().reshape(3, 3),
+          "force": force[:3].copy(),  # Only normal + friction forces
+          "dist": con.dist,
+          "included": con.efc_address >= 0,
+        }
+      )
+
+    return {"contacts": contacts}
+
+  def _update_contact_visualization(
+    self, contact_data: list[dict], env_origins: np.ndarray
+  ) -> None:
+    """Update contact point and force visualization.
+
+    Args:
+      contact_data: List of contact data dicts, one per environment
+      env_origins: Array of shape (batch_size, 3) with environment origins
+    """
+    # Collect all contact points and forces across all environments
+    all_positions = []
+    all_orientations = []
+    all_scales = []
+    force_positions = []
+    force_orientations = []
+    force_scales = []
+
+    for env_idx, data in enumerate(contact_data):
+      contacts = data["contacts"]
+
+      for contact in contacts:
+        if not contact["included"]:
+          continue
+
+        pos = contact["pos"]
+        frame = contact["frame"]  # 3x3 rotation matrix (rows are basis vectors)
+        force_contact_frame = contact["force"]  # Force in contact frame
+
+        # Transform force from contact frame to world frame
+        # Frame rows are [normal, tangent1, tangent2], so transpose to convert
+        force_world = frame.T @ force_contact_frame
+        force_mag = np.linalg.norm(force_world)
+
+        # Contact point visualization (cylinder)
+        if self._show_contact_points:
+          # Add environment origin offset
+          display_pos = pos + env_origins[env_idx]
+          all_positions.append(display_pos)
+          # Contact frame: first row is normal, need to align cylinder z-axis with normal
+          normal = frame[0, :]  # Contact normal (first row of contact frame)
+          # Create rotation matrix that aligns z-axis with normal
+          z_axis = np.array([0, 0, 1])
+          if np.allclose(normal, z_axis):
+            contact_rot = np.eye(3)
+          elif np.allclose(normal, -z_axis):
+            contact_rot = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])
+          else:
+            # Rodrigues rotation formula
+            v = np.cross(z_axis, normal)
+            s = np.linalg.norm(v)
+            c = np.dot(z_axis, normal)
+            vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+            contact_rot = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
+          quat = vtf.SO3.from_matrix(contact_rot).wxyz
+          all_orientations.append(quat)
+          # Use MuJoCo's contact visualization scale
+          sim = self.env.unwrapped.sim
+          assert isinstance(sim, Simulation)
+          mj_model = sim.mj_model
+          meansize = (
+            self._meansize_override
+            if self._meansize_override is not None
+            else mj_model.stat.meansize
+          )
+          contact_width = mj_model.vis.scale.contactwidth * meansize
+          contact_height = mj_model.vis.scale.contactheight * meansize
+          all_scales.append([contact_width, contact_width, contact_height])
+
+        # Contact force visualization (arrow)
+        if self._show_contact_forces and force_mag > 1e-6:
+          # Add environment origin offset
+          display_pos = pos + env_origins[env_idx]
+          force_positions.append(display_pos)
+
+          # Compute arrow orientation (arrow points in direction of force)
+          force_dir = force_world / force_mag
+          # Create rotation matrix to align arrow with force direction
+          # Arrow points along +z by default
+          z_axis = np.array([0, 0, 1])
+          if np.allclose(force_dir, z_axis):
+            force_rot = np.eye(3)
+          elif np.allclose(force_dir, -z_axis):
+            force_rot = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])
+          else:
+            # Use rodrigues rotation
+            v = np.cross(z_axis, force_dir)
+            s = np.linalg.norm(v)
+            c = np.dot(z_axis, force_dir)
+            vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+            force_rot = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
+
+          force_quat = vtf.SO3.from_matrix(force_rot).wxyz
+          force_orientations.append(force_quat)
+
+          # Scale arrow by force magnitude
+          sim = self.env.unwrapped.sim
+          assert isinstance(sim, Simulation)
+          mj_model = sim.mj_model
+          meansize = (
+            self._meansize_override
+            if self._meansize_override is not None
+            else mj_model.stat.meansize
+          )
+          # Use MuJoCo's force scaling: mju_scl3(vec, vec, m->vis.map.force/m->stat.meanmass)
+          # This scales the force vector by (map.force / meanmass) - that's the arrow length
+          force_scale = mj_model.vis.map.force
+          mean_mass = mj_model.stat.meanmass
+          if mean_mass > 0:
+            arrow_length = force_mag * (force_scale / mean_mass)
+          else:
+            arrow_length = force_mag
+          arrow_width = mj_model.vis.scale.forcewidth * meansize
+          force_scales.append([arrow_width, arrow_width, arrow_length])
+
+    # Update or create contact point handle
+    if self._show_contact_points and len(all_positions) > 0:
+      positions_arr = np.array(all_positions)
+      orientations_arr = np.array(all_orientations)
+      scales_arr = np.array(all_scales)
+
+      if self._contact_point_handle is None:
+        # Create cylinder mesh for contact points
+        cylinder_mesh = trimesh.creation.cylinder(radius=1.0, height=1.0)
+        cylinder_mesh.visual = trimesh.visual.TextureVisuals(
+          material=trimesh.visual.material.PBRMaterial(
+            baseColorFactor=[0.9, 0.6, 0.2, 1.0],  # MuJoCo contactpoint color
+          )
+        )
+        self._contact_point_handle = self._server.scene.add_batched_meshes_trimesh(
+          "/contacts/points",
+          cylinder_mesh,
+          batched_wxyzs=orientations_arr,
+          batched_positions=positions_arr,
+          batched_scales=scales_arr,
+          lod="off",
+          visible=True,
+        )
+      else:
+        self._contact_point_handle.batched_positions = positions_arr
+        self._contact_point_handle.batched_wxyzs = orientations_arr
+        self._contact_point_handle.batched_scales = scales_arr
+        self._contact_point_handle.visible = True
+    elif self._contact_point_handle is not None:
+      self._contact_point_handle.visible = False
+
+    # Update or create contact force handle
+    if self._show_contact_forces and len(force_positions) > 0:
+      positions_arr = np.array(force_positions)
+      orientations_arr = np.array(force_orientations)
+      scales_arr = np.array(force_scales)
+
+      if self._contact_force_handle is None:
+        # Create arrow mesh for forces (cylinder + cone), unit-sized
+        # Shaft and head designed to have max radius 1.0 when combined
+        shaft = trimesh.creation.cylinder(radius=0.5, height=0.7)
+        shaft.apply_translation([0, 0, 0.35])
+        head = trimesh.creation.cone(radius=1.0, height=0.3, sections=8)
+        head.apply_translation([0, 0, 0.7])
+        arrow_mesh = trimesh.util.concatenate([shaft, head])
+        arrow_mesh.visual = trimesh.visual.TextureVisuals(
+          material=trimesh.visual.material.PBRMaterial(
+            baseColorFactor=[0.7, 0.9, 0.9, 1.0],  # MuJoCo contactforce color
+          )
+        )
+        self._contact_force_handle = self._server.scene.add_batched_meshes_trimesh(
+          "/contacts/forces",
+          arrow_mesh,
+          batched_wxyzs=orientations_arr,
+          batched_positions=positions_arr,
+          batched_scales=scales_arr,
+          lod="off",
+          visible=True,
+        )
+      else:
+        self._contact_force_handle.batched_positions = positions_arr
+        self._contact_force_handle.batched_wxyzs = orientations_arr
+        self._contact_force_handle.batched_scales = scales_arr
+        self._contact_force_handle.visible = True
+    elif self._contact_force_handle is not None:
+      self._contact_force_handle.visible = False
 
   @staticmethod
   def _create_mesh(mj_model, idx: int) -> trimesh.Trimesh:
