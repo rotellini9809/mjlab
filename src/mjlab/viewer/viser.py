@@ -501,7 +501,12 @@ class ViserViewer(BaseViewer):
         )
         self._reward_plotter.update(terms)
 
-    # Update camera tracking every frame (before early return)
+    # The rest of this method is environment state syncing.
+    # It's fine to do this every other policy step to reduce bandwidth usage.
+    if self._counter % 2 != 0:
+      return
+
+    # Update camera tracking (after early return so it syncs with mesh updates)
     sim = self.env.unwrapped.sim
     assert isinstance(sim, Simulation)
     wp_data = sim.wp_data
@@ -539,11 +544,6 @@ class ViserViewer(BaseViewer):
       camera_lookat = mj_data.subtree_com[root_body_id].copy()
 
       self._update_camera_tracking(camera_lookat)
-
-    # The rest of this method is environment state syncing.
-    # It's fine to do this every other policy step to reduce bandwidth usage.
-    if self._counter % 2 != 0:
-      return
 
     # We'll make a copy of the relevant state, then do the update itself asynchronously.
     mj_model = sim.mj_model
