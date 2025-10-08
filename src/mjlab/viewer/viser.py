@@ -56,6 +56,8 @@ class ViserViewer(BaseViewer):
     self._camera_distance = 3.0
     self._camera_azimuth = 90.0  # degrees
     self._camera_elevation = -20.0  # degrees
+    self._contact_point_color = (230, 153, 51)  # RGB 0-255, MuJoCo default
+    self._contact_force_color = (179, 230, 230)  # RGB 0-255, MuJoCo default
 
     self._counter = 0
     self._env_idx = 0
@@ -168,10 +170,20 @@ class ViserViewer(BaseViewer):
       # Contact visualization settings
       with self._server.gui.add_folder("Contacts"):
         cb_contact_points = self._server.gui.add_checkbox(
-          "Contact points", initial_value=False
+          "Points",
+          initial_value=False,
+          hint="Toggle contact point visualization for the selected environment.",
+        )
+        contact_point_color = self._server.gui.add_rgb(
+          "Points Color", initial_value=self._contact_point_color
         )
         cb_contact_forces = self._server.gui.add_checkbox(
-          "Contact forces", initial_value=False
+          "Forces",
+          initial_value=False,
+          hint="Toggle contact force visualization for the selected environment.",
+        )
+        contact_force_color = self._server.gui.add_rgb(
+          "Forces Color", initial_value=self._contact_force_color
         )
         meansize_input = self._server.gui.add_number(
           "Scale",
@@ -185,9 +197,28 @@ class ViserViewer(BaseViewer):
         def _(_) -> None:
           self._show_contact_points = cb_contact_points.value
 
+        @contact_point_color.on_update
+        def _(_) -> None:
+          self._contact_point_color = contact_point_color.value
+          # Force recreation of contact point handle with new color
+          if self._contact_point_handle is not None:
+            self._contact_point_handle.remove()
+            self._contact_point_handle = None
+
         @cb_contact_forces.on_update
         def _(_) -> None:
           self._show_contact_forces = cb_contact_forces.value
+
+        @contact_force_color.on_update
+        def _(_) -> None:
+          self._contact_force_color = contact_force_color.value
+          # Force recreation of contact force handles with new color
+          if self._contact_force_shaft_handle is not None:
+            self._contact_force_shaft_handle.remove()
+            self._contact_force_shaft_handle = None
+          if self._contact_force_head_handle is not None:
+            self._contact_force_head_handle.remove()
+            self._contact_force_head_handle = None
 
         @meansize_input.on_update
         def _(_) -> None:
@@ -773,9 +804,11 @@ class ViserViewer(BaseViewer):
       if self._contact_point_handle is None:
         # Create cylinder mesh for contact points
         cylinder_mesh = trimesh.creation.cylinder(radius=1.0, height=1.0)
+        # Convert RGB 0-255 to 0-1 range
+        color_01 = [c / 255.0 for c in self._contact_point_color]
         cylinder_mesh.visual = trimesh.visual.TextureVisuals(
           material=trimesh.visual.material.PBRMaterial(
-            baseColorFactor=[0.9, 0.6, 0.2, 1.0],  # MuJoCo contactpoint color
+            baseColorFactor=color_01 + [1.0],  # Add alpha channel
           )
         )
         self._contact_point_handle = self._server.scene.add_batched_meshes_trimesh(
@@ -809,9 +842,11 @@ class ViserViewer(BaseViewer):
         # Create shaft mesh (cylinder) - unit height, will be stretched
         shaft_mesh = trimesh.creation.cylinder(radius=0.4, height=1.0)
         shaft_mesh.apply_translation([0, 0, 0.5])  # Center at z=0.5
+        # Convert RGB 0-255 to 0-1 range
+        color_01 = [c / 255.0 for c in self._contact_force_color]
         shaft_mesh.visual = trimesh.visual.TextureVisuals(
           material=trimesh.visual.material.PBRMaterial(
-            baseColorFactor=[0.7, 0.9, 0.9, 1.0],  # MuJoCo contactforce color
+            baseColorFactor=color_01 + [1.0],  # Add alpha channel
           )
         )
         self._contact_force_shaft_handle = (
@@ -830,9 +865,10 @@ class ViserViewer(BaseViewer):
         # Create head mesh (cone) - fixed size
         head_mesh = trimesh.creation.cone(radius=1.0, height=1.5, sections=8)
         head_mesh.apply_translation([0, 0, 0.75])  # Center at z=0.75
+        # Convert RGB 0-255 to 0-1 range (reuse same color as shaft)
         head_mesh.visual = trimesh.visual.TextureVisuals(
           material=trimesh.visual.material.PBRMaterial(
-            baseColorFactor=[0.7, 0.9, 0.9, 1.0],  # MuJoCo contactforce color
+            baseColorFactor=color_01 + [1.0],  # Add alpha channel
           )
         )
         self._contact_force_head_handle = self._server.scene.add_batched_meshes_trimesh(
