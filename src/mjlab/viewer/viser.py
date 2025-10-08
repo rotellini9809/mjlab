@@ -12,15 +12,15 @@ import mujoco
 import numpy as np
 import trimesh
 import trimesh.visual
-import viser
-import viser.transforms as vtf
-from mujoco import mj_id2name, mjtGeom, mjtObj  # type: ignore
-from typing_extensions import override
-
 from mjlab.sim.sim import Simulation
 from mjlab.viewer.base import BaseViewer, EnvProtocol, PolicyProtocol, VerbosityLevel
 from mjlab.viewer.viser_conversions import mujoco_mesh_to_trimesh
 from mjlab.viewer.viser_reward_plotter import ViserRewardPlotter
+from mujoco import mj_id2name, mjtGeom, mjtObj  # type: ignore
+from typing_extensions import override
+
+import viser
+import viser.transforms as vtf
 
 
 class ViserViewer(BaseViewer):
@@ -524,29 +524,6 @@ class ViserViewer(BaseViewer):
       mj_data.qvel[:] = wp_data.qvel.numpy()[self._env_idx]
       mujoco.mj_forward(mj_model, mj_data)
 
-    if self._camera_tracking:
-      # Get the body to track from viewer config
-      if self.cfg and self.cfg.asset_name and self.cfg.body_name:
-        # Use the configured body for tracking
-        from mjlab.entity.entity import Entity
-
-        robot: Entity = self.env.unwrapped.scene[self.cfg.asset_name]
-        if self.cfg.body_name not in robot.body_names:
-          raise ValueError(
-            f"Body '{self.cfg.body_name}' not found in asset '{self.cfg.asset_name}'"
-          )
-        body_id_list, _ = robot.find_bodies(self.cfg.body_name)
-        root_body_id = robot.indexing.bodies[body_id_list[0]].id
-      else:
-        # Fallback: use body 1 (first body after world)
-        root_body_id = 1
-
-      # Use subtree center of mass for smoother tracking (like MuJoCo does)
-      # subtree_com is already smooth, so we don't need additional smoothing
-      camera_lookat = sim.mj_data.subtree_com[root_body_id].copy()
-
-      self._update_camera_tracking(camera_lookat)
-
     # We'll make a copy of the relevant state, then do the update itself asynchronously.
     geom_xpos = wp_data.geom_xpos.numpy()
     assert geom_xpos.shape == (self._batch_size, mj_model.ngeom, 3)
@@ -567,6 +544,27 @@ class ViserViewer(BaseViewer):
       # Get world body (body 0) position as environment origin
       env_origin = body_xpos[self._env_idx, 0, :]  # Shape: (3,)
 
+      # Get the body to track from viewer config
+      # Use subtree center of mass for smoother tracking (like MuJoCo does)
+    if self._camera_tracking:
+      if self.cfg and self.cfg.asset_name and self.cfg.body_name:
+        # Use the configured body for tracking
+        from mjlab.entity.entity import Entity
+
+        robot: Entity = self.env.unwrapped.scene[self.cfg.asset_name]
+        if self.cfg.body_name not in robot.body_names:
+          raise ValueError(
+            f"Body '{self.cfg.body_name}' not found in asset '{self.cfg.asset_name}'"
+          )
+        body_id_list, _ = robot.find_bodies(self.cfg.body_name)
+        root_body_id = robot.indexing.bodies[body_id_list[0]].id
+      else:
+        # Fallback: use body 1 (first body after world)
+        root_body_id = 1
+      camera_lookat = sim.mj_data.subtree_com[root_body_id].copy()
+    else:
+      camera_lookat = None
+
     def update_mujoco() -> None:
       with self._server.atomic():
         body_xquat = vtf.SO3.from_matrix(body_xmat).wxyz
@@ -585,8 +583,9 @@ class ViserViewer(BaseViewer):
             if self._show_only_selected_env and self.env.num_envs > 1:
               # Show only the selected environment at the origin (0,0,0)
               single_pos = body_xpos[self._env_idx, body_id, :]
-              single_quat = body_xquat[self._env_idx, body_id, :]
-              # Replicate single environment data for all batch slots
+              single_quat = body_xquat[
+                self._env_idx, body_id, :
+              ]  # Replicate single environment data for all batch slots
               handle.batched_positions = np.tile(
                 single_pos[None, :], (self._batch_size, 1)
               )
@@ -601,6 +600,10 @@ class ViserViewer(BaseViewer):
         # Update contact visualization
         if contact_data is not None and env_origin is not None:
           self._update_contact_visualization(contact_data, env_origin)
+
+        # Synchronize camera tracking if enabled.
+        if camera_lookat is not None:
+          self._update_camera_tracking(camera_lookat)
 
         self._server.flush()
 
@@ -883,8 +886,9 @@ class ViserViewer(BaseViewer):
 
     # Update all connected clients
     for client in self._server.get_clients().values():
-      client.camera.position = camera_pos
-      client.camera.look_at = lookat
+      with client.atomic():
+        client.camera.position = camera_pos
+        client.camera.look_at = lookat
 
   def _get_meansize(self) -> float:
     """Get the meansize value, using override if set."""
