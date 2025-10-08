@@ -506,23 +506,25 @@ class ViserViewer(BaseViewer):
     if self._counter % 2 != 0:
       return
 
-    # Update camera tracking (after early return so it syncs with mesh updates)
+    # Update camera tracking and contacts (after early return so it syncs with mesh updates)
     sim = self.env.unwrapped.sim
     assert isinstance(sim, Simulation)
     wp_data = sim.wp_data
+    mj_model = sim.mj_model
 
-    if self._camera_tracking:
-      # Need to copy qpos/qvel to mj_data and run forward to get updated positions
-      mj_model = sim.mj_model
+    # Check if we need to run mj_forward for camera tracking or contact visualization
+    needs_mj_forward = (
+      self._camera_tracking or self._show_contact_points or self._show_contact_forces
+    )
+
+    if needs_mj_forward:
+      # Copy qpos/qvel to mj_data and run forward once (shared for tracking and contacts)
       mj_data = sim.mj_data
-
-      # Copy qpos and qvel for the tracked environment
       mj_data.qpos[:] = wp_data.qpos.numpy()[self._env_idx]
       mj_data.qvel[:] = wp_data.qvel.numpy()[self._env_idx]
-
-      # Run forward to update body positions
       mujoco.mj_forward(mj_model, mj_data)
 
+    if self._camera_tracking:
       # Get the body to track from viewer config
       if self.cfg and self.cfg.asset_name and self.cfg.body_name:
         # Use the configured body for tracking
@@ -541,13 +543,11 @@ class ViserViewer(BaseViewer):
 
       # Use subtree center of mass for smoother tracking (like MuJoCo does)
       # subtree_com is already smooth, so we don't need additional smoothing
-      camera_lookat = mj_data.subtree_com[root_body_id].copy()
+      camera_lookat = sim.mj_data.subtree_com[root_body_id].copy()
 
       self._update_camera_tracking(camera_lookat)
 
     # We'll make a copy of the relevant state, then do the update itself asynchronously.
-    mj_model = sim.mj_model
-
     geom_xpos = wp_data.geom_xpos.numpy()
     assert geom_xpos.shape == (self._batch_size, mj_model.ngeom, 3)
     geom_xmat = wp_data.geom_xmat.numpy()
@@ -562,7 +562,8 @@ class ViserViewer(BaseViewer):
     contact_data = None
     env_origin = None
     if self._show_contact_points or self._show_contact_forces:
-      contact_data = self._get_contact_data(sim, self._env_idx)
+      # Extract contact data from already-computed mj_data (no need to call mj_forward again)
+      contact_data = self._extract_contact_data(sim.mj_model, sim.mj_data)
       # Get world body (body 0) position as environment origin
       env_origin = body_xpos[self._env_idx, 0, :]  # Shape: (3,)
 
@@ -640,20 +641,16 @@ class ViserViewer(BaseViewer):
       </div>
       """
 
-  def _get_contact_data(self, sim: Simulation, env_idx: int) -> dict:
-    """Extract contact data for a specific environment."""
-    # Copy state from warp to mujoco and run forward to get contacts
-    mj_model = sim.mj_model
-    mj_data = sim.mj_data
-    wp_data = sim.wp_data
+  def _extract_contact_data(self, mj_model, mj_data) -> dict:
+    """Extract contact data from already-computed mj_data.
 
-    # Copy qpos and qvel for this environment
-    mj_data.qpos[:] = wp_data.qpos.numpy()[env_idx]
-    mj_data.qvel[:] = wp_data.qvel.numpy()[env_idx]
+    Args:
+      mj_model: MuJoCo model
+      mj_data: MuJoCo data (must have mj_forward already called)
 
-    # Run forward to update contacts
-    mujoco.mj_forward(mj_model, mj_data)
-
+    Returns:
+      Dictionary with contact information
+    """
     # Extract contact information
     contacts = []
     for i in range(mj_data.ncon):
