@@ -12,15 +12,15 @@ import mujoco
 import numpy as np
 import trimesh
 import trimesh.visual
+import viser
+import viser.transforms as vtf
+from mujoco import mj_id2name, mjtGeom, mjtObj  # type: ignore
+from typing_extensions import override
+
 from mjlab.sim.sim import Simulation
 from mjlab.viewer.base import BaseViewer, EnvProtocol, PolicyProtocol, VerbosityLevel
 from mjlab.viewer.viser_conversions import mujoco_mesh_to_trimesh
 from mjlab.viewer.viser_reward_plotter import ViserRewardPlotter
-from mujoco import mj_id2name, mjtGeom, mjtObj  # type: ignore
-from typing_extensions import override
-
-import viser
-import viser.transforms as vtf
 
 
 class ViserViewer(BaseViewer):
