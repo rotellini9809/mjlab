@@ -167,106 +167,6 @@ class ViserViewer(BaseViewer):
         def _(client: viser.ClientHandle) -> None:
           client.camera.fov = np.radians(slider_fov.value)
 
-      # Contact visualization settings
-      with self._server.gui.add_folder("Contacts"):
-        cb_contact_points = self._server.gui.add_checkbox(
-          "Points",
-          initial_value=False,
-          hint="Toggle contact point visualization for the selected environment.",
-        )
-        contact_point_color = self._server.gui.add_rgb(
-          "Points Color", initial_value=self._contact_point_color
-        )
-        cb_contact_forces = self._server.gui.add_checkbox(
-          "Forces",
-          initial_value=False,
-          hint="Toggle contact force visualization for the selected environment.",
-        )
-        contact_force_color = self._server.gui.add_rgb(
-          "Forces Color", initial_value=self._contact_force_color
-        )
-        meansize_input = self._server.gui.add_number(
-          "Scale",
-          min=0.001,
-          max=1.0,
-          step=0.001,
-          initial_value=mj_model.stat.meansize,
-        )
-
-        @cb_contact_points.on_update
-        def _(_) -> None:
-          self._show_contact_points = cb_contact_points.value
-
-        @contact_point_color.on_update
-        def _(_) -> None:
-          self._contact_point_color = contact_point_color.value
-          # Force recreation of contact point handle with new color
-          if self._contact_point_handle is not None:
-            self._contact_point_handle.remove()
-            self._contact_point_handle = None
-
-        @cb_contact_forces.on_update
-        def _(_) -> None:
-          self._show_contact_forces = cb_contact_forces.value
-
-        @contact_force_color.on_update
-        def _(_) -> None:
-          self._contact_force_color = contact_force_color.value
-          # Force recreation of contact force handles with new color
-          if self._contact_force_shaft_handle is not None:
-            self._contact_force_shaft_handle.remove()
-            self._contact_force_shaft_handle = None
-          if self._contact_force_head_handle is not None:
-            self._contact_force_head_handle.remove()
-            self._contact_force_head_handle = None
-
-        @meansize_input.on_update
-        def _(_) -> None:
-          self._meansize_override = meansize_input.value
-
-      # Camera tracking controls
-      with self._server.gui.add_folder("Camera"):
-        cb_camera_tracking = self._server.gui.add_checkbox(
-          "Enable tracking", initial_value=False
-        )
-        camera_distance_slider = self._server.gui.add_slider(
-          "Distance",
-          min=0.5,
-          max=10.0,
-          step=0.1,
-          initial_value=3.0,
-        )
-        camera_azimuth_slider = self._server.gui.add_slider(
-          "Azimuth",
-          min=-180.0,
-          max=180.0,
-          step=5.0,
-          initial_value=90.0,
-        )
-        camera_elevation_slider = self._server.gui.add_slider(
-          "Elevation",
-          min=-89.0,
-          max=89.0,
-          step=5.0,
-          initial_value=-20.0,
-        )
-
-        @cb_camera_tracking.on_update
-        def _(_) -> None:
-          self._camera_tracking = cb_camera_tracking.value
-
-        @camera_distance_slider.on_update
-        def _(_) -> None:
-          self._camera_distance = camera_distance_slider.value
-
-        @camera_azimuth_slider.on_update
-        def _(_) -> None:
-          self._camera_azimuth = camera_azimuth_slider.value
-
-        @camera_elevation_slider.on_update
-        def _(_) -> None:
-          self._camera_elevation = camera_elevation_slider.value
-
       # Environment selection if multiple environments
       if self.env.num_envs > 1:
         with self._server.gui.add_folder("Environment"):
@@ -309,6 +209,106 @@ class ViserViewer(BaseViewer):
           @self._show_only_selected_cb.on_update
           def _(_) -> None:
             self._show_only_selected_env = self._show_only_selected_cb.value
+
+          # Contact visualization settings
+          with self._server.gui.add_folder("Contacts"):
+            cb_contact_points = self._server.gui.add_checkbox(
+              "Points",
+              initial_value=False,
+              hint="Toggle contact point visualization for the selected environment.",
+            )
+            contact_point_color = self._server.gui.add_rgb(
+              "Points Color", initial_value=self._contact_point_color
+            )
+            cb_contact_forces = self._server.gui.add_checkbox(
+              "Forces",
+              initial_value=False,
+              hint="Toggle contact force visualization for the selected environment.",
+            )
+            contact_force_color = self._server.gui.add_rgb(
+              "Forces Color", initial_value=self._contact_force_color
+            )
+            meansize_input = self._server.gui.add_number(
+              "Scale",
+              min=0.001,
+              max=1.0,
+              step=0.001,
+              initial_value=mj_model.stat.meansize,
+            )
+
+            @cb_contact_points.on_update
+            def _(_) -> None:
+              self._show_contact_points = cb_contact_points.value
+
+            @contact_point_color.on_update
+            def _(_) -> None:
+              self._contact_point_color = contact_point_color.value
+              # Force recreation of contact point handle with new color
+              if self._contact_point_handle is not None:
+                self._contact_point_handle.remove()
+                self._contact_point_handle = None
+
+            @cb_contact_forces.on_update
+            def _(_) -> None:
+              self._show_contact_forces = cb_contact_forces.value
+
+            @contact_force_color.on_update
+            def _(_) -> None:
+              self._contact_force_color = contact_force_color.value
+              # Force recreation of contact force handles with new color
+              if self._contact_force_shaft_handle is not None:
+                self._contact_force_shaft_handle.remove()
+                self._contact_force_shaft_handle = None
+              if self._contact_force_head_handle is not None:
+                self._contact_force_head_handle.remove()
+                self._contact_force_head_handle = None
+
+            @meansize_input.on_update
+            def _(_) -> None:
+              self._meansize_override = meansize_input.value
+
+          # Camera tracking controls
+          with self._server.gui.add_folder("Camera"):
+            cb_camera_tracking = self._server.gui.add_checkbox(
+              "Enable tracking", initial_value=False
+            )
+            camera_distance_slider = self._server.gui.add_slider(
+              "Distance",
+              min=0.5,
+              max=10.0,
+              step=0.1,
+              initial_value=3.0,
+            )
+            camera_azimuth_slider = self._server.gui.add_slider(
+              "Azimuth",
+              min=-180.0,
+              max=180.0,
+              step=5.0,
+              initial_value=90.0,
+            )
+            camera_elevation_slider = self._server.gui.add_slider(
+              "Elevation",
+              min=-89.0,
+              max=89.0,
+              step=5.0,
+              initial_value=-20.0,
+            )
+
+            @cb_camera_tracking.on_update
+            def _(_) -> None:
+              self._camera_tracking = cb_camera_tracking.value
+
+            @camera_distance_slider.on_update
+            def _(_) -> None:
+              self._camera_distance = camera_distance_slider.value
+
+            @camera_azimuth_slider.on_update
+            def _(_) -> None:
+              self._camera_azimuth = camera_azimuth_slider.value
+
+            @camera_elevation_slider.on_update
+            def _(_) -> None:
+              self._camera_elevation = camera_elevation_slider.value
 
     # Reward plots tab
     if hasattr(self.env.unwrapped, "reward_manager"):
