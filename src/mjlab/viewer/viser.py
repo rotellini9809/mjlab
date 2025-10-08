@@ -886,8 +886,8 @@ class ViserViewer(BaseViewer):
 
     # Update all connected clients
     for client in self._server.get_clients().values():
-      client.camera.look_at = tuple(lookat.tolist())
-      client.camera.position = tuple(camera_pos.tolist())
+      client.camera.position = camera_pos
+      client.camera.look_at = lookat
 
   def _get_meansize(self) -> float:
     """Get the meansize value, using override if set."""
