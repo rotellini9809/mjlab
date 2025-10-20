@@ -64,34 +64,13 @@ assert CARTPOLE_XML.exists(), f"XML not found: {CARTPOLE_XML}"
 def get_spec() -> mujoco.MjSpec:
   return mujoco.MjSpec.from_file(str(CARTPOLE_XML))
 
-CARTPOLE_ACTUATOR = ActuatorCfg(
-  joint_names_expr=["slide"],
-  effort_limit=20.0,
-  stiffness=0.0,
-  damping=0.1,
-)
-
-CARTPOLE_ARTICULATION = EntityArticulationInfoCfg(
-  actuators=(CARTPOLE_ACTUATOR,),
-)
-
-CARTPOLE_ROBOT_CFG = EntityCfg(
-  spec_fn=get_spec,
-  articulation=CARTPOLE_ARTICULATION,
-)
+CARTPOLE_ROBOT_CFG = EntityCfg(spec_fn=get_spec)
 
 if __name__ == "__main__":
   import mujoco.viewer as viewer
   robot = Entity(CARTPOLE_ROBOT_CFG)
   viewer.launch(robot.spec.compile())
 ```
-
-> [!NOTE]
-> **On Motor-Type Actuators**: You can use XML-defined actuators by leaving
-> the `actuators` field empty in `EntityArticulationInfoCfg`. For position control
-> with motor-type actuators, implement impedance control:
-> `τ = Kp * (q* - q) + Kd * (-q̇)`. See
-> [#130](https://github.com/mujocolab/mjlab/discussions/130) for details.
 
 ### __init__.py
 

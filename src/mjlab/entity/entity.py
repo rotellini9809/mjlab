@@ -125,7 +125,8 @@ class Entity:
       self._non_free_joints = tuple(all_joints[1:])
 
     self._apply_spec_editors()
-    self._add_initial_state_keyframe()
+    if not self._spec.key("init_state"):
+        self._add_initial_state_keyframe()
     # TODO: Should init_state.pos/rot be applied to root body if fixed base?
 
   def _apply_spec_editors(self) -> None:
