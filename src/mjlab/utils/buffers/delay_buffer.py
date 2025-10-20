@@ -37,24 +37,21 @@ class DelayBuffer:
     Until that next append, `compute()` for those rows returns zeros.
 
   Args:
-    min_lag (int, optional): Minimum lag (inclusive). Must be >= 0. Defaults to 0.
+    min_lag (int, optional): Minimum lag (inclusive). Must be >= 0.
     max_lag (int, optional): Maximum lag (inclusive). Must be >= `min_lag`.
-      Defaults to 3.
     batch_size (int, optional): Number of parallel environments (leading
-      dimension of inputs). Defaults to 1.
-    device (str, optional): Torch device for storage and RNG (e.g., `"cpu"`,
-      `"cuda"`). Defaults to `"cpu"`.
+      dimension of inputs).
+    device (str, optional): Torch device for storage and RNG.
     per_env (bool, optional): If True, sample a separate lag per environment;
-      otherwise sample one lag and share it across environments. Defaults to True.
+      otherwise sample one lag and share it across environments.
     hold_prob (float, optional): Probability in `[0.0, 1.0]` to keep the previous
-      lag when an update would occur. Defaults to 0.0.
+      lag when an update would occur.
     update_period (int, optional): If > 0, refresh lags every `N` steps per
-      environment; if 0, consider updating every step. Defaults to 0.
+      environment; if 0, consider updating every step.
     per_env_phase (bool, optional): If True and `update_period > 0`, each
       environment uses a different phase offset in `[0, update_period)`, causing
-      staggered refresh steps. Defaults to True.
-    generator (torch.Generator | None, optional): Optional RNG for sampling
-      lags. Defaults to None.
+      staggered refresh steps.
+    generator (torch.Generator | None, optional): Optional RNG for sampling lags.
 
   Notes:
     * When the buffer contains fewer than `max_lag + 1` frames, sampled lags are
