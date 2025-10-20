@@ -12,13 +12,9 @@ from mjlab.utils.buffers import CircularBuffer
 class DelayBuffer:
   """Serve stochastically delayed (stale) observations from a rolling history.
 
-  Wraps a :class:`CircularBuffer` and returns delayed frames according to a
-  lag policy (uniform sampling over a range, optional "hold" probability, and
-  optional multi-rate lag updates with per-environment phase offsets).
-
-  Shapes:
-    - Internal storage (via `CircularBuffer`): `(max_lag + 1, batch_size, ...)`
-    - Output of `compute()`: `(batch_size, ...)`
+  Wraps a CircularBuffer and returns delayed frames according to a lag policy
+  (uniform sampling over a range, optional "hold" probability, and optional multi-rate
+  lag updates with per-environment phase offsets).
 
   Lag update policy:
     * If `update_period == 0`: a new lag l is considered every step (subject to
@@ -30,7 +26,7 @@ class DelayBuffer:
       would occur.
     * If `per_env=False`, a single sampled lag is shared by all environments.
 
-  Reset semantics:
+  Reset behavior:
     `reset(batch_ids=...)` clears selected rows in the inner `CircularBuffer`,
     sets their lag and counters to zero, and on the next `append()` those rows
     receive backfill (their first new value is copied across their full history).
@@ -53,21 +49,14 @@ class DelayBuffer:
       staggered refresh steps.
     generator (torch.Generator | None, optional): Optional RNG for sampling lags.
 
-  Notes:
-    * When the buffer contains fewer than `max_lag + 1` frames, sampled lags are
-      clamped to available history to ensure valid reads (oldest → newest).
-    * All operations are vectorized across environments and remain on `device`.
-    * Storage complexity is
-      `O(batch_size x (max_lag + 1) x prod(observation_shape))`.
-
   Examples:
     Constant delay (lag = 2):
-      >>> buf = DelayBuffer(min_lag=2, max_lag=2, batch_size=4, device="cpu")
+      >>> buf = DelayBuffer(min_lag=2, max_lag=2, batch_size=4)
       >>> buf.append(obs)                # obs.shape == (4, ...)
       >>> delayed = buf.compute()        # delayed[t] = obs[t-2]
 
     Stochastic delay (uniform 0-3):
-      >>> buf = DelayBuffer(min_lag=0, max_lag=3, batch_size=4, device="cpu")
+      >>> buf = DelayBuffer(min_lag=0, max_lag=3, batch_size=4)
       >>> buf.append(obs)
       >>> delayed = buf.compute()        # per-env lag sampled in {0,1,2,3}
   """
@@ -138,31 +127,20 @@ class DelayBuffer:
     Args:
       batch_ids: Batch indices to reset, or None to reset all.
     """
-    ids = slice(None) if batch_ids is None else batch_ids
     self._buffer.reset(batch_ids=batch_ids)
-    self._current_lags[ids] = 0
-    self._step_count[ids] = 0
-
+    idx = slice(None) if batch_ids is None else batch_ids
+    self._current_lags[idx] = 0
+    self._step_count[idx] = 0
     if self.update_period > 0 and self.per_env_phase:
-      if batch_ids is None:
-        self._phase_offsets = torch.randint(
-          0,
-          self.update_period,
-          (self.batch_size,),
-          dtype=torch.long,
-          device=self.device,
-          generator=self.generator,
-        )
-      else:
-        new_phases = torch.randint(
-          0,
-          self.update_period,
-          (self.batch_size,),
-          dtype=torch.long,
-          device=self.device,
-          generator=self.generator,
-        )
-        self._phase_offsets[ids] = new_phases[ids]
+      new_phases = torch.randint(
+        0,
+        self.update_period,
+        (self.batch_size,),
+        dtype=torch.long,
+        device=self.device,
+        generator=self.generator,
+      )
+      self._phase_offsets[idx] = new_phases[idx]
 
   def append(self, data: torch.Tensor) -> None:
     """Append new observation to buffer.
@@ -186,7 +164,7 @@ class DelayBuffer:
     # Clamp lags to valid range [0, buffer_length - 1].
     # Buffer may not be full yet (e.g., only 2 frames but sampled lag=3).
     valid_lags = torch.minimum(self._current_lags, self._buffer.current_length - 1)
-    valid_lags = torch.maximum(valid_lags, torch.zeros_like(valid_lags))
+    valid_lags = valid_lags.clamp_min(0)
 
     return self._buffer[valid_lags]
 
@@ -199,11 +177,8 @@ class DelayBuffer:
       should_update = phase_adjusted_count == 0
     else:
       should_update = torch.ones(self.batch_size, dtype=torch.bool, device=self.device)
-
-    if torch.any(should_update):
-      new_lags = self._sample_lags(should_update)
-      self._current_lags = torch.where(should_update, new_lags, self._current_lags)
-
+    new_lags = self._sample_lags(should_update)
+    self._current_lags = torch.where(should_update, new_lags, self._current_lags)
     self._step_count += 1
 
   def _sample_lags(self, mask: torch.Tensor) -> torch.Tensor:
@@ -237,11 +212,16 @@ class DelayBuffer:
 
     if self.hold_prob > 0.0:
       should_sample = (
-        torch.rand(self.batch_size, device=self.device, generator=self.generator)
+        torch.rand(
+          self.batch_size,
+          dtype=torch.float32,
+          device=self.device,
+          generator=self.generator,
+        )
         >= self.hold_prob
       )
+      update_mask = mask & should_sample
     else:
-      should_sample = torch.ones(self.batch_size, dtype=torch.bool, device=self.device)
+      update_mask = mask
 
-    update_mask = mask & should_sample
     return torch.where(update_mask, candidate_lags, self._current_lags)
