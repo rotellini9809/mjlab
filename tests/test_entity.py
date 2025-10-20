@@ -1,6 +1,7 @@
 """Tests for entity module."""
 
 import mujoco
+import numpy as np
 import pytest
 import torch
 
@@ -386,6 +387,91 @@ class TestExternalForces:
 
     sim.step()
     assert not torch.any(torch.isnan(sim.data.qpos)), "Should not produce NaN"
+
+
+class TestInitStateKeyframe:
+  """Tests for keyframe 'init_state' ctrl construction."""
+
+  @pytest.fixture
+  def articulated_entity_with_init(self, articulated_xml):
+    """Articulated entity with non-zero per-joint init positions."""
+    cfg = EntityCfg(
+      spec_fn=lambda: mujoco.MjSpec.from_string(articulated_xml),
+      articulation=EntityArticulationInfoCfg(
+        actuators=(
+          ActuatorCfg(
+            joint_names_expr=["joint1", "joint2"],
+            effort_limit=1.0,
+            stiffness=1.0,
+            damping=1.0,
+          ),
+        )
+      ),
+    )
+    # Non-zero initial joint positions so we can verify mapping
+    cfg.init_state.joint_pos = {"joint1": 0.5, "joint2": -0.25}
+    return Entity(cfg)
+
+  @pytest.fixture
+  def articulated_entity_subset_with_init(self, articulated_xml):
+    """Same model but with ONLY joint1 actuated (nu=1)."""
+    cfg = EntityCfg(
+      spec_fn=lambda: mujoco.MjSpec.from_string(articulated_xml),
+      articulation=EntityArticulationInfoCfg(
+        actuators=(
+          ActuatorCfg(
+            joint_names_expr=["joint1"],  # subset!
+            effort_limit=1.0,
+            stiffness=1.0,
+            damping=1.0,
+          ),
+        )
+      ),
+    )
+    cfg.init_state.joint_pos = {"joint1": 0.42, "joint2": -0.99}
+    return Entity(cfg)
+
+  def test_keyframe_ctrl_matches_nu_and_maps_values(self, articulated_entity_with_init):
+    """key.ctrl length == nu and values follow actuator->joint mapping by name."""
+    ent = articulated_entity_with_init
+
+    # Compile to check MuJoCo accepts the keyframe and expose key_ctrl
+    mj_model = ent.compile()
+
+    # Sanity: exactly one keyframe (the 'init_state' we add)
+    assert mj_model.nkey == 1
+
+    # key_ctrl is (nkey, nu)
+    assert mj_model.key_ctrl.shape == (1, mj_model.nu)
+    assert mj_model.nu == len(ent.spec.actuators) == ent.num_actuators == 2
+
+    # Build expected ctrl
+    joint_pos_vec = np.array([0.5, -0.25])  # ["joint1", "joint2"] order
+    expected = np.zeros(mj_model.nu)
+    for i, act in enumerate(ent.spec.actuators):
+      jidx = ent.joint_names.index(act.name)
+      expected[i] = joint_pos_vec[jidx]
+
+    # Compare against compiled model keyframe ctrl row 0
+    np.testing.assert_allclose(mj_model.key_ctrl[0], expected, atol=1e-8)
+
+  def test_keyframe_ctrl_handles_subset_actuators(
+    self, articulated_entity_subset_with_init
+  ):
+    """When only a subset of joints are actuated, ctrl has that size and values map correctly."""
+    ent = articulated_entity_subset_with_init
+    mj_model = ent.compile()
+
+    # nu == number of actuators (1) and ctrl has matching width
+    assert mj_model.nu == 1
+    assert mj_model.key_ctrl.shape == (1, 1)
+
+    expected = np.array([0.42], dtype=float)
+    np.testing.assert_allclose(mj_model.key_ctrl[0], expected, atol=1e-8)
+
+  def test_keyframe_ctrl_nonzero_does_not_raise(self, articulated_entity_with_init):
+    ent = articulated_entity_with_init
+    ent.compile()
 
 
 if __name__ == "__main__":
