@@ -10,27 +10,72 @@ from mjlab.utils.buffers import CircularBuffer
 
 
 class DelayBuffer:
-  """Serve stochastically delayed (stale) observations from a rolling history.
+  """Serve stochastically delayed observations from a rolling history.
 
-  Wraps a CircularBuffer and returns delayed frames according to a lag policy
-  (uniform sampling over a range, optional "hold" probability, and optional multi-rate
-  lag updates with per-environment phase offsets).
+  Wraps a CircularBuffer to simulate observation delays by returning frames from T-lag
+  timesteps ago, where lag is sampled from [min_lag, max_lag].
 
-  Lag update policy:
-    * If `update_period == 0`: a new lag l is considered every step (subject to
-      `hold_prob`).
-    * If `update_period > 0`: a lag l is refreshed only on steps where
-      `(step_count[env] + phase_offset[env]) % update_period == 0`; otherwise the
-      previous lag is kept.
-    * With probability `hold_prob`, the previous lag is kept even when a refresh
-      would occur.
-    * If `per_env=False`, a single sampled lag is shared by all environments.
+  Core Behavior
+  =============
 
-  Reset behavior:
-    `reset(batch_ids=...)` clears selected rows in the inner `CircularBuffer`,
-    sets their lag and counters to zero, and on the next `append()` those rows
-    receive backfill (their first new value is copied across their full history).
-    Until that next append, `compute()` for those rows returns zeros.
+  At each timestep:
+    1. Append new observation to history
+    2. Sample or hold lag value (0 = no delay, 3 = 3 timesteps old)
+    3. Return observation from T-lag
+
+  Example with lag=2:
+    t=0: append obs_0 → return obs_0 (not enough history)
+    t=1: append obs_1 → return obs_0 (clamped to available history)
+    t=2: append obs_2 → return obs_0 (lag=2, so T-2 = 0)
+    t=3: append obs_3 → return obs_1 (lag=2, so T-2 = 1)
+
+  Lag Update Policy
+  =================
+
+  Lags can be refreshed every step or periodically:
+
+    **Every-step updates (update_period=0)**
+      Each timestep may sample a new lag (subject to hold_prob).
+
+    **Periodic updates (update_period=N)**
+      Lags refresh only every N steps per environment:
+        if (step_count + phase_offset) % N == 0:
+            sample new lag
+        else:
+            keep previous lag
+
+    **Staggered updates (per_env_phase=True)**
+      Each environment gets a random phase_offset ∈ [0, N), causing
+      lag updates to occur on different timesteps:
+        Env 0: updates at t=0, N, 2N, ...
+        Env 1: updates at t=3, N+3, 2N+3, ...
+        Env 2: updates at t=7, N+7, 2N+7, ...
+
+    **Hold probability (hold_prob=0.2)**
+      Even when an update would occur, keep previous lag with 20% chance.
+      Creates temporal correlation in delay patterns.
+
+  Per-Environment vs Shared Lags
+  ==============================
+
+    **per_env=True** (default)
+      Each environment has independent lag:
+        Batch 0: lag=1 → returns obs from t-1
+        Batch 1: lag=3 → returns obs from t-3
+        Batch 2: lag=0 → returns current obs
+
+    **per_env=False**
+      All environments share one sampled lag:
+        All batches: lag=2 → all return obs from t-2
+
+  Reset Behavior
+  ==============
+
+    reset(batch_ids=[1]) clears history for specified environments:
+      - Sets lag and step counter to zero
+      - Clears circular buffer for those rows
+      - Next append backfills their history with first new value
+      - Until that append, compute() returns zeros for reset rows
 
   Args:
     min_lag (int, optional): Minimum lag (inclusive). Must be >= 0.
@@ -41,12 +86,12 @@ class DelayBuffer:
     per_env (bool, optional): If True, sample a separate lag per environment;
       otherwise sample one lag and share it across environments.
     hold_prob (float, optional): Probability in `[0.0, 1.0]` to keep the previous
-      lag when an update would occur.
-    update_period (int, optional): If > 0, refresh lags every `N` steps per
+      lag when an update would occur. Creates temporal correlation in delays.
+    update_period (int, optional): If > 0, refresh lags every N steps per
       environment; if 0, consider updating every step.
     per_env_phase (bool, optional): If True and `update_period > 0`, each
       environment uses a different phase offset in `[0, update_period)`, causing
-      staggered refresh steps.
+      staggered refresh steps across the batch.
     generator (torch.Generator | None, optional): Optional RNG for sampling lags.
 
   Examples:
@@ -59,6 +104,17 @@ class DelayBuffer:
       >>> buf = DelayBuffer(min_lag=0, max_lag=3, batch_size=4)
       >>> buf.append(obs)
       >>> delayed = buf.compute()        # per-env lag sampled in {0,1,2,3}
+
+    Periodic updates with staggering:
+      >>> buf = DelayBuffer(
+      ...     min_lag=1, max_lag=5, batch_size=8,
+      ...     update_period=10,           # refresh every 10 steps
+      ...     per_env_phase=True,         # stagger across envs
+      ...     hold_prob=0.2               # 20% chance to hold lag
+      ... )
+      >>> # Env 0 refreshes at t=0,10,20,...
+      >>> # Env 1 refreshes at t=3,13,23,... (random offset)
+      >>> # But each refresh has 20% chance to keep previous lag
   """
 
   def __init__(
