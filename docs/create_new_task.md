@@ -363,7 +363,7 @@ uv run train Mjlab-Cartpole
 Run inference with a trained checkpoint:
 
 ```bash
-uv run play --task Mjlab-Cartpole-Play --checkpoint_file <checkpoint_path>
+uv run play Mjlab-Cartpole --checkpoint_file <checkpoint_path>
 ```
 
 ![Trained CartPole](static/cartpole_trained.gif)
