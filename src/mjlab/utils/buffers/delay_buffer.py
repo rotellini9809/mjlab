@@ -53,6 +53,8 @@ class DelayBuffer:
     per_env_phase (bool, optional): If True and `update_period > 0`, each
       environment uses a different phase offset in `[0, update_period)`, causing
       staggered refresh steps. Defaults to True.
+    generator (torch.Generator | None, optional): Optional RNG for sampling
+      lags. Defaults to None.
 
   Notes:
     * When the buffer contains fewer than `max_lag + 1` frames, sampled lags are
@@ -131,7 +133,7 @@ class DelayBuffer:
   @property
   def current_lags(self) -> torch.Tensor:
     """Current lag per environment. Shape: (batch_size,)."""
-    return self._current_lags.clone()
+    return self._current_lags
 
   def reset(self, batch_ids: Sequence[int] | torch.Tensor | None = None) -> None:
     """Reset specified environments to initial state.
@@ -216,52 +218,33 @@ class DelayBuffer:
     Returns:
       New lags with shape (batch_size,).
     """
-    new_lags = self._current_lags.clone()
-
-    if not torch.any(mask):
-      return new_lags
-
-    num_to_sample = int(mask.sum().item())
+    if self.per_env:
+      candidate_lags = torch.randint(
+        self.min_lag,
+        self.max_lag + 1,
+        (self.batch_size,),
+        dtype=torch.long,
+        device=self.device,
+        generator=self.generator,
+      )
+    else:
+      shared_lag = torch.randint(
+        self.min_lag,
+        self.max_lag + 1,
+        (1,),
+        dtype=torch.long,
+        device=self.device,
+        generator=self.generator,
+      )
+      candidate_lags = shared_lag.expand(self.batch_size)
 
     if self.hold_prob > 0.0:
-      hold_mask = (
-        torch.rand(num_to_sample, device=self.device, generator=self.generator)
-        < self.hold_prob
+      should_sample = (
+        torch.rand(self.batch_size, device=self.device, generator=self.generator)
+        >= self.hold_prob
       )
-      sample_mask = ~hold_mask
     else:
-      sample_mask = torch.ones(num_to_sample, dtype=torch.bool, device=self.device)
+      should_sample = torch.ones(self.batch_size, dtype=torch.bool, device=self.device)
 
-    if torch.any(sample_mask):
-      if self.per_env:
-        sampled = torch.randint(
-          self.min_lag,
-          self.max_lag + 1,
-          (int(sample_mask.sum().item()),),
-          dtype=torch.long,
-          device=self.device,
-          generator=self.generator,
-        )
-      else:
-        shared_lag = int(
-          torch.randint(
-            self.min_lag,
-            self.max_lag + 1,
-            (1,),
-            dtype=torch.long,
-            device=self.device,
-            generator=self.generator,
-          ).item()
-        )
-        sampled = torch.full(
-          (int(sample_mask.sum().item()),),
-          shared_lag,
-          dtype=torch.long,
-          device=self.device,
-        )
-
-      masked_indices = torch.where(mask)[0]
-      sample_indices = masked_indices[sample_mask]
-      new_lags[sample_indices] = sampled
-
-    return new_lags
+    update_mask = mask & should_sample
+    return torch.where(update_mask, candidate_lags, self._current_lags)
