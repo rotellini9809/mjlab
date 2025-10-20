@@ -119,9 +119,9 @@ from mjlab.asset_zoo.robots.unitree_go1.go1_constants import GO1_ROBOT_CFG
 from mjlab.asset_zoo.robots.cartpole.cartpole_constants import CARTPOLE_ROBOT_CFG
 
 __all__ = (
-    "G1_ROBOT_CFG",
-    "GO1_ROBOT_CFG",
-    "CARTPOLE_ROBOT_CFG",
+  "G1_ROBOT_CFG",
+  "GO1_ROBOT_CFG",
+  "CARTPOLE_ROBOT_CFG",
 )
 ```
 
@@ -153,12 +153,12 @@ import torch
 
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers.manager_term_config import (
-    ObservationGroupCfg as ObsGroup,
-    ObservationTermCfg as ObsTerm,
-    RewardTermCfg as RewardTerm,
-    TerminationTermCfg as DoneTerm,
-    EventTermCfg as EventTerm,
-    term,
+  ObservationGroupCfg as ObsGroup,
+  ObservationTermCfg as ObsTerm,
+  RewardTermCfg as RewardTerm,
+  TerminationTermCfg as DoneTerm,
+  EventTermCfg as EventTerm,
+  term,
 )
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.scene import SceneCfg
@@ -169,18 +169,18 @@ from mjlab.rl import RslRlOnPolicyRunnerCfg
 from mjlab.envs import mdp
 
 SCENE_CFG = SceneCfg(
-    num_envs=64,
-    extent=1.0,
-    entities={"robot": CARTPOLE_ROBOT_CFG},
+  num_envs=64,
+  extent=1.0,
+  entities={"robot": CARTPOLE_ROBOT_CFG},
 )
 
 VIEWER_CONFIG = ViewerConfig(
-    origin_type=ViewerConfig.OriginType.ASSET_BODY,
-    asset_name="robot",
-    body_name="pole",
-    distance=3.0,
-    elevation=10.0,
-    azimuth=90.0,
+  origin_type=ViewerConfig.OriginType.ASSET_BODY,
+  asset_name="robot",
+  body_name="pole",
+  distance=3.0,
+  elevation=10.0,
+  azimuth=90.0,
 )
 ```
 
@@ -191,13 +191,13 @@ The policy outputs position commands for the cart's slide joint, scaled by 20.0:
 ```python
 @dataclass
 class ActionCfg:
-    joint_pos: mdp.JointPositionActionCfg = term(
-        mdp.JointPositionActionCfg,
-        asset_name="robot",
-        actuator_names=[".*"],
-        scale=20.0,
-        use_default_offset=False,
-    )
+  joint_pos: mdp.JointPositionActionCfg = term(
+    mdp.JointPositionActionCfg,
+    asset_name="robot",
+    actuator_names=[".*"],
+    scale=20.0,
+    use_default_offset=False,
+  )
 ```
 
 ### Observations
