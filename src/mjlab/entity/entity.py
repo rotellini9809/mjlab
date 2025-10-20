@@ -283,8 +283,6 @@ class Entity:
   ):
     if actuator_subset is None:
       actuator_subset = self.actuator_names
-    print(name_keys)
-    print(actuator_subset)
     return resolve_matching_names(name_keys, actuator_subset, preserve_order)
 
   def find_geoms(

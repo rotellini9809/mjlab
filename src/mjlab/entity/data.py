@@ -165,7 +165,6 @@ class EntityData:
     local_ctrl_ids = ctrl_ids if ctrl_ids is not None else slice(None)
     global_ctrl_ids = self.indexing.ctrl_ids[local_ctrl_ids]
     self.data.ctrl[env_ids, global_ctrl_ids] = ctrl
-    print(self.data.ctrl)
 
   def clear_state(self, env_ids: torch.Tensor | slice | None = None) -> None:
     # Reset external wrenches on bodies and DoFs.

@@ -29,18 +29,11 @@ class JointAction(ActionTerm):
     joint_ids, _ = self._asset.find_joints(
       self._actuator_names, preserve_order=cfg.preserve_order
     )
-    print(self._actuator_names)
-    print(joint_ids)
-    # actuator_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18, 19, 20, 21, 22, 23]
 
     self._actuator_ids = torch.tensor(
       actuator_ids, device=self.device, dtype=torch.long
     )
-    self._joint_ids = torch.tensor(
-      joint_ids, device=self.device, dtype=torch.long
-    )
-    # print(self._actuator_names)
-    # print(self._actuator_ids)
+    self._joint_ids = torch.tensor(joint_ids, device=self.device, dtype=torch.long)
 
     self._num_joints = len(self._actuator_ids)
     self._action_dim = len(self._actuator_ids)
@@ -107,7 +100,7 @@ class JointPositionAction(JointAction):
     super().__init__(cfg=cfg, env=env)
 
     if cfg.use_default_offset:
-      self._offset = self._asset.data.default_joint_pos[:, self._joint_ids].clone() # CEST LUI LE COUPABLE
+      self._offset = self._asset.data.default_joint_pos[:, self._joint_ids].clone()
 
   def apply_actions(self):
     self._asset.write_joint_position_target_to_sim(
