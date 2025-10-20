@@ -5,16 +5,10 @@ from unittest.mock import Mock
 
 import pytest
 import torch
+from conftest import get_test_device
 
 from mjlab.managers.manager_term_config import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.observation_manager import ObservationManager
-
-
-def get_test_device():
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
 
 
 @pytest.fixture

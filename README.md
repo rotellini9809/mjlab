@@ -135,7 +135,10 @@ uv run play Mjlab-Your-Task-Id --agent random  # Sends uniform random actions.
 Run tests:
 
 ```bash
-make test
+make test          # Run all tests
+make test-fast     # Skip slow integration tests for faster iteration
+make test-cpu      # Force CPU-only testing (useful on GPU machines)
+make test-cpu-fast # CPU-only, skip slow tests
 ```
 
 Format code:

@@ -5,7 +5,10 @@ import sys
 import warnings
 from contextlib import redirect_stderr, redirect_stdout
 
+import pytest
 
+
+@pytest.mark.slow
 def test_basic_functionality() -> None:
   """Test that mjlab can create and close an environment."""
   from mjlab.envs.manager_based_rl_env import ManagerBasedRlEnv

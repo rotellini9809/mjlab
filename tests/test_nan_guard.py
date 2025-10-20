@@ -7,19 +7,10 @@ import mujoco
 import numpy as np
 import pytest
 import torch
-import warp as wp
+from conftest import get_test_device
 
 from mjlab.sim.sim import Simulation, SimulationCfg
 from mjlab.utils.nan_guard import NanGuardCfg
-
-wp.config.quiet = True
-
-
-def get_test_device():
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
 
 
 @pytest.fixture
@@ -165,6 +156,7 @@ def test_nan_guard_saves_model(simple_model):
     sim.close()
 
 
+@pytest.mark.slow
 def test_nan_guard_with_complex_model():
   """NaN guard should work with complex robot model."""
   from mjlab.scene import Scene
