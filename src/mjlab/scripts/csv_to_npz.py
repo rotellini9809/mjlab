@@ -334,7 +334,7 @@ def run_sim(
           clip.write_videofile("./motion.mp4")
 
           print("Logging video to wandb...")
-          wandb.log({"motion_video": wandb.Video("./motion.mp4", fps=output_fps)})
+          wandb.log({"motion_video": wandb.Video("./motion.mp4", format="mp4")})
 
         wandb.finish()
 
