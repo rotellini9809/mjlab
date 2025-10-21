@@ -35,7 +35,7 @@ dependencies = [
     "prettytable",
     "tqdm",
     "tyro",
-    "torch",
+    "torch>=2.7.0",
     "warp-lang",
     "mujoco-warp",
     "mujoco",
@@ -52,6 +52,13 @@ dependencies = [
   "Bug Reports" = "https://github.com/mujocolab/mjlab/issues"
   "Source" = "https://github.com/mujocolab/mjlab"
 
+[project.scripts]
+train = "mjlab.scripts.train:main"
+play = "mjlab.scripts.play:main"
+demo = "mjlab.scripts.demo:main"
+list_envs = "mjlab.scripts.list_envs:main"
+viz-nan = "mjlab.scripts.nan_viz:main"
+
 [dependency-groups]
 dev = [
   "ipdb>=0.13.13",
@@ -61,16 +68,17 @@ dev = [
   "ruff>=0.13.1",
   "ty>=0.0.1a21",
 ]
+cpu = ["torch>=2.7.0"]
+cu128 = ["torch>=2.7.0"]
 
-[project.optional-dependencies]
-cu12 = ["torch>=2.7.0"]
-
-[project.scripts]
-train = "mjlab.scripts.train:main"
-play = "mjlab.scripts.play:main"
-demo = "mjlab.scripts.demo:main"
-list_envs = "mjlab.scripts.list_envs:main"
-viz-nan = "mjlab.scripts.nan_viz:main"
+[tool.uv]
+default-groups = ["cu128"]
+conflicts = [
+  [
+    { group = "cpu" },
+    { group = "cu128" },
+  ],
+]
 
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
@@ -86,6 +94,11 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
 name = "mujoco"
 url = "https://py.mujoco.org"
 explicit = true
@@ -94,7 +107,10 @@ explicit = true
 mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "486642c3fa262a989b482e0e506716d5793d61a9"}
 warp-lang = { index = "nvidia", marker = "sys_platform != 'darwin'" }
 mujoco = { index = "mujoco" }
-torch = { index = "pytorch-cu128", extra = "cu12", marker = "sys_platform != 'darwin'" }
+torch = [
+  { index = "pytorch-cpu", group = "cpu" },
+  { index = "pytorch-cu128", group = "cu128" },
+]
 
 [tool.ruff]
 src = ["src"]  # Helpful for recognizing first-party imports.
