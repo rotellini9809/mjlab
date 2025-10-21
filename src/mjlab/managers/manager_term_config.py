@@ -86,18 +86,39 @@ class EventTermCfg(ManagerTermBaseCfg):
 
 @dataclass
 class ObservationTermCfg(ManagerTermBaseCfg):
-  """Configuration for an observation term."""
+  """Configuration for an observation term.
+
+  Processing pipeline: compute → noise → clip → scale → delay → history.
+  Delay models sensor latency. History provides temporal context. Both are optional
+  and can be combined.
+  """
 
   noise: NoiseCfg | NoiseModelCfg | None = None
-  """Noise model to apply to the observation. Defaults to None."""
+  """Noise model to apply to the observation."""
   clip: tuple[float, float] | None = None
-  """Range (min, max) to clip the observation values. Defaults to None."""
+  """Range (min, max) to clip the observation values."""
   scale: tuple[float, ...] | float | torch.Tensor | None = None
-  """Scaling factor(s) to multiply the observation by. Defaults to None."""
+  """Scaling factor(s) to multiply the observation by."""
+  delay_min_lag: int = 0
+  """Minimum lag (in steps) for delayed observations. Lag sampled uniformly from
+  [min_lag, max_lag]. Convert to ms: lag * (1000 / control_hz)."""
+  delay_max_lag: int = 0
+  """Maximum lag (in steps) for delayed observations. Use min=max for constant delay."""
+  delay_per_env: bool = True
+  """If True, each environment samples its own lag. If False, all environments share
+  the same lag at each step."""
+  delay_hold_prob: float = 0.0
+  """Probability of reusing the previous lag instead of resampling. Useful for
+  temporally correlated latency patterns."""
+  delay_update_period: int = 0
+  """Resample lag every N steps (models multi-rate sensors). If 0, update every step."""
+  delay_per_env_phase: bool = True
+  """If True and update_period > 0, stagger update timing across envs to avoid
+  synchronized resampling."""
   history_length: int = 0
-  """Number of past observations to keep in history. 0 means no history. Defaults to 0."""
+  """Number of past observations to keep in history. 0 = no history."""
   flatten_history_dim: bool = True
-  """Whether to flatten the history dimension into the observation. Defaults to True."""
+  """Whether to flatten the history dimension into observation."""
 
 
 @dataclass
@@ -134,4 +155,4 @@ class TerminationTermCfg(ManagerTermBaseCfg):
   """Configuration for a termination term."""
 
   time_out: bool = False
-  """Whether the term contributes towards episodic timeouts. Defaults to False."""
+  """Whether the term contributes towards episodic timeouts."""

@@ -133,7 +133,7 @@ class CircularBuffer:
     self._all_indices = torch.arange(batch_size, device=device)
     self._num_pushes = torch.zeros(batch_size, dtype=torch.long, device=device)
     self._max_len_tensor = torch.full(
-      (batch_size,), max_len, dtype=torch.int, device=device
+      (batch_size,), max_len, dtype=torch.long, device=device
     )
 
   @property
@@ -169,8 +169,10 @@ class CircularBuffer:
     if self._buffer is None:
       raise RuntimeError("Buffer not initialized. Call append() first.")
 
-    buf = torch.roll(self._buffer, shifts=self._max_len - self._pointer - 1, dims=0)
-    return torch.transpose(buf, dim0=0, dim1=1)
+    start = (self._pointer + 1) % self._max_len
+    idx = (torch.arange(self._max_len, device=self._device) + start) % self._max_len
+    buf = self._buffer.index_select(0, idx)  # (max_len, batch, ...)
+    return buf.transpose(0, 1)  # (batch, max_len, ...)
 
   def reset(self, batch_ids: Sequence[int] | torch.Tensor | None = None) -> None:
     """Zero out values and counters for specified batch rows.
@@ -212,20 +214,30 @@ class CircularBuffer:
 
     self._num_pushes += 1
 
-  def __getitem__(self, key: torch.Tensor) -> torch.Tensor:
+  def __getitem__(self, key: torch.Tensor | int) -> torch.Tensor:
     """Retrieve lagged frames per batch (LIFO).
 
     Args:
-      key: Per-batch lags to retrieve. Shape (batch_size,).
-
-    Returns:
-      Retrieved frames with shape (batch_size, ...).
+      key: Per-batch lags (Tensor) or shared lag (int). Shape (batch_size,) or scalar.
     """
+    if self._buffer is None:
+      raise RuntimeError("Buffer not initialized. Call append() first.")
+
+    if isinstance(key, int):
+      key = torch.full((self._batch_size,), key, dtype=torch.long, device=self._device)
+    else:
+      if key.ndim == 0:
+        key = key.expand(self._batch_size)
+      key = key.to(device=self._device, dtype=torch.long)
+
     if key.numel() != self._batch_size:
       raise ValueError(f"Expected {self._batch_size} lags, got {key.numel()}")
-    if self._buffer is None or torch.any(self._num_pushes == 0):
-      raise RuntimeError("Buffer is empty. Call append() first.")
 
-    valid_keys = torch.minimum(key, self._num_pushes - 1)
-    idx = torch.remainder(self._pointer - valid_keys, self._max_len)
+    pushes = self._num_pushes.clamp_min(1)
+    valid = torch.minimum(key, pushes - 1).clamp_min(0)
+
+    if torch.all(valid == 0):
+      return self._buffer[self._pointer]
+
+    idx = torch.remainder(self._pointer - valid, self._max_len)
     return self._buffer[idx, self._all_indices]
