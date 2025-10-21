@@ -11,6 +11,11 @@ from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.scene import Scene, SceneCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
 
+# Suppress the expected warning from sim_data.py about index_put_ on expanded tensors.
+pytestmark = pytest.mark.filterwarnings(
+  "ignore:Use of index_put_ on expanded tensors is deprecated:UserWarning"
+)
+
 
 @pytest.fixture(scope="module")
 def device():
