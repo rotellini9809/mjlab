@@ -435,10 +435,10 @@ class TestInitStateKeyframe:
     """key.ctrl length == nu and values follow actuator->joint mapping by name."""
     ent = articulated_entity_with_init
 
-    # Compile to check MuJoCo accepts the keyframe and expose key_ctrl
+    # Compile to check MuJoCo accepts the keyframe and expose key_ctrl.
     mj_model = ent.compile()
 
-    # Sanity: exactly one keyframe (the 'init_state' we add)
+    # Sanity: exactly one keyframe (the 'init_state' we add).
     assert mj_model.nkey == 1
 
     # key_ctrl is (nkey, nu)
@@ -446,14 +446,14 @@ class TestInitStateKeyframe:
     assert mj_model.nu == len(ent.spec.actuators) == ent.num_actuators == 2
 
     # Build expected ctrl
-    joint_pos_vec = np.array([0.5, -0.25])  # ["joint1", "joint2"] order
+    joint_pos_vec = np.array([0.5, -0.25])  # ["joint1", "joint2"] order.
     expected = np.zeros(mj_model.nu)
     for i, act in enumerate(ent.spec.actuators):
       jidx = ent.joint_names.index(act.name)
       expected[i] = joint_pos_vec[jidx]
 
-    # Compare against compiled model keyframe ctrl row 0
-    np.testing.assert_allclose(mj_model.key_ctrl[0], expected, atol=1e-8)
+    # Compare against compiled model keyframe ctrl row 0.
+    np.testing.assert_allclose(mj_model.key("init_state").ctrl, expected, atol=1e-8)
 
   def test_keyframe_ctrl_handles_subset_actuators(
     self, articulated_entity_subset_with_init
@@ -462,7 +462,7 @@ class TestInitStateKeyframe:
     ent = articulated_entity_subset_with_init
     mj_model = ent.compile()
 
-    # nu == number of actuators (1) and ctrl has matching width
+    # nu == number of actuators (1) and ctrl has matching width.
     assert mj_model.nu == 1
     assert mj_model.key_ctrl.shape == (1, 1)
 
@@ -470,8 +470,7 @@ class TestInitStateKeyframe:
     np.testing.assert_allclose(mj_model.key_ctrl[0], expected, atol=1e-8)
 
   def test_keyframe_ctrl_nonzero_does_not_raise(self, articulated_entity_with_init):
-    ent = articulated_entity_with_init
-    ent.compile()
+    articulated_entity_with_init.compile()
 
 
 if __name__ == "__main__":
