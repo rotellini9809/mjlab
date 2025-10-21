@@ -478,7 +478,3 @@ def test_camera_cfg():
 
   camera = spec.camera("test_camera")
   assert camera.name == "test_camera"
-
-
-if __name__ == "__main__":
-  pytest.main([__file__, "-v"])

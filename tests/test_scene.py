@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import mujoco
 import pytest
 import torch
+from conftest import get_test_device
 
 from mjlab.entity import Entity, EntityCfg
 from mjlab.scene import Scene, SceneCfg
@@ -13,13 +14,6 @@ from mjlab.sim.sim_data import WarpBridge
 # ============================================================================
 # Fixtures
 # ============================================================================
-
-
-def get_test_device():
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
 
 
 @pytest.fixture
@@ -359,7 +353,3 @@ class TestSceneIntegration:
       assert entity.data is not None
       if not entity.is_fixed_base:
         assert entity.data.root_link_pose_w.shape == (3, 7)
-
-
-if __name__ == "__main__":
-  pytest.main([__file__, "-v"])

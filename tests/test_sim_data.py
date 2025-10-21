@@ -1,25 +1,19 @@
+"""Tests for sim data bridge."""
+
 from dataclasses import dataclass
 
 import pytest
 import torch
 import warp as wp
+from conftest import get_test_device
 
 from mjlab.sim.sim_data import TorchArray, WarpBridge
-
-wp.config.quiet = True
 
 
 @dataclass
 class MockData:
   arr: wp.array
   val: float = 1.0
-
-
-def get_test_device():
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
 
 
 @pytest.fixture

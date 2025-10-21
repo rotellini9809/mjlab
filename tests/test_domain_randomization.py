@@ -3,6 +3,7 @@
 import mujoco
 import pytest
 import torch
+from conftest import get_test_device
 
 from mjlab.entity import EntityCfg
 from mjlab.envs.mdp.events import randomize_field
@@ -10,21 +11,19 @@ from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.scene import Scene, SceneCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
 
-
-def get_test_device() -> str:
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
+# Suppress the expected warning from sim_data.py about index_put_ on expanded tensors.
+pytestmark = pytest.mark.filterwarnings(
+  "ignore:Use of index_put_ on expanded tensors is deprecated:UserWarning"
+)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def device():
   """Test device fixture."""
   return get_test_device()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def robot_xml():
   """Simple robot with geoms and joints."""
   return """
@@ -47,7 +46,7 @@ def robot_xml():
     """
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def initialized_env(robot_xml, device):
   entity_cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(robot_xml))
   scene_cfg = SceneCfg(num_envs=4, entities={"robot": entity_cfg})

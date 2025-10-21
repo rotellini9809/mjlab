@@ -19,6 +19,18 @@ check: format type
 test:
 	uv run pytest
 
+.PHONY: test-fast
+test-fast:
+	uv run pytest -m "not slow"
+
+.PHONY: test-cpu
+test-cpu:
+	FORCE_CPU=1 uv run pytest
+
+.PHONY: test-cpu-fast
+test-cpu-fast:
+	FORCE_CPU=1 uv run pytest -m "not slow"
+
 .PHONY: test-all
 test-all: check test
 

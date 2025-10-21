@@ -4,17 +4,11 @@ import mujoco
 import numpy as np
 import pytest
 import torch
+from conftest import get_test_device
 
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
 from mjlab.utils.spec_config import ActuatorCfg
-
-
-def get_test_device() -> str:
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda"
-  return "cpu"
 
 
 @pytest.fixture
@@ -471,7 +465,3 @@ class TestInitStateKeyframe:
 
   def test_keyframe_ctrl_nonzero_does_not_raise(self, articulated_entity_with_init):
     articulated_entity_with_init.compile()
-
-
-if __name__ == "__main__":
-  pytest.main([__file__, "-v"])

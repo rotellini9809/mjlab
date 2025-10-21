@@ -282,7 +282,3 @@ class TestRewardManagerClassReset:
 
     assert len(manager._class_term_cfgs) == 0
     manager.reset(env_ids=torch.tensor([0, 2]))  # Should not raise
-
-
-if __name__ == "__main__":
-  pytest.main([__file__, "-v"])
