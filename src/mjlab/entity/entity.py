@@ -158,7 +158,9 @@ class Entity:
     key = self._spec.add_key(name="init_state", qpos=key_qpos)
 
     if self.is_actuated and joint_pos is not None:
-      key.ctrl = joint_pos
+      name_to_pos = {name: joint_pos[i] for i, name in enumerate(self.joint_names)}
+      ctrl = np.array([name_to_pos.get(act.name, 0.0) for act in self._spec.actuators])
+      key.ctrl = ctrl
 
   # Attributes.
 
