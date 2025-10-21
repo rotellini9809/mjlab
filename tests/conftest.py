@@ -21,6 +21,4 @@ def get_test_device() -> str:
   """
   if os.environ.get("FORCE_CPU") == "1":
     return "cpu"
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
+  return "cuda" if torch.cuda.is_available() else "cpu"
