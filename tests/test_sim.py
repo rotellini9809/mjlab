@@ -1,10 +1,10 @@
-"""Tests for Simulation configuration."""
+"""Tests for sim.py."""
 
 import mujoco
 import pytest
 from conftest import get_test_device
 
-from mjlab.sim.sim import Simulation, SimulationCfg
+from mjlab.sim import Simulation, SimulationCfg
 
 
 @pytest.fixture
