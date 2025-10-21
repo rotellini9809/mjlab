@@ -87,6 +87,7 @@ class SimulationCfg:
   nconmax: int | None = None
   njmax: int | None = None
   ls_parallel: bool = True  # Boosts perf quite noticeably.
+  contact_sensor_maxmatch: int = 64
   mujoco: MujocoCfg = field(default_factory=MujocoCfg)
   nan_guard: NanGuardCfg = field(default_factory=NanGuardCfg)
 
@@ -109,6 +110,7 @@ class Simulation:
     with wp.ScopedDevice(self.wp_device):
       self._wp_model = mjwarp.put_model(self._mj_model)
       self._wp_model.opt.ls_parallel = cfg.ls_parallel
+      self._wp_model.opt.contact_sensor_maxmatch = cfg.contact_sensor_maxmatch
 
       self._wp_data = mjwarp.put_data(
         self._mj_model,
