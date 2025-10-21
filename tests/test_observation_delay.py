@@ -5,16 +5,10 @@ from unittest.mock import Mock
 
 import pytest
 import torch
+from conftest import get_test_device
 
 from mjlab.managers.manager_term_config import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.observation_manager import ObservationManager
-
-
-def get_test_device():
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
 
 
 @pytest.fixture
@@ -45,7 +39,9 @@ def simple_obs_func(device):
   return obs_func
 
 
+##
 # Basic delay tests.
+##
 
 
 def test_no_delay_by_default(mock_env, simple_obs_func):
@@ -195,7 +191,9 @@ def test_lag_one_delay(mock_env, simple_obs_func, device):
   assert torch.allclose(obs5["policy"][0], torch.full((3,), 5.0, device=device))
 
 
+##
 # Delay with other features.
+##
 
 
 def test_delay_with_history(mock_env, simple_obs_func, device):
@@ -292,7 +290,9 @@ def test_delay_with_scale(mock_env, simple_obs_func, device):
   assert torch.allclose(obs3["policy"][0], torch.full((3,), 6.0, device=device))
 
 
+##
 # Reset tests.
+##
 
 
 def test_reset_clears_delay_buffer(mock_env, simple_obs_func, device):
@@ -386,7 +386,9 @@ def test_reset_partial_envs_with_verification(mock_env, device):
   assert env3_after != env3_before
 
 
+##
 # Shared vs per-env delay.
+##
 
 
 def test_shared_delay_actual_verification(mock_env, device):
@@ -426,7 +428,9 @@ def test_shared_delay_actual_verification(mock_env, device):
   assert torch.all(lags == lags[0]), f"Expected same lag for all envs, got {lags}"
 
 
+##
 # Update period tests.
+##
 
 
 def test_update_period_actual_verification(mock_env, device):
@@ -462,7 +466,9 @@ def test_update_period_actual_verification(mock_env, device):
   assert len(lag_history) == 12
 
 
+##
 # Dimension verification tests.
+##
 
 
 def test_delay_preserves_dimensions(mock_env, simple_obs_func):

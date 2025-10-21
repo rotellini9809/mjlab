@@ -2,15 +2,9 @@
 
 import pytest
 import torch
+from conftest import get_test_device
 
 from mjlab.utils.buffers import DelayBuffer
-
-
-def get_test_device():
-  """Get device for testing, preferring CUDA if available."""
-  if torch.cuda.is_available():
-    return "cuda:0"
-  return "cpu"
 
 
 @pytest.fixture
