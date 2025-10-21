@@ -9,8 +9,12 @@
   - Windows (untested)
 - **GPU**: NVIDIA GPU strongly recommended
   - **CUDA Compatibility**: Not all CUDA versions are supported by MuJoCo Warp
-    - Check [mujoco_warp#101](https://github.com/google-deepmind/mujoco_warp/issues/101) for CUDA version compatibility
-    - **Recommended**: CUDA 12.4+ (for [conditional control flow](https://nvidia.github.io/warp/modules/runtime.html#conditional-execution) in CUDA graphs)
+    - Check
+      [mujoco_warp#101](https://github.com/google-deepmind/mujoco_warp/issues/101)
+      for CUDA version compatibility
+    - **Recommended**: CUDA 12.4+ (for
+      [conditional control flow](https://nvidia.github.io/warp/modules/runtime.html#conditional-execution)
+      in CUDA graphs)
 
 > ⚠️ **Important Note on macOS**: mjlab is designed for large-scale training in
 > GPU-accelerated simulations. Since macOS does not support GPU acceleration, it
@@ -26,7 +30,8 @@ mjlab is currently in **beta**. Expect frequent breaking changes in the coming w
 There is **no stable release yet**.
 
 - The first beta snapshot is available on PyPI.
-- **Recommended**: install from source (or Git) to stay up-to-date with fixes and improvements.
+- **Recommended**: install from source (or Git) to stay up-to-date with fixes
+  and improvements.
 
 ---
 
@@ -85,16 +90,60 @@ uv add mjlab "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@4
 
 ---
 
+## Using mjlab with Conda
+
+While mjlab is designed to work with [uv](https://docs.astral.sh/uv/), you can
+also use it in a conda environment. Here’s how to set it up:
+
+1. **Create and activate your conda environment**:
+```bash
+conda create -n mjlab python=3.13
+conda activate mjlab
+```
+
+2. **Install PyTorch via conda**:
+```bash
+conda install pytorch pytorch-cuda=12.8 -c pytorch -c nvidia
+```
+
+3. **Install mjlab and dependencies via pip**:
+
+   **From Source (Recommended)**:
+   ```bash
+   pip install git+https://github.com/google-deepmind mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9
+   git clone https://github.com/mujocolab/mjlab.git && cd mjlab
+   pip install -e .
+   ```
+
+   > **Note**: You must install `mujoco-warp` from Git before running
+   > `pip install -e .` since it's not available on PyPI and pip cannot resolve
+   > the Git dependency specified in `pyproject.toml` (which uses uv-specific
+   > syntax).
+
+   **From PyPI**:
+   ```bash
+   pip install git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9
+   pip install mjlab
+   ```
+
+---
+
 ## Verification
 
 After installation, verify that mjlab is working by running the demo:
 
 ```bash
-# If working inside the mjlab directory
+# If working inside the mjlab directory with uv.
 uv run demo
 
-# If mjlab is installed as a dependency in your project
+# If mjlab is installed as a dependency in your project with uv.
 uv run python -m mjlab.scripts.demo
+
+# If installed via pip (conda, venv, etc.), use the CLI command directly.
+demo
+
+# Or use the module syntax (works anywhere mjlab is installed).
+python -m mjlab.scripts.demo
 ```
 
 ---
@@ -104,6 +153,9 @@ uv run python -m mjlab.scripts.demo
 If you run into problems:
 
 1. **Check the FAQ**: [faq.md](faq.md) may have answers to common issues.
-2. **CUDA Issues**: Verify your CUDA version is supported by MuJoCo Warp ([see compatibility list](https://github.com/google-deepmind/mujoco_warp/issues/101)).
-3. **macOS Slowness**: Training is not supported; evaluation may still be slow (see macOS note above).
-4. **Still stuck?** Open an issue on [GitHub Issues](https://github.com/mujocolab/mjlab/issues).
+2. **CUDA Issues**: Verify your CUDA version is supported by MuJoCo Warp
+   ([see compatibility list](https://github.com/google-deepmind/mujoco_warp/issues/101)).
+3. **macOS Slowness**: Training is not supported; evaluation may still be slow
+   (see macOS note above).
+4. **Still stuck?** Open an issue on
+   [GitHub Issues](https://github.com/mujocolab/mjlab/issues).
