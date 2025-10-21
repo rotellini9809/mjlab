@@ -39,7 +39,7 @@ There is **no stable release yet**.
 
 ### Install uv
 
-If you haven’t already installed [uv](https://docs.astral.sh/uv/), run:
+If you haven't already installed [uv](https://docs.astral.sh/uv/), run:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -74,7 +74,7 @@ Install directly from GitHub without cloning:
 uv add "mjlab @ git+https://github.com/mujocolab/mjlab" "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp"
 ```
 
-> **Note**: `mujoco-warp` must be installed from Git since it’s not available on PyPI.
+> **Note**: `mujoco-warp` must be installed from Git since it's not available on PyPI.
 
 ---
 
@@ -90,27 +90,30 @@ uv add mjlab "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@4
 
 ---
 
-## Using mjlab with Conda
+### Method 3: Using pip (venv, conda, virtualenv, etc.)
 
 While mjlab is designed to work with [uv](https://docs.astral.sh/uv/), you can
-also use it in a conda environment. Here’s how to set it up:
+also use it with any pip-based virtual environment (venv, conda, virtualenv, etc.).
 
-1. **Create and activate your conda environment**:
-```bash
-conda create -n mjlab python=3.13
-conda activate mjlab
-```
+1. **Create and activate your virtual environment**:
+   
+   **Using venv** (built-in):
+   ```bash
+   python -m venv mjlab-env
+   source mjlab-env/bin/activate
+   ```
+   
+   **Using conda**:
+   ```bash
+   conda create -n mjlab python=3.13
+   conda activate mjlab
+   ```
 
-2. **Install PyTorch via conda**:
-```bash
-conda install pytorch pytorch-cuda=12.8 -c pytorch -c nvidia
-```
-
-3. **Install mjlab and dependencies via pip**:
+2. **Install mjlab and dependencies via pip**:
 
    **From Source (Recommended)**:
    ```bash
-   pip install git+https://github.com/google-deepmind mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9
+   pip install git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9
    git clone https://github.com/mujocolab/mjlab.git && cd mjlab
    pip install -e .
    ```
