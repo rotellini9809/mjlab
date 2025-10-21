@@ -71,7 +71,7 @@ uv add --editable /path/to/cloned/mjlab
 Install directly from GitHub without cloning:
 
 ```bash
-uv add "mjlab @ git+https://github.com/mujocolab/mjlab" "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp"
+uv add "mjlab @ git+https://github.com/mujocolab/mjlab" "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@486642c3fa262a989b482e0e506716d5793d61a9"
 ```
 
 > **Note**: `mujoco-warp` must be installed from Git since it's not available on PyPI.
@@ -96,13 +96,13 @@ While mjlab is designed to work with [uv](https://docs.astral.sh/uv/), you can
 also use it with any pip-based virtual environment (venv, conda, virtualenv, etc.).
 
 1. **Create and activate your virtual environment**:
-   
+
    **Using venv** (built-in):
    ```bash
    python -m venv mjlab-env
    source mjlab-env/bin/activate
    ```
-   
+
    **Using conda**:
    ```bash
    conda create -n mjlab python=3.13
