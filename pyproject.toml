@@ -72,7 +72,7 @@ cpu = ["torch>=2.7.0"]
 cu128 = ["torch>=2.7.0"]
 
 [tool.uv]
-default-groups = ["cu128"]
+default-groups = ["dev", "cu128"]
 conflicts = [
   [
     { group = "cpu" },
