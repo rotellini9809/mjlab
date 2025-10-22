@@ -1,13 +1,21 @@
 import hashlib
 import tempfile
 from pathlib import Path
+from typing import TypedDict
 
 import requests
 from tqdm import tqdm
 
 CACHE_DIR = Path(tempfile.gettempdir()) / "mjlab_cache"
 
-ASSETS = {
+
+class AssetInfo(TypedDict):
+  url: str
+  sha256: str
+  path: Path
+
+
+ASSETS: dict[str, AssetInfo] = {
   "demo_ckpt.pt": {
     "url": "https://storage.googleapis.com/mjlab_beta/model_6000.pt",
     "sha256": "4bc6338750464d6ad6b7b3d1eebd6b914fe40abbd184ffa1bccb9192068231de",

@@ -1,11 +1,4 @@
-"""Tests for spec_config.py.
-
-Tests the configuration system for building MuJoCo models, including:
-- Actuator creation and parameter validation (PD control, effort limits)
-- Collision geom property modification (friction, contact dimensions, regex matching)
-- Sensor addition (accelerometer, contact sensors, validation)
-- Visual elements (textures, materials, lights, cameras)
-"""
+"""Tests for spec_config.py."""
 
 import mujoco
 import pytest
@@ -199,23 +192,20 @@ def test_no_matching_joints_raises_error(simple_robot_xml):
 def test_actuator_validation(simple_robot_xml, param, value, expected_error):
   """ActuatorCfg should validate parameters."""
   with pytest.raises(ValueError, match=expected_error):
-    params = {
-      "joint_names_expr": ["joint1"],
-      "effort_limit": 1.0,
-      "stiffness": 1.0,
-      "damping": 1.0,
-      "frictionloss": 0.0,
-      "armature": 0.0,
-    }
-    params[param] = value
+    joint_names_expr = ["joint1"]
+    effort_limit = value if param == "effort_limit" else 1.0
+    stiffness = value if param == "stiffness" else 1.0
+    damping = value if param == "damping" else 1.0
+    frictionloss = value if param == "frictionloss" else 0.0
+    armature = value if param == "armature" else 0.0
 
     actuator_cfg = ActuatorCfg(
-      joint_names_expr=params["joint_names_expr"],
-      effort_limit=params["effort_limit"],
-      stiffness=params["stiffness"],
-      damping=params["damping"],
-      frictionloss=params["frictionloss"],
-      armature=params["armature"],
+      joint_names_expr=joint_names_expr,
+      effort_limit=effort_limit,
+      stiffness=stiffness,
+      damping=damping,
+      frictionloss=frictionloss,
+      armature=armature,
     )
     cfg = EntityCfg(
       spec_fn=lambda: mujoco.MjSpec.from_string(simple_robot_xml),
@@ -354,14 +344,18 @@ def test_collision_disable_other_geoms(multi_geom_spec):
 def test_collision_validation(param, value, expected_error):
   """CollisionCfg should validate parameters."""
   with pytest.raises(ValueError, match=expected_error):
-    params: dict = {"geom_names_expr": ["test"]}
-    params[param] = value
+    geom_names_expr = ["test"]
+    contype = value if param == "contype" else 1
+    conaffinity = value if param == "conaffinity" else 1
+    condim = value if param == "condim" else 3
+    priority = value if param == "priority" else 0
+
     cfg = CollisionCfg(
-      geom_names_expr=params["geom_names_expr"],
-      contype=params.get("contype", 1),
-      conaffinity=params.get("conaffinity", 1),
-      condim=params.get("condim", 3),
-      priority=params.get("priority", 0),
+      geom_names_expr=geom_names_expr,
+      contype=contype,
+      conaffinity=conaffinity,
+      condim=condim,
+      priority=priority,
     )
     cfg.validate()
 
