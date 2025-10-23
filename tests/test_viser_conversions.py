@@ -11,7 +11,7 @@ def load_robot_model(robot_name: str) -> mujoco.MjModel:
   """Load a robot model from the asset zoo."""
   base_path = Path(__file__).parent.parent / "src/mjlab/asset_zoo/robots"
 
-  # Map robot names to their XML files
+  # Map robot names to their XML files.
   robot_paths = {
     "unitree_g1": base_path / "unitree_g1/xmls/g1.xml",
     "unitree_go1": base_path / "unitree_go1/xmls/go1.xml",
@@ -38,15 +38,15 @@ def test_unitree_g1_conversion():
     if model.geom_type[geom_idx] == mujoco.mjtGeom.mjGEOM_MESH:
       mesh_geom_count += 1
 
-      # Convert to trimesh
+      # Convert to trimesh.
       mesh = mujoco_mesh_to_trimesh(model, geom_idx, verbose=False)
 
-      # Basic checks
+      # Basic checks.
       assert mesh is not None, f"Failed to convert geom {geom_idx}"
       assert len(mesh.vertices) > 0, f"Mesh {geom_idx} has no vertices"
       assert len(mesh.faces) > 0, f"Mesh {geom_idx} has no faces"
 
-      # Check for textures
+      # Check for textures.
       if hasattr(mesh.visual, "uv"):
         has_textures = True
 
@@ -69,15 +69,15 @@ def test_unitree_go1_conversion():
     if geom_type == mujoco.mjtGeom.mjGEOM_MESH:
       mesh_geom_count += 1
 
-      # Convert to trimesh
+      # Convert to trimesh.
       mesh = mujoco_mesh_to_trimesh(model, geom_idx, verbose=False)
 
-      # Basic checks
+      # Basic checks.
       assert mesh is not None, f"Failed to convert geom {geom_idx}"
       assert len(mesh.vertices) > 0, f"Mesh {geom_idx} has no vertices"
       assert len(mesh.faces) > 0, f"Mesh {geom_idx} has no faces"
     else:
-      # Count primitive geometries (box, sphere, capsule, etc.)
+      # Count primitive geometries (box, sphere, capsule, etc.).
       primitive_geom_count += 1
 
   print(f"✓ Unitree Go1: Successfully converted {mesh_geom_count} mesh geometries")
@@ -86,7 +86,7 @@ def test_unitree_go1_conversion():
 
 def test_texture_extraction():
   """Test texture extraction with a simple textured model."""
-  # Create a model with procedural texture
+  # Create a model with procedural texture.
   xml_string = """
     <mujoco>
         <asset>
@@ -109,7 +109,7 @@ def test_texture_extraction():
 
   model = mujoco.MjModel.from_xml_string(xml_string)
 
-  # Find the mesh geom
+  # Find the mesh geom.
   for geom_idx in range(model.ngeom):
     if model.geom_type[geom_idx] == mujoco.mjtGeom.mjGEOM_MESH:
       mesh = mujoco_mesh_to_trimesh(model, geom_idx, verbose=False)
@@ -117,15 +117,15 @@ def test_texture_extraction():
       assert mesh is not None, "Failed to convert textured mesh"
       assert mesh.visual is not None, "Mesh has no visual"
 
-      # Check if texture was extracted (procedural textures should work)
+      # Check if texture was extracted (procedural textures should work).
       matid = model.geom_matid[geom_idx]
       if matid >= 0 and matid < model.nmat:
         texid = model.mat_texid[matid]
-        # texid might be an array, get the first element if so
+        # texid might be an array, get the first element if so.
         if hasattr(texid, "__len__"):
           texid = texid[0] if len(texid) > 0 else -1
         if texid >= 0:
-          # Should have extracted the checker texture
+          # Should have extracted the checker texture.
           print("✓ Texture extraction: Successfully extracted procedural texture")
           return
 
@@ -160,18 +160,18 @@ def test_material_colors():
     if model.geom_type[geom_idx] == mujoco.mjtGeom.mjGEOM_MESH:
       mesh = mujoco_mesh_to_trimesh(model, geom_idx, verbose=False)
 
-      # Check visual colors
+      # Check visual colors.
       if mesh.visual and hasattr(mesh.visual, "vertex_colors"):
-        # Get the first vertex color (they should all be the same)
+        # Get the first vertex color (they should all be the same).
         color = mesh.visual.vertex_colors[0]
         colors_found.append(tuple(color))
 
   assert len(colors_found) == 3, "Should have 3 meshes"
 
-  # Check that we got different colors
+  # Check that we got different colors.
   assert colors_found[0][:3] == (255, 0, 0), "First mesh should be red"
   assert colors_found[1][:3] == (0, 255, 0), "Second mesh should be green"
-  # Third mesh should have default color
+  # Third mesh should have default color.
 
   print("✓ Material colors: Correctly applied to meshes")
 
@@ -192,11 +192,11 @@ def test_performance():
     mujoco_mesh_to_trimesh(model, geom_idx, verbose=False)
   elapsed = time.time() - start_time
 
-  avg_time = elapsed / len(mesh_geoms) * 1000  # Convert to ms
+  avg_time = elapsed / len(mesh_geoms) * 1000  # Convert to ms.
   print(f"✓ Performance: Converted {len(mesh_geoms)} meshes in {elapsed:.3f}s")
   print(f"  - Average: {avg_time:.2f}ms per mesh")
 
-  # Warn if it's too slow
+  # Warn if it's too slow.
   if avg_time > 50:
     print("  ⚠ Warning: Conversion is slow (>50ms per mesh)")
 
@@ -220,7 +220,7 @@ def test_verbose_mode():
 
   model = mujoco.MjModel.from_xml_string(xml_string)
 
-  # Test with verbose=True
+  # Test with verbose=True.
   import io
   import sys
 
@@ -232,11 +232,54 @@ def test_verbose_mode():
   sys.stdout = sys.__stdout__
   output = captured_output.getvalue()
 
-  # Should have printed something
+  # Should have printed something.
   assert len(output) > 0, "Verbose mode should produce output"
   assert "vertices" in output or "color" in output, "Should mention vertices or color"
 
   print("✓ Verbose mode: Produces debug output when enabled")
+
+
+def test_mesh_with_texture_coordinates():
+  """Test meshes with texture coordinates (Issue #225)."""
+  xml_string = """
+    <mujoco>
+        <asset>
+            <!-- Simple tetrahedron WITH texture coordinates -->
+            <mesh name="textured_tetra"
+                  vertex="0 0 0  1 0 0  0.5 0.866 0  0.5 0.289 0.816"
+                  texcoord="0 0  1 0  0.5 1  0.5 0.5"
+                  face="0 1 2  0 1 3  0 2 3  1 2 3"/>
+        </asset>
+        <worldbody>
+            <geom type="mesh" mesh="textured_tetra"/>
+        </worldbody>
+    </mujoco>
+    """
+
+  model = mujoco.MjModel.from_xml_string(xml_string)
+
+  # Verify the model has texture coordinates.
+  assert model.mesh_texcoord.shape == (4, 2), "Model should have 4 texture coordinates"
+  assert model.mesh_texcoordnum[0] == 4, "Mesh should have 4 texture coordinates"
+
+  # Convert the mesh.
+  mesh = mujoco_mesh_to_trimesh(model, 0, verbose=False)
+
+  # Verify the mesh was created successfully.
+  assert mesh is not None, "Failed to convert textured mesh"
+  assert len(mesh.vertices) > 0, "Mesh has no vertices"
+  assert len(mesh.faces) > 0, "Mesh has no faces"
+
+  # With texture coordinates, vertices are duplicated per face.
+  # 4 faces * 3 vertices per face = 12 vertices.
+  assert len(mesh.vertices) == 12, (
+    f"Expected 12 duplicated vertices, got {len(mesh.vertices)}"
+  )
+  assert len(mesh.faces) == 4, f"Expected 4 faces, got {len(mesh.faces)}"
+
+  print(
+    "✓ Mesh with texture coordinates: Successfully converted mesh with texcoords (Issue #225 fixed)"
+  )
 
 
 if __name__ == "__main__":
@@ -252,6 +295,7 @@ if __name__ == "__main__":
     test_material_colors,
     test_performance,
     test_verbose_mode,
+    test_mesh_with_texture_coordinates,
   ]
 
   failed = []
