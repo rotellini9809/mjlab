@@ -63,8 +63,10 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
     # Next step should trigger dump.
     sim.step()
 
-    # Check that dump file was created.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
+    # Check that dump files were created (timestamped + latest).
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
     assert len(dump_files) == 1
 
     # Load and inspect the dump.
@@ -72,7 +74,7 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
     metadata = dump["_metadata"].item()
 
     assert metadata["num_envs_total"] == 4
-    assert metadata["num_envs_dumped"] == 2
+    assert metadata["num_envs_dumped"] == 1
     assert 1 in metadata["nan_env_ids"]
     assert metadata["buffer_size"] == 4
 
@@ -80,11 +82,11 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
     assert "states_step_000000" in dump
     assert "states_step_000001" in dump
     assert "states_step_000002" in dump
-    assert "states_step_000003" in dump  # State with NaN injected
+    assert "states_step_000003" in dump
 
     # Verify state shape: (num_envs_dumped, state_size).
     state = dump["states_step_000000"]
-    assert state.shape[0] == 2
+    assert state.shape[0] == 1
 
     sim.close()
 
@@ -111,7 +113,9 @@ def test_nan_guard_detects_correct_env_ids(simple_model):
     sim.step()
 
     # Load and inspect the dump.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
     assert len(dump_files) == 1
 
     dump = np.load(dump_files[0], allow_pickle=True)
@@ -137,8 +141,12 @@ def test_nan_guard_saves_model(simple_model):
     sim.step()
 
     # Check that both dump and model files were created.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
-    model_files = list(Path(tmpdir).glob("model_*.mjb"))
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
+    model_files = [
+      f for f in Path(tmpdir).glob("model_*.mjb") if "latest" not in f.name
+    ]
     assert len(dump_files) == 1
     assert len(model_files) == 1
 
@@ -181,8 +189,12 @@ def test_nan_guard_with_complex_model():
     sim.step()
 
     # Verify dump and model files were created.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
-    model_files = list(Path(tmpdir).glob("model_*.mjb"))
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
+    model_files = [
+      f for f in Path(tmpdir).glob("model_*.mjb") if "latest" not in f.name
+    ]
     assert len(dump_files) == 1
     assert len(model_files) == 1
 
@@ -222,16 +234,20 @@ def test_nan_guard_only_dumps_once(simple_model):
     sim.data.qpos[0, 0] = float("nan")
     sim.step()
 
-    # Should have exactly one dump.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
+    # Should have exactly one timestamped dump.
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
     assert len(dump_files) == 1
 
     # Inject another NaN.
     sim.data.qpos[1, 0] = float("nan")
     sim.step()
 
-    # Should still have only one dump.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
+    # Should still have only one timestamped dump.
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
     assert len(dump_files) == 1
 
     sim.close()
@@ -255,7 +271,9 @@ def test_nan_guard_respects_buffer_size(simple_model):
     sim.step()
 
     # Load dump.
-    dump_files = list(Path(tmpdir).glob("nan_dump_*.npz"))
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
     dump = np.load(dump_files[0], allow_pickle=True)
 
     # Should only have 3 states (buffer size).
@@ -266,5 +284,70 @@ def test_nan_guard_respects_buffer_size(simple_model):
     assert "states_step_000008" in dump
     assert "states_step_000009" in dump
     assert "states_step_000010" in dump
+
+    sim.close()
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Likely bug on CPU MjWarp")
+def test_nan_guard_captures_high_indexed_envs(simple_model):
+  """NaN guard should capture NaN in high-indexed environments beyond max_envs_to_dump."""
+  with tempfile.TemporaryDirectory() as tmpdir:
+    cfg = SimulationCfg(
+      nan_guard=NanGuardCfg(
+        enabled=True, buffer_size=5, output_dir=tmpdir, max_envs_to_dump=3
+      )
+    )
+    sim = Simulation(num_envs=10, cfg=cfg, model=simple_model, device=get_test_device())
+
+    for _ in range(3):
+      sim.step()
+
+    sim.data.qpos[7, 0] = float("nan")
+    sim.step()
+
+    dump_files = [
+      f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
+    ]
+    assert len(dump_files) == 1
+
+    dump = np.load(dump_files[0], allow_pickle=True)
+    metadata = dump["_metadata"].item()
+
+    assert 7 in metadata["nan_env_ids"]
+    assert 7 in metadata["dumped_env_ids"]
+    assert metadata["num_envs_total"] == 10
+    assert metadata["num_envs_dumped"] == 1
+
+    state = dump["states_step_000000"]
+    assert state.shape[0] == 1
+
+    sim.close()
+
+
+def test_nan_guard_creates_latest_files(simple_model):
+  """NaN guard should create latest files that work correctly."""
+  with tempfile.TemporaryDirectory() as tmpdir:
+    cfg = SimulationCfg(
+      nan_guard=NanGuardCfg(enabled=True, buffer_size=5, output_dir=tmpdir)
+    )
+    sim = Simulation(num_envs=2, cfg=cfg, model=simple_model, device=get_test_device())
+
+    sim.data.qpos[0, 0] = float("nan")
+    sim.step()
+
+    latest_dump = Path(tmpdir) / "nan_dump_latest.npz"
+    latest_model = Path(tmpdir) / "model_latest.mjb"
+
+    assert latest_dump.exists()
+    assert latest_model.exists()
+
+    dump = np.load(latest_dump, allow_pickle=True)
+    metadata = dump["_metadata"].item()
+
+    assert metadata["model_file"] == "model_latest.mjb"
+    assert (Path(tmpdir) / metadata["model_file"]).exists()
+
+    loaded_model = mujoco.MjModel.from_binary_path(str(latest_model))
+    assert loaded_model.nq == simple_model.nq
 
     sim.close()
