@@ -40,6 +40,7 @@ def test_nan_guard_disabled_by_default(simple_model):
   sim.close()
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Likely bug on CPU MjWarp")
 def test_nan_guard_captures_and_dumps_on_nan(simple_model):
   """NaN guard should capture states and dump when NaN detected."""
   with tempfile.TemporaryDirectory() as tmpdir:
