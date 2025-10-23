@@ -5,15 +5,12 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
+from typing import Iterator
 
 import mujoco
 import mujoco_warp as mjwarp
 import numpy as np
 import torch
-
-if TYPE_CHECKING:
-  pass
 
 
 @dataclass
@@ -118,8 +115,6 @@ class NanGuard:
     filename = self.output_dir / f"nan_dump_{timestamp}.npz"
     model_filename = self.output_dir / f"model_{timestamp}.mjb"
 
-    mujoco.mj_saveModel(self.mj_model, str(model_filename), None)
-
     envs_to_dump = nan_env_ids[: self.max_envs_to_dump]
     data = {}
     for item in self.buffer:
@@ -144,8 +139,19 @@ class NanGuard:
     )
 
     np.savez_compressed(filename, **data)
+    mujoco.mj_saveModel(self.mj_model, str(model_filename), None)
+
+    latest_dump = self.output_dir / "nan_dump_latest.npz"
+    latest_model = self.output_dir / "model_latest.mjb"
+    data["_metadata"] = np.array(
+      {**data["_metadata"].item(), "model_file": "model_latest.mjb"}, dtype=object
+    )
+    np.savez_compressed(latest_dump, **data)
+    mujoco.mj_saveModel(self.mj_model, str(latest_model), None)
+
     print(f"[NanGuard] Detected NaN/Inf at step {self.step_counter}")
     print(f"[NanGuard] NaN/Inf found in envs: {nan_env_ids[:10]}...")
     print(f"[NanGuard] Dumping {len(envs_to_dump)} envs: {envs_to_dump}")
     print(f"[NanGuard] Dumped {len(self.buffer)} states to: {filename}")
     print(f"[NanGuard] Saved model to: {model_filename}")
+    print(f"[NanGuard] Latest dump symlinked at: {latest_dump}")
