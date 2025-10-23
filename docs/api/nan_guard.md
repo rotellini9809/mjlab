@@ -54,14 +54,14 @@ environments are saved to reduce dump size.
 
 ## Output Format
 
-Each NaN detection creates timestamped files plus latest copies:
+Each NaN detection creates timestamped files plus latest symlinks:
 - `nan_dump_TIMESTAMP.npz` - Compressed state buffer
   - `states_step_NNNNNN` - Captured states for each step (shape:
     `[num_envs_dumped, state_size]`)
   - `_metadata` - Dict with `num_envs_total`, `nan_env_ids`, `dumped_env_ids`, etc.
 - `model_TIMESTAMP.mjb` - MuJoCo model in binary format
-- `nan_dump_latest.npz` - Copy of most recent dump
-- `model_latest.mjb` - Copy of most recent model
+- `nan_dump_latest.npz` - Symlink to most recent dump
+- `model_latest.mjb` - Symlink to most recent model
 
 ## Visualizing Dumps
 
