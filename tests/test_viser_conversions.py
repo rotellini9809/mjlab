@@ -239,8 +239,8 @@ def test_verbose_mode():
   print("✓ Verbose mode: Produces debug output when enabled")
 
 
-def test_obj_with_texture_coordinates():
-  """Test OBJ meshes with texture coordinates (Issue #225)."""
+def test_mesh_with_texture_coordinates():
+  """Test meshes with texture coordinates (Issue #225)."""
   xml_string = """
     <mujoco>
         <asset>
@@ -278,7 +278,7 @@ def test_obj_with_texture_coordinates():
   assert len(mesh.faces) == 4, f"Expected 4 faces, got {len(mesh.faces)}"
 
   print(
-    "✓ OBJ with texture coordinates: Successfully converted mesh with texcoords (Issue #225 fixed)"
+    "✓ Mesh with texture coordinates: Successfully converted mesh with texcoords (Issue #225 fixed)"
   )
 
 
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     test_material_colors,
     test_performance,
     test_verbose_mode,
-    test_obj_with_texture_coordinates,
+    test_mesh_with_texture_coordinates,
   ]
 
   failed = []
