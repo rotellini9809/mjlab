@@ -65,9 +65,7 @@ def mujoco_mesh_to_trimesh(
 
     # Extract texture coordinates.
     # mesh_texcoord is a 2D array with shape (nmeshtexcoord, 2).
-    texcoords = mj_model.mesh_texcoord[
-      texcoord_adr : texcoord_adr + texcoord_num
-    ]
+    texcoords = mj_model.mesh_texcoord[texcoord_adr : texcoord_adr + texcoord_num]
     assert texcoords.shape == (
       texcoord_num,
       2,
@@ -76,9 +74,7 @@ def mujoco_mesh_to_trimesh(
     # Get per-face texture coordinate indices.
     # For each face vertex, this tells us which texcoord to use.
     # mesh_facetexcoord is a 2D array with shape (nmeshface, 3).
-    face_texcoord_idx = mj_model.mesh_facetexcoord[
-      face_start : face_start + face_count
-    ]
+    face_texcoord_idx = mj_model.mesh_facetexcoord[face_start : face_start + face_count]
     assert face_texcoord_idx.shape == (face_count, 3), (
       f"Expected face_texcoord_idx shape ({face_count}, 3), got {face_texcoord_idx.shape}"
     )
@@ -123,7 +119,9 @@ def mujoco_mesh_to_trimesh(
       # Try RGB first (index 1), then RGBA (index 8).
       texid = int(mj_model.mat_texid[matid, int(mujoco.mjtTextureRole.mjTEXROLE_RGB)])
       if texid < 0:
-        texid = int(mj_model.mat_texid[matid, int(mujoco.mjtTextureRole.mjTEXROLE_RGBA)])
+        texid = int(
+          mj_model.mat_texid[matid, int(mujoco.mjtTextureRole.mjTEXROLE_RGBA)]
+        )
 
       if texid >= 0 and texid < mj_model.ntex:
         # This material has a texture.

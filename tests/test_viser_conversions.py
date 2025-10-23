@@ -272,10 +272,14 @@ def test_obj_with_texture_coordinates():
 
   # With texture coordinates, vertices are duplicated per face.
   # 4 faces * 3 vertices per face = 12 vertices.
-  assert len(mesh.vertices) == 12, f"Expected 12 duplicated vertices, got {len(mesh.vertices)}"
+  assert len(mesh.vertices) == 12, (
+    f"Expected 12 duplicated vertices, got {len(mesh.vertices)}"
+  )
   assert len(mesh.faces) == 4, f"Expected 4 faces, got {len(mesh.faces)}"
 
-  print("✓ OBJ with texture coordinates: Successfully converted mesh with texcoords (Issue #225 fixed)")
+  print(
+    "✓ OBJ with texture coordinates: Successfully converted mesh with texcoords (Issue #225 fixed)"
+  )
 
 
 if __name__ == "__main__":
