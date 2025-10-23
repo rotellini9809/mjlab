@@ -53,6 +53,8 @@ class NanDumpViewer:
 
     self.server = viser.ViserServer(label="NaN Dump Viewer")
     self.mesh_handles: dict[int, viser.GlbHandle] = {}
+    self.fixed_mesh_handles: list[tuple[int, viser.GlbHandle]] = []
+    self.grid_handle: viser.SceneNodeHandle | None = None
 
     self.current_step = 0
     self.current_env = 0
@@ -145,7 +147,7 @@ class NanDumpViewer:
 
       for geom_id in geom_ids:
         if self.model.geom_type[geom_id] == mjtGeom.mjGEOM_PLANE:
-          self.server.scene.add_grid(
+          self.grid_handle = self.server.scene.add_grid(
             f"/fixed/{body_name}/plane_{geom_id}",
             width=2000.0,
             height=2000.0,
@@ -159,12 +161,13 @@ class NanDumpViewer:
 
       if geom_ids:
         mesh = merge_geoms(self.model, geom_ids)
-        self.server.scene.add_mesh_trimesh(
+        handle = self.server.scene.add_mesh_trimesh(
           f"/fixed/{body_name}",
           mesh,
           position=self.model.body(body_id).pos,
           wxyz=self.model.body(body_id).quat,
         )
+        self.fixed_mesh_handles.append((body_id, handle))
 
   def _create_body_meshes(self) -> None:
     """Create mesh handles for movable bodies."""
@@ -202,13 +205,39 @@ class NanDumpViewer:
     mujoco.mj_setState(self.model, self.data, state, mujoco.mjtState.mjSTATE_PHYSICS)
     mujoco.mj_forward(self.model, self.data)
 
+    # Find the first non-fixed body and use its position for camera tracking.
+    robot_body_id = None
+    for body_id in range(self.model.nbody):
+      if not is_fixed_body(self.model, body_id):
+        robot_body_id = body_id
+        break
+
+    if robot_body_id is not None:
+      tracked_pos = self.data.xpos[robot_body_id].copy()
+      scene_offset = -tracked_pos
+    else:
+      scene_offset = np.zeros(3)
+
     for body_id, handle in self.mesh_handles.items():
-      pos = self.data.xpos[body_id].copy()
+      pos = self.data.xpos[body_id].copy() + scene_offset
       xmat = self.data.xmat[body_id].reshape(3, 3)
       quat = vtf.SO3.from_matrix(xmat).wxyz
-
       handle.position = pos
       handle.wxyz = quat
+
+    for body_id, handle in self.fixed_mesh_handles:
+      pos = self.data.xpos[body_id].copy() + scene_offset
+      xmat = self.data.xmat[body_id].reshape(3, 3)
+      quat = vtf.SO3.from_matrix(xmat).wxyz
+      handle.position = pos
+      handle.wxyz = quat
+
+    if self.grid_handle is not None:
+      self.grid_handle.position = (
+        float(scene_offset[0]),
+        float(scene_offset[1]),
+        float(scene_offset[2]),
+      )
 
     self.info_html.content = self._get_info_html()
 
