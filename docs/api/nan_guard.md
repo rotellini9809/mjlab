@@ -25,7 +25,7 @@ cfg = SimulationCfg(
     enabled=True,
     buffer_size=100,
     output_dir="/tmp/mjlab/nan_dumps",
-    max_envs_to_capture=5,
+    max_envs_to_dump=5,
   ),
 )
 ```
@@ -41,8 +41,8 @@ Number of recent simulation states to keep in rolling buffer.
 **`output_dir`** (default: `"/tmp/mjlab/nan_dumps"`)
 Directory where NaN dump files are saved.
 
-**`max_envs_to_capture`** (default: `5`)
-Maximum number of environments to capture (saves memory in large-scale sims).
+**`max_envs_to_dump`** (default: `5`)
+Maximum number of NaN environments to dump to disk. All environments are tracked in the buffer, but only the first N NaN environments are saved to reduce dump size.
 
 ## Behavior
 

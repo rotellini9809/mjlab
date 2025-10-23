@@ -40,11 +40,13 @@ class NanDumpViewer:
       key=lambda x: int(x.split("_")[-1]),
     )
     self.num_steps = len(self.state_keys)
-    self.num_envs_captured = self.metadata["num_envs_captured"]
+    self.num_envs_dumped = self.metadata["num_envs_dumped"]
+    self.dumped_env_ids = self.metadata["dumped_env_ids"]
 
     print("\nDump info:")
     print(f"  Total environments: {self.metadata['num_envs_total']}")
-    print(f"  Captured environments: {self.num_envs_captured}")
+    print(f"  Dumped environments: {self.num_envs_dumped}")
+    print(f"  Dumped env IDs: {self.dumped_env_ids}")
     print(f"  NaN detected in envs: {self.metadata['nan_env_ids']}")
     print(f"  Buffer size: {self.num_steps} steps")
     print(f"  State size: {self.metadata['state_size']}")
@@ -75,14 +77,14 @@ class NanDumpViewer:
         self.current_step = int(self.step_slider.value)
         self._update_state()
 
-      if self.num_envs_captured > 1:
+      if self.num_envs_dumped > 1:
         self.env_slider = self.server.gui.add_slider(
           "Environment",
           min=0,
-          max=self.num_envs_captured - 1,
+          max=self.num_envs_dumped - 1,
           step=1,
           initial_value=0,
-          hint=f"Select environment (0-{self.num_envs_captured - 1})",
+          hint=f"Select environment (0-{self.num_envs_dumped - 1})",
         )
 
         @self.env_slider.on_update
@@ -103,13 +105,14 @@ class NanDumpViewer:
     step_name = self.state_keys[self.current_step]
     step_num = int(step_name.split("_")[-1])
 
-    is_nan_env = self.current_env in nan_env_ids
+    actual_env_id = self.dumped_env_ids[self.current_env]
+    is_nan_env = actual_env_id in nan_env_ids
     nan_indicator = "⚠️ NaN Detected" if is_nan_env else "✓ Clean"
 
     return f"""
       <div style="font-size: 0.85em; line-height: 1.25;">
         <strong>Step:</strong> {step_num}<br/>
-        <strong>Environment:</strong> {self.current_env}<br/>
+        <strong>Environment:</strong> {actual_env_id}<br/>
         <strong>Status:</strong> {nan_indicator}<br/>
         <strong>NaN envs:</strong> {nan_env_str}
       </div>

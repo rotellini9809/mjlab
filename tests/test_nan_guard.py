@@ -48,7 +48,7 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
         enabled=True,
         buffer_size=5,
         output_dir=tmpdir,
-        max_envs_to_capture=2,
+        max_envs_to_dump=2,
       )
     )
     sim = Simulation(num_envs=4, cfg=cfg, model=simple_model, device=get_test_device())
@@ -72,9 +72,9 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
     metadata = dump["_metadata"].item()
 
     assert metadata["num_envs_total"] == 4
-    assert metadata["num_envs_captured"] == 2
+    assert metadata["num_envs_dumped"] == 2
     assert 1 in metadata["nan_env_ids"]
-    assert metadata["buffer_size"] == 4  # 3 clean steps + 1 with NaN injected.
+    assert metadata["buffer_size"] == 4
 
     # Check that states were captured.
     assert "states_step_000000" in dump
@@ -82,9 +82,9 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
     assert "states_step_000002" in dump
     assert "states_step_000003" in dump  # State with NaN injected
 
-    # Verify state shape: (num_envs_captured, state_size).
+    # Verify state shape: (num_envs_dumped, state_size).
     state = dump["states_step_000000"]
-    assert state.shape[0] == 2  # Only captured 2 envs.
+    assert state.shape[0] == 2
 
     sim.close()
 
