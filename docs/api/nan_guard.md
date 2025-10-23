@@ -25,7 +25,7 @@ cfg = SimulationCfg(
     enabled=True,
     buffer_size=100,
     output_dir="/tmp/mjlab/nan_dumps",
-    max_envs_to_capture=5,
+    max_envs_to_dump=5,
   ),
 )
 ```
@@ -41,8 +41,9 @@ Number of recent simulation states to keep in rolling buffer.
 **`output_dir`** (default: `"/tmp/mjlab/nan_dumps"`)
 Directory where NaN dump files are saved.
 
-**`max_envs_to_capture`** (default: `5`)
-Maximum number of environments to capture (saves memory in large-scale sims).
+**`max_envs_to_dump`** (default: `5`) Maximum number of NaN environments to dump
+to disk. All environments are tracked in the buffer, but only the first N NaN
+environments are saved to reduce dump size.
 
 ## Behavior
 
@@ -53,18 +54,24 @@ Maximum number of environments to capture (saves memory in large-scale sims).
 
 ## Output Format
 
-Each NaN detection creates two files:
+Each NaN detection creates timestamped files plus latest copies:
 - `nan_dump_TIMESTAMP.npz` - Compressed state buffer
   - `states_step_NNNNNN` - Captured states for each step (shape:
-    `[num_envs_captured, state_size]`)
-  - `_metadata` - Dict with `num_envs_total`, `nan_env_ids`, `model_file`, etc.
+    `[num_envs_dumped, state_size]`)
+  - `_metadata` - Dict with `num_envs_total`, `nan_env_ids`, `dumped_env_ids`, etc.
 - `model_TIMESTAMP.mjb` - MuJoCo model in binary format
+- `nan_dump_latest.npz` - Copy of most recent dump
+- `model_latest.mjb` - Copy of most recent model
 
 ## Visualizing Dumps
 
 Use the interactive viewer to scrub through captured states:
 
 ```bash
+# View latest dump.
+uv run viz-nan /tmp/mjlab/nan_dumps/nan_dump_latest.npz
+
+# Or view a specific dump.
 uv run viz-nan /tmp/mjlab/nan_dumps/nan_dump_20251014_123456.npz
 ```
 

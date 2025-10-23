@@ -40,17 +40,21 @@ class NanDumpViewer:
       key=lambda x: int(x.split("_")[-1]),
     )
     self.num_steps = len(self.state_keys)
-    self.num_envs_captured = self.metadata["num_envs_captured"]
+    self.num_envs_dumped = self.metadata["num_envs_dumped"]
+    self.dumped_env_ids = self.metadata["dumped_env_ids"]
 
     print("\nDump info:")
     print(f"  Total environments: {self.metadata['num_envs_total']}")
-    print(f"  Captured environments: {self.num_envs_captured}")
+    print(f"  Dumped environments: {self.num_envs_dumped}")
+    print(f"  Dumped env IDs: {self.dumped_env_ids}")
     print(f"  NaN detected in envs: {self.metadata['nan_env_ids']}")
     print(f"  Buffer size: {self.num_steps} steps")
     print(f"  State size: {self.metadata['state_size']}")
 
     self.server = viser.ViserServer(label="NaN Dump Viewer")
     self.mesh_handles: dict[int, viser.GlbHandle] = {}
+    self.fixed_mesh_handles: list[tuple[int, viser.GlbHandle]] = []
+    self.grid_handle: viser.SceneNodeHandle | None = None
 
     self.current_step = 0
     self.current_env = 0
@@ -75,14 +79,14 @@ class NanDumpViewer:
         self.current_step = int(self.step_slider.value)
         self._update_state()
 
-      if self.num_envs_captured > 1:
+      if self.num_envs_dumped > 1:
         self.env_slider = self.server.gui.add_slider(
           "Environment",
           min=0,
-          max=self.num_envs_captured - 1,
+          max=self.num_envs_dumped - 1,
           step=1,
           initial_value=0,
-          hint=f"Select environment (0-{self.num_envs_captured - 1})",
+          hint=f"Select environment (0-{self.num_envs_dumped - 1})",
         )
 
         @self.env_slider.on_update
@@ -103,13 +107,14 @@ class NanDumpViewer:
     step_name = self.state_keys[self.current_step]
     step_num = int(step_name.split("_")[-1])
 
-    is_nan_env = self.current_env in nan_env_ids
+    actual_env_id = self.dumped_env_ids[self.current_env]
+    is_nan_env = actual_env_id in nan_env_ids
     nan_indicator = "⚠️ NaN Detected" if is_nan_env else "✓ Clean"
 
     return f"""
       <div style="font-size: 0.85em; line-height: 1.25;">
         <strong>Step:</strong> {step_num}<br/>
-        <strong>Environment:</strong> {self.current_env}<br/>
+        <strong>Environment:</strong> {actual_env_id}<br/>
         <strong>Status:</strong> {nan_indicator}<br/>
         <strong>NaN envs:</strong> {nan_env_str}
       </div>
@@ -142,7 +147,7 @@ class NanDumpViewer:
 
       for geom_id in geom_ids:
         if self.model.geom_type[geom_id] == mjtGeom.mjGEOM_PLANE:
-          self.server.scene.add_grid(
+          self.grid_handle = self.server.scene.add_grid(
             f"/fixed/{body_name}/plane_{geom_id}",
             width=2000.0,
             height=2000.0,
@@ -156,12 +161,13 @@ class NanDumpViewer:
 
       if geom_ids:
         mesh = merge_geoms(self.model, geom_ids)
-        self.server.scene.add_mesh_trimesh(
+        handle = self.server.scene.add_mesh_trimesh(
           f"/fixed/{body_name}",
           mesh,
           position=self.model.body(body_id).pos,
           wxyz=self.model.body(body_id).quat,
         )
+        self.fixed_mesh_handles.append((body_id, handle))
 
   def _create_body_meshes(self) -> None:
     """Create mesh handles for movable bodies."""
@@ -199,13 +205,39 @@ class NanDumpViewer:
     mujoco.mj_setState(self.model, self.data, state, mujoco.mjtState.mjSTATE_PHYSICS)
     mujoco.mj_forward(self.model, self.data)
 
+    # Find the first non-fixed body and use its position for camera tracking.
+    robot_body_id = None
+    for body_id in range(self.model.nbody):
+      if not is_fixed_body(self.model, body_id):
+        robot_body_id = body_id
+        break
+
+    if robot_body_id is not None:
+      tracked_pos = self.data.xpos[robot_body_id].copy()
+      scene_offset = -tracked_pos
+    else:
+      scene_offset = np.zeros(3)
+
     for body_id, handle in self.mesh_handles.items():
-      pos = self.data.xpos[body_id].copy()
+      pos = self.data.xpos[body_id].copy() + scene_offset
       xmat = self.data.xmat[body_id].reshape(3, 3)
       quat = vtf.SO3.from_matrix(xmat).wxyz
-
       handle.position = pos
       handle.wxyz = quat
+
+    for body_id, handle in self.fixed_mesh_handles:
+      pos = self.data.xpos[body_id].copy() + scene_offset
+      xmat = self.data.xmat[body_id].reshape(3, 3)
+      quat = vtf.SO3.from_matrix(xmat).wxyz
+      handle.position = pos
+      handle.wxyz = quat
+
+    if self.grid_handle is not None:
+      self.grid_handle.position = (
+        float(scene_offset[0]),
+        float(scene_offset[1]),
+        float(scene_offset[2]),
+      )
 
     self.info_html.content = self._get_info_html()
 
