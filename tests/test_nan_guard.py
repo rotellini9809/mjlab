@@ -64,7 +64,7 @@ def test_nan_guard_captures_and_dumps_on_nan(simple_model):
     # Next step should trigger dump.
     sim.step()
 
-    # Check that dump files were created (timestamped + latest).
+    # Check that timestamped dump file was created.
     dump_files = [
       f for f in Path(tmpdir).glob("nan_dump_*.npz") if "latest" not in f.name
     ]
@@ -325,8 +325,8 @@ def test_nan_guard_captures_high_indexed_envs(simple_model):
     sim.close()
 
 
-def test_nan_guard_creates_latest_files(simple_model):
-  """NaN guard should create latest files that work correctly."""
+def test_nan_guard_creates_latest_symlinks(simple_model):
+  """NaN guard should create latest symlinks that work correctly."""
   with tempfile.TemporaryDirectory() as tmpdir:
     cfg = SimulationCfg(
       nan_guard=NanGuardCfg(enabled=True, buffer_size=5, output_dir=tmpdir)
@@ -339,15 +339,22 @@ def test_nan_guard_creates_latest_files(simple_model):
     latest_dump = Path(tmpdir) / "nan_dump_latest.npz"
     latest_model = Path(tmpdir) / "model_latest.mjb"
 
+    # Verify symlinks exist.
     assert latest_dump.exists()
     assert latest_model.exists()
+    assert latest_dump.is_symlink()
+    assert latest_model.is_symlink()
 
+    # Load via symlink and verify it works.
     dump = np.load(latest_dump, allow_pickle=True)
     metadata = dump["_metadata"].item()
 
-    assert metadata["model_file"] == "model_latest.mjb"
+    # Metadata should reference the timestamped model file.
+    assert metadata["model_file"].startswith("model_")
+    assert metadata["model_file"].endswith(".mjb")
     assert (Path(tmpdir) / metadata["model_file"]).exists()
 
+    # Loading via symlink should work.
     loaded_model = mujoco.MjModel.from_binary_path(str(latest_model))
     assert loaded_model.nq == simple_model.nq
 

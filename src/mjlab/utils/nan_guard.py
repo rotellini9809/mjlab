@@ -141,13 +141,13 @@ class NanGuard:
     np.savez_compressed(filename, **data)
     mujoco.mj_saveModel(self.mj_model, str(model_filename), None)
 
+    # Create symlinks to latest dumps
     latest_dump = self.output_dir / "nan_dump_latest.npz"
     latest_model = self.output_dir / "model_latest.mjb"
-    data["_metadata"] = np.array(
-      {**data["_metadata"].item(), "model_file": "model_latest.mjb"}, dtype=object
-    )
-    np.savez_compressed(latest_dump, **data)
-    mujoco.mj_saveModel(self.mj_model, str(latest_model), None)
+    latest_dump.unlink(missing_ok=True)
+    latest_model.unlink(missing_ok=True)
+    latest_dump.symlink_to(filename.name)
+    latest_model.symlink_to(model_filename.name)
 
     print(f"[NanGuard] Detected NaN/Inf at step {self.step_counter}")
     print(f"[NanGuard] NaN/Inf found in envs: {nan_env_ids[:10]}...")
