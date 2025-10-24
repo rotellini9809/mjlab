@@ -184,6 +184,11 @@ class Entity:
     return self.num_actuators > 0
 
   @property
+  def is_mocap(self) -> bool:
+    """Entity root body is a mocap body (only for fixed-base entities)."""
+    return bool(self.root_body.mocap) if self.is_fixed_base else False
+
+  @property
   def spec(self) -> mujoco.MjSpec:
     return self._spec
 
@@ -250,10 +255,6 @@ class Entity:
   @property
   def root_body(self) -> mujoco.MjsBody:
     return self.spec.bodies[1]
-
-  @property
-  def mocap(self) -> bool:
-    return bool(self.root_body.mocap) if self.is_fixed_base else False
 
   # Methods.
 
@@ -669,7 +670,7 @@ class Entity:
         start_adr, start_adr + dim, dtype=torch.int, device=device
       )
 
-    if self.is_fixed_base and self.mocap:
+    if self.is_fixed_base and self.is_mocap:
       mocap_id = int(model.body_mocapid[self.root_body.id])
     else:
       mocap_id = None

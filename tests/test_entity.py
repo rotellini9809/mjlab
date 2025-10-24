@@ -412,7 +412,7 @@ def test_fixed_base_mocap_runtime_pose_change(device, fixed_base_with_joints_xml
   entity, sim = initialize_entity_with_sim(entity, device)
 
   assert entity.indexing.mocap_id is not None
-  assert entity.mocap is True
+  assert entity.is_mocap is True
 
   # fmt: off
   new_pose = torch.tensor([

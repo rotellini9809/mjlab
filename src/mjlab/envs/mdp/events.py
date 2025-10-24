@@ -72,10 +72,9 @@ def reset_root_state_uniform(
 
   # Fixed-based entities with mocap=True.
   if asset.is_fixed_base:
-    if asset.indexing.mocap_id is None:
+    if not asset.is_mocap:
       raise ValueError(
-        f"Cannot reset root state for fixed-base entity '{asset_cfg.name}'. "
-        "Turn it into a mocap body to enable fixed-base pose resetting."
+        f"Cannot reset root state for fixed-base non-mocap entity '{asset_cfg.name}'."
       )
 
     default_root_state = asset.data.default_root_state
