@@ -61,11 +61,6 @@ class EntityCfg:
     # Articulation (only for articulated entities).
     joint_pos: dict[str, float] = field(default_factory=lambda: {".*": 0.0})
     joint_vel: dict[str, float] = field(default_factory=lambda: {".*": 0.0})
-    # Mocap flag for fixed-base entities.
-    mocap: bool = False
-    """If True, the entity is treated as a mocap body which allows runtime
-    changes to its pose via data.mocap_pos and data.mocap_quat fields. Only
-    valid for fixed-base entities."""
 
   init_state: InitialStateCfg = field(default_factory=InitialStateCfg)
   spec_fn: Callable[[], mujoco.MjSpec] = field(
@@ -170,8 +165,6 @@ class Entity:
     if self.is_fixed_base:
       self.root_body.pos[:] = self.cfg.init_state.pos
       self.root_body.quat[:] = self.cfg.init_state.rot
-      if self.cfg.init_state.mocap:
-        self.root_body.mocap = True
 
   # Attributes.
 
@@ -257,6 +250,10 @@ class Entity:
   @property
   def root_body(self) -> mujoco.MjsBody:
     return self.spec.bodies[1]
+
+  @property
+  def mocap(self) -> bool:
+    return bool(self.root_body.mocap) if self.is_fixed_base else False
 
   # Methods.
 
@@ -610,10 +607,7 @@ class Entity:
     mocap_pose: torch.Tensor,
     env_ids: torch.Tensor | slice | None = None,
   ) -> None:
-    """Set the mocap pose for fixed-base mocap entities.
-
-    Only available for entities with init_state.mocap=True. This allows runtime
-    changes to the pose of fixed-base entities (e.g., for domain randomization).
+    """Set the pose of a mocap body into the simulation.
 
     Args:
       mocap_pose: Tensor of shape (N, 7) where N is the number of environments.
@@ -675,7 +669,7 @@ class Entity:
         start_adr, start_adr + dim, dtype=torch.int, device=device
       )
 
-    if self.is_fixed_base and self.cfg.init_state.mocap:
+    if self.is_fixed_base and self.mocap:
       mocap_id = int(model.body_mocapid[self.root_body.id])
     else:
       mocap_id = None
