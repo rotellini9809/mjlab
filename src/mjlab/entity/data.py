@@ -169,19 +169,12 @@ class EntityData:
   def write_mocap_pose(
     self, pose: torch.Tensor, env_ids: torch.Tensor | slice | None = None
   ) -> None:
-    """Set the mocap pose for fixed-base mocap entities.
-
-    Args:
-      pose: Tensor of shape (N, 7) where N is the number of environments.
-        Format: [pos_x, pos_y, pos_z, quat_w, quat_x, quat_y, quat_z]
-      env_ids: Optional tensor or slice specifying which environments to set.
-    """
     if self.indexing.mocap_id is None:
       raise ValueError("Cannot write mocap pose for non-mocap entity.")
     assert pose.shape[-1] == self.ROOT_POSE_DIM
 
     env_ids = self._resolve_env_ids(env_ids)
-    self.data.mocap_pos[env_ids, self.indexing.mocap_id] = pose[:, :3]
+    self.data.mocap_pos[env_ids, self.indexing.mocap_id] = pose[:, 0:3]
     self.data.mocap_quat[env_ids, self.indexing.mocap_id] = pose[:, 3:7]
 
   def clear_state(self, env_ids: torch.Tensor | slice | None = None) -> None:
@@ -212,18 +205,6 @@ class EntityData:
     """Root link pose in simulation world frame. Shape (num_envs, 7)."""
     pos_w = self.data.xpos[:, self.indexing.root_body_id]  # (num_envs, 3)
     quat_w = self.data.xquat[:, self.indexing.root_body_id]  # (num_envs, 4)
-    return torch.cat([pos_w, quat_w], dim=-1)  # (num_envs, 7)
-
-  @property
-  def mocap_pose_w(self) -> torch.Tensor:
-    """Mocap pose in simulation world frame. Shape (num_envs, 7).
-
-    Only available for fixed-base mocap entities.
-    """
-    if self.indexing.mocap_id is None:
-      raise ValueError("Cannot read mocap pose for non-mocap entity.")
-    pos_w = self.data.mocap_pos[:, self.indexing.mocap_id]  # (num_envs, 3)
-    quat_w = self.data.mocap_quat[:, self.indexing.mocap_id]  # (num_envs, 4)
     return torch.cat([pos_w, quat_w], dim=-1)  # (num_envs, 7)
 
   @property

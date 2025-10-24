@@ -409,7 +409,7 @@ def test_fixed_base_mocap_runtime_pose_change(device, fixed_base_with_joints_xml
     init_state=EntityCfg.InitialStateCfg(pos=(1.0, 2.0, 3.0), rot=(1.0, 0.0, 0.0, 0.0)),
   )
   entity = Entity(cfg)
-  entity, _ = initialize_entity_with_sim(entity, device)
+  entity, sim = initialize_entity_with_sim(entity, device)
 
   assert entity.indexing.mocap_id is not None
   assert entity.mocap is True
@@ -422,5 +422,5 @@ def test_fixed_base_mocap_runtime_pose_change(device, fixed_base_with_joints_xml
   # fmt: on
   entity.write_mocap_pose_to_sim(new_pose)
 
-  mocap_pose = entity.data.mocap_pose_w
-  assert torch.allclose(mocap_pose, new_pose, atol=1e-5)
+  sim.forward()
+  assert torch.allclose(entity.data.root_link_pose_w, new_pose, atol=1e-5)
