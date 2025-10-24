@@ -103,14 +103,19 @@ class Entity:
     - Non-articulated: No joints other than freejoint
     - Articulated: Has joints in kinematic tree (may or may not be actuated)
 
+  Fixed non-articulated entities can optionally be mocap bodies, whereby their
+  position and orientation can be set directly each timestep rather than being
+  determined by physics. This property can be useful for creating props with
+  adjustable position and orientation.
+
   Supported Combinations:
   ----------------------
-  | Type                      | Example                    | is_fixed_base | is_articulated | is_actuated |
-  |---------------------------|----------------------------|---------------|----------------|-------------|
-  | Fixed Non-articulated     | Table, wall, ground plane  | True          | False          | False       |
-  | Fixed Articulated         | Robot arm, door on hinges  | True          | True           | True/False  |
-  | Floating Non-articulated  | Box, ball, mug             | False         | False          | False       |
-  | Floating Articulated      | Humanoid, quadruped        | False         | True           | True/False  |
+  | Type                      | Example                      | is_fixed_base | is_articulated | is_actuated | is_mocap    |
+  |---------------------------|------------------------------|---------------|----------------|-------------|-------------|
+  | Fixed Non-articulated     | Table, wall, mocap prop      | True          | False          | False       | True/False  |
+  | Fixed Articulated         | Robot arm, door on hinges    | True          | True           | True/False  | False       |
+  | Floating Non-articulated  | Box, ball, mug               | False         | False          | False       | False       |
+  | Floating Articulated      | Humanoid, quadruped          | False         | True           | True/False  | False       |
   """
 
   def __init__(self, cfg: EntityCfg) -> None:
@@ -349,29 +354,18 @@ class Entity:
     nworld = data.nworld
 
     # Root state.
+    root_state_components = [self.cfg.init_state.pos, self.cfg.init_state.rot]
     if not self.is_fixed_base:
-      # Floating-base: store full state (pos, rot, lin_vel, ang_vel).
-      default_root_state = (
-        tuple(self.cfg.init_state.pos)
-        + tuple(self.cfg.init_state.rot)
-        + tuple(self.cfg.init_state.lin_vel)
-        + tuple(self.cfg.init_state.ang_vel)
+      root_state_components.extend(
+        [self.cfg.init_state.lin_vel, self.cfg.init_state.ang_vel]
       )
-      default_root_state = torch.tensor(
-        default_root_state, dtype=torch.float, device=device
-      )
-      default_root_state = default_root_state.repeat(nworld, 1)
-    else:
-      # Fixed-base: store only pos and rot.
-      default_root_state = tuple(self.cfg.init_state.pos) + tuple(
-        self.cfg.init_state.rot
-      )
-      default_root_state = torch.tensor(
-        default_root_state, dtype=torch.float, device=device
-      )
-      default_root_state = default_root_state.repeat(nworld, 1)
+    default_root_state = torch.tensor(
+      sum((tuple(c) for c in root_state_components), ()),
+      dtype=torch.float,
+      device=device,
+    ).repeat(nworld, 1)
 
-    # Joint state - only for articulated entities.
+    # Joint state.
     if self.is_articulated:
       default_joint_pos = torch.tensor(
         resolve_expr(self.cfg.init_state.joint_pos, self.joint_names), device=device
@@ -380,6 +374,7 @@ class Entity:
         resolve_expr(self.cfg.init_state.joint_vel, self.joint_names), device=device
       )[None].repeat(nworld, 1)
 
+      # Joint stiffness and damping.
       if self.is_actuated:
         default_joint_stiffness = model.actuator_gainprm[:, self.indexing.ctrl_ids, 0]
         default_joint_damping = -model.actuator_biasprm[:, self.indexing.ctrl_ids, 2]
@@ -389,7 +384,7 @@ class Entity:
         )
         default_joint_damping = torch.empty(nworld, 0, dtype=torch.float, device=device)
 
-      # Joint limits and control parameters.
+      # Joint limits.
       joint_ids_global = [j.id for j in self._non_free_joints]
       dof_limits = model.jnt_range[:, joint_ids_global]
       default_joint_pos_limits = dof_limits.clone()
@@ -397,32 +392,36 @@ class Entity:
       joint_pos_mean = (joint_pos_limits[..., 0] + joint_pos_limits[..., 1]) / 2
       joint_pos_range = joint_pos_limits[..., 1] - joint_pos_limits[..., 0]
 
-      # Get soft limit factor from config.
-      if self.cfg.articulation:
-        soft_limit_factor = self.cfg.articulation.soft_joint_pos_limit_factor
-      else:
-        soft_limit_factor = 1.0
-
-      soft_joint_pos_limits = torch.zeros(nworld, self.num_joints, 2, device=device)
-      soft_joint_pos_limits[..., 0] = (
-        joint_pos_mean - 0.5 * joint_pos_range * soft_limit_factor
+      # Soft limits.
+      soft_limit_factor = (
+        self.cfg.articulation.soft_joint_pos_limit_factor
+        if self.cfg.articulation
+        else 1.0
       )
-      soft_joint_pos_limits[..., 1] = (
-        joint_pos_mean + 0.5 * joint_pos_range * soft_limit_factor
+      soft_joint_pos_limits = torch.stack(
+        [
+          joint_pos_mean - 0.5 * joint_pos_range * soft_limit_factor,
+          joint_pos_mean + 0.5 * joint_pos_range * soft_limit_factor,
+        ],
+        dim=-1,
       )
     else:
-      # Non-articulated entities - create empty tensors.
-      default_joint_pos = torch.empty(nworld, 0, dtype=torch.float, device=device)
-      default_joint_vel = torch.empty(nworld, 0, dtype=torch.float, device=device)
+      empty_shape = (nworld, 0)
+      default_joint_pos = torch.empty(*empty_shape, dtype=torch.float, device=device)
+      default_joint_vel = torch.empty(*empty_shape, dtype=torch.float, device=device)
+      default_joint_stiffness = torch.empty(
+        *empty_shape, dtype=torch.float, device=device
+      )
+      default_joint_damping = torch.empty(
+        *empty_shape, dtype=torch.float, device=device
+      )
       default_joint_pos_limits = torch.empty(
-        nworld, 0, 2, dtype=torch.float, device=device
+        *empty_shape, 2, dtype=torch.float, device=device
       )
-      joint_pos_limits = torch.empty(nworld, 0, 2, dtype=torch.float, device=device)
+      joint_pos_limits = torch.empty(*empty_shape, 2, dtype=torch.float, device=device)
       soft_joint_pos_limits = torch.empty(
-        nworld, 0, 2, dtype=torch.float, device=device
+        *empty_shape, 2, dtype=torch.float, device=device
       )
-      default_joint_stiffness = torch.empty(nworld, 0, dtype=torch.float, device=device)
-      default_joint_damping = torch.empty(nworld, 0, dtype=torch.float, device=device)
 
     self._data = EntityData(
       indexing=indexing,
