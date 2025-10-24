@@ -7,12 +7,6 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     git \
     curl \
-    # libgl1-mesa-glx \
-    # libglib2.0-0 \
-    # libsm6 \
-    # libxext6 \
-    # libxrender-dev \
-    # libgomp1 \
     libegl-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -28,7 +22,6 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 RUN uv sync --group dev
 
-# Set environment variables for MuJoCo
 ENV MUJOCO_GL=egl
 EXPOSE 8080
 
