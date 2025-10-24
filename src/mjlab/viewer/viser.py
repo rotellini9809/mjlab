@@ -587,8 +587,9 @@ class ViserViewer(BaseViewer):
       mj_data = sim.mj_data
       mj_data.qpos[:] = wp_data.qpos.numpy()[self._env_idx]
       mj_data.qvel[:] = wp_data.qvel.numpy()[self._env_idx]
-      mj_data.mocap_pos[:] = wp_data.mocap_pos.numpy()[self._env_idx]
-      mj_data.mocap_quat[:] = wp_data.mocap_quat.numpy()[self._env_idx]
+      if mj_model.nmocap > 0:
+        mj_data.mocap_pos[:] = wp_data.mocap_pos.numpy()[self._env_idx]
+        mj_data.mocap_quat[:] = wp_data.mocap_quat.numpy()[self._env_idx]
       mujoco.mj_forward(mj_model, mj_data)
 
     # We'll make a copy of the relevant state, then do the update itself asynchronously.
@@ -602,8 +603,12 @@ class ViserViewer(BaseViewer):
     body_xmat = wp_data.xmat.numpy()  # Shape: (batch_size, nbody, 3, 3)
 
     # Get mocap positions and orientations
-    mocap_pos = wp_data.mocap_pos.numpy()  # Shape: (batch_size, nmocap, 3)
-    mocap_quat = wp_data.mocap_quat.numpy()  # Shape: (batch_size, nmocap, 4)
+    if mj_model.nmocap > 0:
+      mocap_pos = wp_data.mocap_pos.numpy()  # Shape: (batch_size, nmocap, 3)
+      mocap_quat = wp_data.mocap_quat.numpy()  # Shape: (batch_size, nmocap, 4)
+    else:
+      mocap_pos = None
+      mocap_quat = None
 
     # Get contact data if contact visualization is enabled
     # Only visualize contacts for the selected environment to reduce load
@@ -624,7 +629,7 @@ class ViserViewer(BaseViewer):
 
           # Check if this is a mocap body
           mocap_id = mj_model.body_mocapid[body_id]
-          if mocap_id >= 0:
+          if mocap_id >= 0 and mocap_pos is not None and mocap_quat is not None:
             # Use mocap pos/quat for mocap bodies
             if self._show_only_selected_env and self.env.num_envs > 1:
               single_pos = mocap_pos[self._env_idx, mocap_id, :] + scene_offset
