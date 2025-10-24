@@ -110,12 +110,12 @@ class Entity:
 
   Supported Combinations:
   ----------------------
-  | Type                      | Example                      | is_fixed_base | is_articulated | is_actuated | is_mocap    |
-  |---------------------------|------------------------------|---------------|----------------|-------------|-------------|
-  | Fixed Non-articulated     | Table, wall, mocap prop      | True          | False          | False       | True/False  |
-  | Fixed Articulated         | Robot arm, door on hinges    | True          | True           | True/False  | False       |
-  | Floating Non-articulated  | Box, ball, mug               | False         | False          | False       | False       |
-  | Floating Articulated      | Humanoid, quadruped          | False         | True           | True/False  | False       |
+  | Type                      | Example             | is_fixed_base | is_articulated | is_actuated |
+  |---------------------------|---------------------|---------------|----------------|-------------|
+  | Fixed Non-articulated     | Table, wall         | True          | False          | False       |
+  | Fixed Articulated         | Robot arm, door     | True          | True           | True/False  |
+  | Floating Non-articulated  | Box, ball, mug      | False         | False          | False       |
+  | Floating Articulated      | Humanoid, quadruped | False         | True           | True/False  |
   """
 
   def __init__(self, cfg: EntityCfg) -> None:
