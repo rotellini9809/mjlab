@@ -1,6 +1,7 @@
 """Tests for entity module."""
 
 import mujoco
+import numpy as np
 import pytest
 import torch
 from conftest import get_test_device
@@ -14,6 +15,28 @@ from mjlab.utils.spec_config import ActuatorCfg
 def device():
   """Test device fixture."""
   return get_test_device()
+
+
+@pytest.fixture
+def fixed_base_with_joints_xml():
+  """XML for a fixed-base entity with additional articulated bodies."""
+  return """
+    <mujoco>
+      <worldbody>
+        <body name="fixed_object" pos="0 0 0">
+          <geom name="fixed_geom" type="box" size="0.1 0.1 0.1" rgba="0.8 0.3 0.3 1"/>
+        </body>
+        <body name="extra1" pos="1 0 0">
+          <joint name="joint1" type="hinge" axis="0 0 1"/>
+          <geom name="extra1_geom" type="cylinder" size="0.05 0.1" mass="0.5"/>
+          <body name="extra2" pos="0.2 0 0">
+            <joint name="joint2" type="hinge" axis="0 0 1"/>
+            <geom name="extra2_geom" type="cylinder" size="0.05 0.1" mass="0.5"/>
+          </body>
+        </body>
+      </worldbody>
+    </mujoco>
+  """
 
 
 def create_fixed_base_entity():
@@ -353,3 +376,47 @@ def test_keyframe_ctrl_underactuated():
 
   assert model.nu == 1
   assert model.key_ctrl[0, 0] == 0.42
+
+
+def test_fixed_base_initial_position(fixed_base_with_joints_xml):
+  """Fixed-base entity's initial pos/rot are applied to the body in the spec."""
+  cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(fixed_base_with_joints_xml),
+    init_state=EntityCfg.InitialStateCfg(
+      pos=(1.0, 2.0, 3.0),
+      rot=(0.7071, 0.7071, 0.0, 0.0),  # 90 deg rotation around X
+    ),
+  )
+  entity = Entity(cfg)
+  model = entity.compile()
+
+  # Verify the body position and orientation were set in the model.
+  body = model.body("fixed_object")
+  np.testing.assert_allclose(body.pos, [1.0, 2.0, 3.0], rtol=1e-6)
+  np.testing.assert_allclose(body.quat, [0.7071, 0.7071, 0.0, 0.0], atol=1e-4)
+
+
+def test_fixed_base_mocap_runtime_pose_change(device, fixed_base_with_joints_xml):
+  """Fixed-base mocap entity can have its pose changed at runtime if mocap=True."""
+  cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(fixed_base_with_joints_xml),
+    init_state=EntityCfg.InitialStateCfg(
+      pos=(1.0, 2.0, 3.0), rot=(1.0, 0.0, 0.0, 0.0), mocap=True
+    ),
+  )
+  entity = Entity(cfg)
+  entity, _ = initialize_entity_with_sim(entity, device)
+
+  assert entity.indexing.mocap_id is not None
+  assert entity.cfg.init_state.mocap is True
+
+  # fmt: off
+  new_pose = torch.tensor([
+    5.0, 6.0, 7.0,
+    1.0, 0.0, 0.0, 0.0,
+  ], device=device).unsqueeze(0)
+  # fmt: on
+  entity.write_mocap_pose_to_sim(new_pose)
+
+  mocap_pose = entity.data.mocap_pose_w
+  assert torch.allclose(mocap_pose, new_pose, atol=1e-5)

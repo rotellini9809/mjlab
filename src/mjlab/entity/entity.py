@@ -33,6 +33,7 @@ class EntityIndexing:
   site_ids: torch.Tensor
   ctrl_ids: torch.Tensor
   joint_ids: torch.Tensor
+  mocap_id: int | None
 
   # Addresses.
   joint_q_adr: torch.Tensor
@@ -60,6 +61,11 @@ class EntityCfg:
     # Articulation (only for articulated entities).
     joint_pos: dict[str, float] = field(default_factory=lambda: {".*": 0.0})
     joint_vel: dict[str, float] = field(default_factory=lambda: {".*": 0.0})
+    # Mocap flag for fixed-base entities.
+    mocap: bool = False
+    """If True, the entity is treated as a mocap body which allows runtime
+    changes to its pose via data.mocap_pos and data.mocap_quat fields. Only
+    valid for fixed-base entities."""
 
   init_state: InitialStateCfg = field(default_factory=InitialStateCfg)
   spec_fn: Callable[[], mujoco.MjSpec] = field(
@@ -126,7 +132,6 @@ class Entity:
 
     self._apply_spec_editors()
     self._add_initial_state_keyframe()
-    # TODO: Should init_state.pos/rot be applied to root body if fixed base?
 
   def _apply_spec_editors(self) -> None:
     for cfg_list in [
@@ -161,6 +166,12 @@ class Entity:
       name_to_pos = {name: joint_pos[i] for i, name in enumerate(self.joint_names)}
       ctrl = np.array([name_to_pos.get(act.name, 0.0) for act in self._spec.actuators])
       key.ctrl = ctrl
+
+    if self.is_fixed_base:
+      self.root_body.pos[:] = self.cfg.init_state.pos
+      self.root_body.quat[:] = self.cfg.init_state.rot
+      if self.cfg.init_state.mocap:
+        self.root_body.mocap = True
 
   # Attributes.
 
@@ -242,6 +253,10 @@ class Entity:
   @property
   def num_actuators(self) -> int:
     return len(self.actuator_names)
+
+  @property
+  def root_body(self) -> mujoco.MjsBody:
+    return self.spec.bodies[1]
 
   # Methods.
 
@@ -335,8 +350,9 @@ class Entity:
     self.indexing = indexing
     nworld = data.nworld
 
-    # Root state - only for movable entities.
+    # Root state.
     if not self.is_fixed_base:
+      # Floating-base: store full state (pos, rot, lin_vel, ang_vel).
       default_root_state = (
         tuple(self.cfg.init_state.pos)
         + tuple(self.cfg.init_state.rot)
@@ -348,8 +364,14 @@ class Entity:
       )
       default_root_state = default_root_state.repeat(nworld, 1)
     else:
-      # Static entities have no root state.
-      default_root_state = torch.empty(nworld, 0, dtype=torch.float, device=device)
+      # Fixed-base: store only pos and rot.
+      default_root_state = tuple(self.cfg.init_state.pos) + tuple(
+        self.cfg.init_state.rot
+      )
+      default_root_state = torch.tensor(
+        default_root_state, dtype=torch.float, device=device
+      )
+      default_root_state = default_root_state.repeat(nworld, 1)
 
     # Joint state - only for articulated entities.
     if self.is_articulated:
@@ -583,6 +605,24 @@ class Entity:
     """
     self._data.write_external_wrench(forces, torques, body_ids, env_ids)
 
+  def write_mocap_pose_to_sim(
+    self,
+    mocap_pose: torch.Tensor,
+    env_ids: torch.Tensor | slice | None = None,
+  ) -> None:
+    """Set the mocap pose for fixed-base mocap entities.
+
+    Only available for entities with init_state.mocap=True. This allows runtime
+    changes to the pose of fixed-base entities (e.g., for domain randomization).
+
+    Args:
+      mocap_pose: Tensor of shape (N, 7) where N is the number of environments.
+        Format: [pos_x, pos_y, pos_z, quat_w, quat_x, quat_y, quat_z]
+      env_ids: Optional tensor or slice specifying which environments to set. If
+        None, all environments are set.
+    """
+    self._data.write_mocap_pose(mocap_pose, env_ids)
+
   ##
   # Private methods.
   ##
@@ -635,6 +675,11 @@ class Entity:
         start_adr, start_adr + dim, dtype=torch.int, device=device
       )
 
+    if self.is_fixed_base and self.cfg.init_state.mocap:
+      mocap_id = int(model.body_mocapid[self.root_body.id])
+    else:
+      mocap_id = None
+
     return EntityIndexing(
       bodies=bodies,
       joints=joints,
@@ -651,4 +696,5 @@ class Entity:
       free_joint_q_adr=free_joint_q_adr,
       free_joint_v_adr=free_joint_v_adr,
       sensor_adr=sensor_adr,
+      mocap_id=mocap_id,
     )
