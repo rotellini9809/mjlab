@@ -382,15 +382,11 @@ def test_fixed_base_initial_position(fixed_base_with_joints_xml):
   """Fixed-base entity's initial pos/rot are applied to the body in the spec."""
   cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(fixed_base_with_joints_xml),
-    init_state=EntityCfg.InitialStateCfg(
-      pos=(1.0, 2.0, 3.0),
-      rot=(0.7071, 0.7071, 0.0, 0.0),  # 90 deg rotation around X
-    ),
+    init_state=EntityCfg.InitialStateCfg((1.0, 2.0, 3.0), (0.7071, 0.7071, 0.0, 0.0)),
   )
   entity = Entity(cfg)
   model = entity.compile()
 
-  # Verify the body position and orientation were set in the model.
   body = model.body("fixed_object")
   np.testing.assert_allclose(body.pos, [1.0, 2.0, 3.0], rtol=1e-6)
   np.testing.assert_allclose(body.quat, [0.7071, 0.7071, 0.0, 0.0], atol=1e-4)
@@ -401,12 +397,12 @@ def test_fixed_base_mocap_runtime_pose_change(device, fixed_base_with_joints_xml
 
   def spec_with_mocap():
     spec = mujoco.MjSpec.from_string(fixed_base_with_joints_xml)
-    spec.worldbody.first_body().mocap = True  # Enable mocap on root body
+    spec.worldbody.first_body().mocap = True
     return spec
 
   cfg = EntityCfg(
     spec_fn=spec_with_mocap,
-    init_state=EntityCfg.InitialStateCfg(pos=(1.0, 2.0, 3.0), rot=(1.0, 0.0, 0.0, 0.0)),
+    init_state=EntityCfg.InitialStateCfg((1.0, 2.0, 3.0), (1.0, 0.0, 0.0, 0.0)),
   )
   entity = Entity(cfg)
   entity, sim = initialize_entity_with_sim(entity, device)
