@@ -1,24 +1,34 @@
+# Refer to uv-docker-example:
+# https://github.com/astral-sh/uv-docker-example/blob/main/standalone.Dockerfile
+# Note that we use uv to launch, so we omit the second half of the example (non-UV final image)
+
 FROM nvidia/cuda:12.8.0-devel-ubuntu24.04
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
-    python3.12 \
     git \
     curl \
     libegl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /mjlab
-COPY Makefile ./
-COPY pyproject.toml ./
-COPY README.md ./
-COPY .python-version ./
-COPY src ./src
-COPY tests ./tests
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_PYTHON_PREFERENCE=only-managed
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:${PATH}"
-RUN uv sync --group dev
+RUN uv python install 3.13
+
+WORKDIR /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-editable --no-dev
+
+ADD . /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable --no-dev
 
 ENV MUJOCO_GL=egl
 EXPOSE 8080
