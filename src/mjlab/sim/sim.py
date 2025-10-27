@@ -200,6 +200,3 @@ class Simulation:
           wp.capture_launch(self.step_graph)
         else:
           mjwarp.step(self.wp_model, self.wp_data)
-
-  def close(self) -> None:
-    pass
