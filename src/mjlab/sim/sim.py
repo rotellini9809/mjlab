@@ -186,10 +186,6 @@ class Simulation:
     expand_model_fields(self._wp_model, self.num_envs, fields)
     self._model_bridge.clear_cache()
 
-  def reset(self) -> None:
-    # TODO(kevin): Should we be doing anything here?
-    pass
-
   def forward(self) -> None:
     with wp.ScopedDevice(self.wp_device):
       if self.use_cuda_graph and self.forward_graph is not None:
