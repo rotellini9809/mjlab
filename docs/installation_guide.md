@@ -133,15 +133,9 @@ also use it with any pip-based virtual environment (venv, conda, virtualenv, etc
 
 ### Method 4: Docker
 
-#### Option A: From Docker Hub
-
-Not available yet. For now, build locally (see below).
-
-#### Option B: Build Docker Image Locally
-
 - Install [Docker](https://docs.docker.com/engine/install/)
-- Install an appropriate CUDA version (12.8 at time of writing)
-- Install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- Install an appropriate NVIDIA driver for your system and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+  - Be sure to register the container runtime with Docker and restart, as described in [the Docker section of the install guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-docker)
 - `make docker-build`
 - `docker run --rm --runtime=nvidia mjlab:latest`
 - Demo with viewer: `docker run --rm -it -p 8080:8080 --runtime=nvidia --gpus all mjlab:latest uv run demo`
