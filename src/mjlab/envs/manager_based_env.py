@@ -165,7 +165,7 @@ class ManagerBasedEnv:
     return self.obs_buf, self.extras
 
   def close(self) -> None:
-    self.sim.close()
+    pass
 
   @staticmethod
   def seed(seed: int = -1) -> int:
