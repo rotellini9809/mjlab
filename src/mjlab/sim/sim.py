@@ -184,6 +184,7 @@ class Simulation:
       raise ValueError(f"Fields not found in model: {invalid_fields}")
 
     expand_model_fields(self._wp_model, self.num_envs, fields)
+    self._model_bridge.clear_cache()
 
   def reset(self) -> None:
     # TODO(kevin): Should we be doing anything here?
