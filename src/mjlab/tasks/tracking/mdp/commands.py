@@ -485,7 +485,7 @@ class MotionCommandCfg(CommandTermCfg):
 
   @dataclass
   class VizCfg:
-    mode: Literal["ghost", "frames"] = "frames"
+    mode: Literal["ghost", "frames"] = "ghost"
     ghost_color: tuple[float, float, float, float] = (0.5, 0.7, 0.5, 0.5)
 
   viz: VizCfg = field(default_factory=VizCfg)
