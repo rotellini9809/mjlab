@@ -137,9 +137,9 @@ also use it with any pip-based virtual environment (venv, conda, virtualenv, etc
 - Install an appropriate NVIDIA driver for your system and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
   - Be sure to register the container runtime with Docker and restart, as described in [the Docker section of the install guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-docker)
 - `make docker-build`
-- `./run_docker.sh`
-- Demo with viewer: `./run_docker.sh uv run demo`
-- Training example:`./run_docker.sh uv run train Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs 4096`
+- Use the included helper script to run an `mjlab` docker container with many useful arguments included: `./scripts/run_docker.sh`
+  - Demo with viewer: `./scripts/run_docker.sh uv run demo`
+  - Training example:`./scripts/run_docker.sh uv run train Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs 4096`
 
 ## Verification
 
