@@ -4,5 +4,12 @@
 - **License:** BSD-3-Clause (see [LICENSE](LICENSE))
 - **Commit/tag:** `5f71ff479eb121d8aff6c37caaf6768927e1e5c9`
 
-We include only these files as-is to support our code. For full source,
+## Local Modifications
+
+- 2025-10-27: `isaaclab_rl/rsl_rl/exporter.py`: Added `dynamo=False` parameter
+  to `torch.onnx.export()` calls for PyTorch 2.9 compatibility
+- 2025-10-05: `isaaclab/utils/math.py`: Replaced deprecated
+  `quat_rotate_inverse` with `quat_apply_inverse` for newer PyTorch versions
+
+We include only these files to support our code. For full source,
 documentation, and updates, refer to the upstream repository.

@@ -46,6 +46,7 @@ dependencies = [
     "tensordict",
     "rsl-rl-lib",
     "tensorboard>=2.20.0",
+    "onnxscript>=0.5.4",
 ]
 
 [project.urls]
