@@ -184,6 +184,7 @@ class _OnnxPolicyExporter(torch.nn.Module):
                     input_names=["obs", "h_in", "c_in"],
                     output_names=["actions", "h_out", "c_out"],
                     dynamic_axes={},
+                    dynamo=False,
                 )
             elif self.rnn_type == "gru":
                 torch.onnx.export(
@@ -196,6 +197,7 @@ class _OnnxPolicyExporter(torch.nn.Module):
                     input_names=["obs", "h_in"],
                     output_names=["actions", "h_out"],
                     dynamic_axes={},
+                    dynamo=False,
                 )
             else:
                 raise NotImplementedError(f"Unsupported RNN type: {self.rnn_type}")
@@ -211,4 +213,5 @@ class _OnnxPolicyExporter(torch.nn.Module):
                 input_names=["obs"],
                 output_names=["actions"],
                 dynamic_axes={},
+                dynamo=False,
             )
