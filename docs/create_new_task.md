@@ -267,7 +267,7 @@ def check_pole_tipped(env):
 
 @dataclass
 class TerminationCfg:
-  timeout: DoneTerm = term(DoneTerm, func=lambda env: False, time_out=True)
+  timeout: DoneTerm = term(DoneTerm, func=mdp.time_out, time_out=True)
   tipped: DoneTerm = term(DoneTerm, func=check_pole_tipped, time_out=False)
 ```
 
