@@ -2,6 +2,11 @@
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
+#
+# Modified by MjLab developers:
+#   - 2025-10-27: Added dynamo=False parameter to torch.onnx.export() calls for PyTorch 2.9
+#     compatibility (lines 187, 200, 216). PyTorch 2.9 changed the default behavior and
+#     requires explicit dynamo=False to use the legacy ONNX exporter.
 
 import copy
 import os
