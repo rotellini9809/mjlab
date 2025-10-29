@@ -306,7 +306,7 @@ def run_sim(
           log[k] = np.stack(log[k], axis=0)
 
         print("Saving to /tmp/motion.npz...")
-        np.savez("/tmp/motion.npz", **log)
+        np.savez("/tmp/motion.npz", **log)  # type: ignore[arg-type]
 
         print("Uploading to Weights & Biases...")
         import wandb
@@ -334,7 +334,7 @@ def run_sim(
           clip.write_videofile("./motion.mp4")
 
           print("Logging video to wandb...")
-          wandb.log({"motion_video": wandb.Video("./motion.mp4", fps=output_fps)})
+          wandb.log({"motion_video": wandb.Video("./motion.mp4", format="mp4")})
 
         wandb.finish()
 

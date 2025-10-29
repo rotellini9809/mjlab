@@ -11,12 +11,12 @@ from mjlab.entity import Entity
 from mjlab.utils.string import resolve_expr
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def go1_entity() -> Entity:
   return Entity(go1_constants.GO1_ROBOT_CFG)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def go1_model(go1_entity: Entity) -> mujoco.MjModel:
   return go1_entity.spec.compile()
 
@@ -92,7 +92,3 @@ def test_go1_entity_creation(go1_entity) -> None:
   assert go1_entity.num_joints == 12
   assert go1_entity.is_actuated
   assert not go1_entity.is_fixed_base
-
-
-if __name__ == "__main__":
-  pytest.main([__file__, "-v"])

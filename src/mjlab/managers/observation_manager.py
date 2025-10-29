@@ -8,7 +8,7 @@ from prettytable import PrettyTable
 
 from mjlab.managers.manager_base import ManagerBase
 from mjlab.managers.manager_term_config import ObservationGroupCfg, ObservationTermCfg
-from mjlab.utils.buffers import CircularBuffer
+from mjlab.utils.buffers import CircularBuffer, DelayBuffer
 from mjlab.utils.dataclasses import get_terms
 from mjlab.utils.noise import noise_cfg, noise_model
 
@@ -132,8 +132,12 @@ class ObservationManager(ManagerBase):
       for term_cfg in group_cfg:
         term_cfg.func.reset(env_ids=env_ids)
       for term_name in self._group_obs_term_names[group_name]:
+        batch_ids = None if isinstance(env_ids, slice) else env_ids
+        if term_name in self._group_obs_term_delay_buffer[group_name]:
+          self._group_obs_term_delay_buffer[group_name][term_name].reset(
+            batch_ids=batch_ids
+          )
         if term_name in self._group_obs_term_history_buffer[group_name]:
-          batch_ids = None if isinstance(env_ids, slice) else env_ids
           self._group_obs_term_history_buffer[group_name][term_name].reset(
             batch_ids=batch_ids
           )
@@ -170,6 +174,10 @@ class ObservationManager(ManagerBase):
         scale = term_cfg.scale
         assert isinstance(scale, torch.Tensor)
         obs = obs.mul_(scale)
+      if term_cfg.delay_max_lag > 0:
+        delay_buffer = self._group_obs_term_delay_buffer[group_name][term_name]
+        delay_buffer.append(obs)
+        obs = delay_buffer.compute()
       if term_cfg.history_length > 0:
         circular_buffer = self._group_obs_term_history_buffer[group_name][term_name]
         if update_history or not circular_buffer.is_initialized:
@@ -195,6 +203,7 @@ class ObservationManager(ManagerBase):
     self._group_obs_concatenate: dict[str, bool] = dict()
     self._group_obs_concatenate_dim: dict[str, int] = dict()
     self._group_obs_class_instances: dict[str, noise_model.NoiseModel] = {}
+    self._group_obs_term_delay_buffer: dict[str, dict[str, DelayBuffer]] = dict()
     self._group_obs_term_history_buffer: dict[str, dict[str, CircularBuffer]] = dict()
 
     group_cfg_items = get_terms(self.cfg, ObservationGroupCfg).items()
@@ -208,6 +217,7 @@ class ObservationManager(ManagerBase):
       self._group_obs_term_dim[group_name] = list()
       self._group_obs_term_cfgs[group_name] = list()
       self._group_obs_class_term_cfgs[group_name] = list()
+      group_entry_delay_buffer: dict[str, DelayBuffer] = dict()
       group_entry_history_buffer: dict[str, CircularBuffer] = dict()
 
       self._group_obs_concatenate[group_name] = group_cfg.concatenate_terms
@@ -255,6 +265,18 @@ class ObservationManager(ManagerBase):
             term_cfg.noise, num_envs=self._env.num_envs, device=self._env.device
           )
 
+        if term_cfg.delay_max_lag > 0:
+          group_entry_delay_buffer[term_name] = DelayBuffer(
+            min_lag=term_cfg.delay_min_lag,
+            max_lag=term_cfg.delay_max_lag,
+            batch_size=self._env.num_envs,
+            device=self._env.device,
+            per_env=term_cfg.delay_per_env,
+            hold_prob=term_cfg.delay_hold_prob,
+            update_period=term_cfg.delay_update_period,
+            per_env_phase=term_cfg.delay_per_env_phase,
+          )
+
         if term_cfg.history_length > 0:
           group_entry_history_buffer[term_name] = CircularBuffer(
             max_len=term_cfg.history_length,
@@ -268,4 +290,5 @@ class ObservationManager(ManagerBase):
             obs_dims = (obs_dims[0], int(np.prod(obs_dims[1:])))
 
         self._group_obs_term_dim[group_name].append(obs_dims[1:])
+      self._group_obs_term_delay_buffer[group_name] = group_entry_delay_buffer
       self._group_obs_term_history_buffer[group_name] = group_entry_history_buffer

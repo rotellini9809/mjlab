@@ -24,7 +24,10 @@ if TYPE_CHECKING:
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
 
-def reset_scene_to_default(env: ManagerBasedEnv, env_ids: torch.Tensor) -> None:
+def reset_scene_to_default(env: ManagerBasedEnv, env_ids: torch.Tensor | None) -> None:
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.int)
+
   for entity in env.scene.entities.values():
     if not isinstance(entity, Entity):
       continue
@@ -42,43 +45,86 @@ def reset_scene_to_default(env: ManagerBasedEnv, env_ids: torch.Tensor) -> None:
 
 def reset_root_state_uniform(
   env: ManagerBasedEnv,
-  env_ids: torch.Tensor,
+  env_ids: torch.Tensor | None,
   pose_range: dict[str, tuple[float, float]],
-  velocity_range: dict[str, tuple[float, float]],
+  velocity_range: dict[str, tuple[float, float]] | None = None,
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
 ) -> None:
-  asset: Entity = env.scene[asset_cfg.name]
-  default_root_state = asset.data.default_root_state
-  assert default_root_state is not None
-  root_states = default_root_state[env_ids].clone()
+  """Reset root state for floating-base or mocap fixed-base entities.
 
-  # Positions.
+  For floating-base entities: Resets pose and velocity via write_root_state_to_sim().
+  For fixed-base mocap entities: Resets pose only via write_mocap_pose_to_sim().
+
+  Args:
+    env: The environment.
+    env_ids: Environment IDs to reset. If None, resets all environments.
+    pose_range: Dictionary with keys {"x", "y", "z", "roll", "pitch", "yaw"}.
+    velocity_range: Velocity range (only used for floating-base entities).
+    asset_cfg: Asset configuration.
+  """
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.int)
+
+  asset: Entity = env.scene[asset_cfg.name]
+
+  # Pose.
   range_list = [
     pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]
   ]
   ranges = torch.tensor(range_list, device=env.device)
-  rand_samples = sample_uniform(
+  pose_samples = sample_uniform(
     ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=env.device
   )
 
+  # Fixed-based entities with mocap=True.
+  if asset.is_fixed_base:
+    if not asset.is_mocap:
+      raise ValueError(
+        f"Cannot reset root state for fixed-base non-mocap entity '{asset_cfg.name}'."
+      )
+
+    default_root_state = asset.data.default_root_state
+    assert default_root_state is not None
+    root_states = default_root_state[env_ids].clone()
+
+    positions = (
+      root_states[:, 0:3] + pose_samples[:, 0:3] + env.scene.env_origins[env_ids]
+    )
+    orientations_delta = quat_from_euler_xyz(
+      pose_samples[:, 3], pose_samples[:, 4], pose_samples[:, 5]
+    )
+    orientations = quat_mul(root_states[:, 3:7], orientations_delta)
+
+    asset.write_mocap_pose_to_sim(
+      torch.cat([positions, orientations], dim=-1), env_ids=env_ids
+    )
+    return
+
+  # Floating-base entities.
+  default_root_state = asset.data.default_root_state
+  assert default_root_state is not None
+  root_states = default_root_state[env_ids].clone()
+
   positions = (
-    root_states[:, 0:3] + rand_samples[:, 0:3] + env.scene.env_origins[env_ids]
+    root_states[:, 0:3] + pose_samples[:, 0:3] + env.scene.env_origins[env_ids]
   )
   orientations_delta = quat_from_euler_xyz(
-    rand_samples[:, 3], rand_samples[:, 4], rand_samples[:, 5]
+    pose_samples[:, 3], pose_samples[:, 4], pose_samples[:, 5]
   )
   orientations = quat_mul(root_states[:, 3:7], orientations_delta)
 
   # Velocities.
+  if velocity_range is None:
+    velocity_range = {}
   range_list = [
     velocity_range.get(key, (0.0, 0.0))
     for key in ["x", "y", "z", "roll", "pitch", "yaw"]
   ]
   ranges = torch.tensor(range_list, device=env.device)
-  rand_samples = sample_uniform(
+  vel_samples = sample_uniform(
     ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=env.device
   )
-  velocities = root_states[:, 7:13] + rand_samples
+  velocities = root_states[:, 7:13] + vel_samples
 
   asset.write_root_link_pose_to_sim(
     torch.cat([positions, orientations], dim=-1), env_ids=env_ids
@@ -90,11 +136,14 @@ def reset_root_state_uniform(
 
 def reset_joints_by_scale(
   env: ManagerBasedEnv,
-  env_ids: torch.Tensor,
+  env_ids: torch.Tensor | None,
   position_range: tuple[float, float],
   velocity_range: tuple[float, float],
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
 ) -> None:
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.int)
+
   asset: Entity = env.scene[asset_cfg.name]
   default_joint_pos = asset.data.default_joint_pos
   assert default_joint_pos is not None
