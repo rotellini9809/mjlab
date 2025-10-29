@@ -127,7 +127,7 @@ class feet_swing_height:
   def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRlEnv):
     self.sensor_name = cfg.params["sensor_name"]
     self.peak_heights = torch.zeros(
-      (env.num_envs, cfg.params["num_feet"]), device=env.device, dtype=torch.float32
+      (env.num_envs, 4), device=env.device, dtype=torch.float32
     )
     self.step_dt = env.step_dt
 
@@ -152,8 +152,6 @@ class feet_swing_height:
       self.peak_heights,
     )
     first_contact = contact_sensor.compute_first_contact(dt=self.step_dt)  # [B, N_feet]
-    # command_norm = torch.norm(command[:, :2], dim=1)
-    # active = (command_norm > command_threshold).float()
     linear_norm = torch.norm(command[:, :2], dim=1)
     angular_norm = torch.abs(command[:, 2])
     total_command = linear_norm + angular_norm

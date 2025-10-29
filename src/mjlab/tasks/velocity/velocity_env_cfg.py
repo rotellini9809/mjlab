@@ -268,7 +268,6 @@ class RewardCfg:
       "target_height": 0.1,
       "command_name": "twist",
       "command_threshold": 0.05,
-      "num_feet": 4,
       "asset_cfg": SceneEntityCfg("robot", geom_names=[]),  # Override in robot cfg.
     },
   )
