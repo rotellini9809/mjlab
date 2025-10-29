@@ -7,7 +7,7 @@ import torch
 from mjlab.entity import Entity
 from mjlab.managers.manager_term_config import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from mjlab.sensor import ContactSensor
+from mjlab.sensor import BuiltinSensor, ContactSensor
 from mjlab.third_party.isaaclab.isaaclab.utils.string import (
   resolve_matching_names_values,
 )
@@ -70,6 +70,40 @@ def flat_orientation(
   return torch.exp(-xy_squared / std**2)
 
 
+def self_collision_cost(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
+  """Penalize self-collisions.
+
+  Returns the number of self-collisions detected by the specified contact sensor.
+  """
+  sensor: ContactSensor = env.scene[sensor_name]
+  assert sensor.data.found is not None
+  return sensor.data.found.squeeze(-1)
+
+
+def body_angular_velocity_penalty(
+  env: ManagerBasedRlEnv,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  """Penalize excessive body angular velocities."""
+  asset: Entity = env.scene[asset_cfg.name]
+  ang_vel = asset.data.body_link_ang_vel_w[:, asset_cfg.body_ids, :]
+  ang_vel = ang_vel.squeeze(1)
+  return torch.sum(torch.square(ang_vel), dim=1)
+
+
+def angular_momentum_penalty(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+) -> torch.Tensor:
+  """Penalize whole-body angular momentum to encourage natural arm swing."""
+  angmom_sensor: BuiltinSensor = env.scene[sensor_name]
+  angmom = angmom_sensor.data
+  angmom_magnitude_sq = torch.sum(torch.square(angmom), dim=-1)
+  angmom_magnitude = torch.sqrt(angmom_magnitude_sq)
+  env.extras["log"]["Metrics/angular_momentum_mean"] = torch.mean(angmom_magnitude)
+  return angmom_magnitude_sq
+
+
 def feet_air_time(
   env: ManagerBasedRlEnv,
   sensor_name: str,
@@ -85,6 +119,12 @@ def feet_air_time(
   assert current_air_time is not None
   in_range = (current_air_time > threshold_min) & (current_air_time < threshold_max)
   reward = torch.sum(in_range.float(), dim=1)
+  in_air = current_air_time > 0
+  num_in_air = torch.sum(in_air.float())
+  mean_air_time = torch.sum(current_air_time * in_air.float()) / torch.clamp(
+    num_in_air, min=1
+  )
+  env.extras["log"]["Metrics/air_time_mean"] = mean_air_time
   if command_name is not None:
     command = env.command_manager.get_command(command_name)
     if command is not None:
@@ -159,6 +199,12 @@ class feet_swing_height:
     active = (total_command > command_threshold).float()
     error = self.peak_heights / target_height - 1.0
     cost = torch.sum(torch.square(error) * first_contact.float(), dim=1) * active
+    num_landings = torch.sum(first_contact.float())
+    peak_heights_at_landing = self.peak_heights * first_contact.float()
+    mean_peak_height = torch.sum(peak_heights_at_landing) / torch.clamp(
+      num_landings, min=1
+    )
+    env.extras["log"]["Metrics/peak_height_mean"] = mean_peak_height
     self.peak_heights = torch.where(
       first_contact,
       torch.zeros_like(self.peak_heights),
@@ -186,8 +232,43 @@ def feet_slip(
   assert contact_sensor.data.found is not None
   in_contact = (contact_sensor.data.found > 0).float()  # [B, N]
   foot_vel_xy = asset.data.site_lin_vel_w[:, asset_cfg.site_ids, :2]  # [B, N, 2]
-  vel_xy_norm_sq = torch.sum(torch.square(foot_vel_xy), dim=-1)  # [B, N]
+  vel_xy_norm = torch.norm(foot_vel_xy, dim=-1)  # [B, N]
+  vel_xy_norm_sq = torch.square(vel_xy_norm)  # [B, N]
   cost = torch.sum(vel_xy_norm_sq * in_contact, dim=1) * active
+  num_in_contact = torch.sum(in_contact)
+  mean_slip_vel = torch.sum(vel_xy_norm * in_contact) / torch.clamp(
+    num_in_contact, min=1
+  )
+  env.extras["log"]["Metrics/slip_velocity_mean"] = mean_slip_vel
+  return cost
+
+
+def soft_landing(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  command_name: str | None = None,
+  command_threshold: float = 0.05,
+) -> torch.Tensor:
+  """Penalize high impact forces at landing to encourage soft footfalls."""
+  contact_sensor: ContactSensor = env.scene[sensor_name]
+  sensor_data = contact_sensor.data
+  assert sensor_data.force is not None
+  forces = sensor_data.force  # [B, N, 3]
+  force_magnitude = torch.norm(forces, dim=-1)  # [B, N]
+  first_contact = contact_sensor.compute_first_contact(dt=env.step_dt)  # [B, N]
+  landing_impact = force_magnitude * first_contact.float()  # [B, N]
+  cost = torch.sum(landing_impact, dim=1)  # [B]
+  num_landings = torch.sum(first_contact.float())
+  mean_landing_force = torch.sum(landing_impact) / torch.clamp(num_landings, min=1)
+  env.extras["log"]["Metrics/landing_force_mean"] = mean_landing_force
+  if command_name is not None:
+    command = env.command_manager.get_command(command_name)
+    if command is not None:
+      linear_norm = torch.norm(command[:, :2], dim=1)
+      angular_norm = torch.abs(command[:, 2])
+      total_command = linear_norm + angular_norm
+      active = (total_command > command_threshold).float()
+      cost = cost * active
   return cost
 
 

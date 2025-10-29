@@ -226,8 +226,30 @@ class RewardCfg:
       "command_threshold": 0.05,
     },
   )
+  body_ang_vel: RewardTerm = term(
+    RewardTerm,
+    func=mdp.body_angular_velocity_penalty,
+    weight=-0.05,
+    params={
+      "asset_cfg": SceneEntityCfg("robot", body_names=[]),  # Override in robot cfg.
+    },
+  )
+  angular_momentum: RewardTerm = term(
+    RewardTerm,
+    func=mdp.angular_momentum_penalty,
+    weight=0.0,
+    params={
+      "sensor_name": "robot/root_angmom",
+    },
+  )
   dof_pos_limits: RewardTerm = term(RewardTerm, func=mdp.joint_pos_limits, weight=-1.0)
   action_rate_l2: RewardTerm = term(RewardTerm, func=mdp.action_rate_l2, weight=-0.1)
+  self_collisions: RewardTerm = term(
+    RewardTerm,
+    func=mdp.self_collision_cost,
+    weight=-1.0,
+    params={"sensor_name": "self_collision"},
+  )
 
   # Rewards feet being airborne for 0.05-0.5 seconds.
   # Lift your feet off the ground and keep them up for a reasonable amount of time.
@@ -283,6 +305,17 @@ class RewardCfg:
       "asset_cfg": SceneEntityCfg("robot", site_names=[]),  # Override in robot cfg.
     },
   )
+  # Encourage soft landings.
+  soft_landing: RewardTerm = term(
+    RewardTerm,
+    func=mdp.soft_landing,
+    weight=-1e-5,
+    params={
+      "sensor_name": "feet_ground_contact",
+      "command_name": "twist",
+      "command_threshold": 0.05,
+    },
+  )
 
 
 @dataclass
@@ -302,6 +335,32 @@ class TerminationCfg:
 class CurriculumCfg:
   terrain_levels: CurrTerm | None = term(
     CurrTerm, func=mdp.terrain_levels_vel, params={"command_name": "twist"}
+  )
+
+  command_vel: CurrTerm | None = term(
+    CurrTerm,
+    func=mdp.commands_vel,
+    params={
+      "command_name": "twist",
+      "velocity_stages": [
+        {"step": 0 * 24, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-1.0, 1.0)},
+        {"step": 3000 * 24, "lin_vel_x": (-1.0, 1.5), "ang_vel_z": (-1.0, 1.5)},
+        {"step": 4000 * 24, "lin_vel_x": (-1.5, 2.5), "ang_vel_z": (-1.5, 2.5)},
+        {"step": 5000 * 24, "lin_vel_x": (-2.0, 3.5), "ang_vel_z": (-2.0, 3.5)},
+      ],
+    },
+  )
+
+  soft_landing_weight: CurrTerm | None = term(
+    CurrTerm,
+    func=mdp.reward_weight,
+    params={
+      "reward_name": "soft_landing",
+      "weight_stages": [
+        {"step": 0, "weight": -1e-5},
+        {"step": 2000 * 24, "weight": -0.02},
+      ],
+    },
   )
 
 
