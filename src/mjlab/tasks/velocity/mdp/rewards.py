@@ -105,9 +105,6 @@ def feet_clearance(
 ) -> torch.Tensor:
   """Penalize deviation from target clearance height, weighted by foot velocity."""
   asset: Entity = env.scene[asset_cfg.name]
-  import ipdb
-
-  ipdb.set_trace()
   foot_z = asset.data.geom_pos_w[:, asset_cfg.geom_ids, 2]  # [B, N]
   foot_vel_xy = asset.data.geom_lin_vel_w[:, asset_cfg.geom_ids, :2]  # [B, N, 2]
   vel_norm = torch.norm(foot_vel_xy, dim=-1)  # [B, N]
@@ -147,9 +144,6 @@ class feet_swing_height:
     contact_sensor: ContactSensor = env.scene[sensor_name]
     command = env.command_manager.get_command(command_name)
     assert command is not None
-    import ipdb
-
-    ipdb.set_trace()
     foot_heights = asset.data.geom_pos_w[:, asset_cfg.geom_ids, 2]  # [B, N_geoms]
     in_air = contact_sensor.data.found == 0
     self.peak_heights = torch.where(
