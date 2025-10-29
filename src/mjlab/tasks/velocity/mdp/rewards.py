@@ -105,8 +105,8 @@ def feet_clearance(
 ) -> torch.Tensor:
   """Penalize deviation from target clearance height, weighted by foot velocity."""
   asset: Entity = env.scene[asset_cfg.name]
-  foot_z = asset.data.geom_pos_w[:, asset_cfg.geom_ids, 2]  # [B, N]
-  foot_vel_xy = asset.data.geom_lin_vel_w[:, asset_cfg.geom_ids, :2]  # [B, N, 2]
+  foot_z = asset.data.site_pos_w[:, asset_cfg.site_ids, 2]  # [B, N]
+  foot_vel_xy = asset.data.site_lin_vel_w[:, asset_cfg.site_ids, :2]  # [B, N, 2]
   vel_norm = torch.norm(foot_vel_xy, dim=-1)  # [B, N]
   delta = torch.abs(foot_z - target_height)  # [B, N]
   cost = torch.sum(delta * vel_norm, dim=1)  # [B]
@@ -126,8 +126,9 @@ class feet_swing_height:
 
   def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRlEnv):
     self.sensor_name = cfg.params["sensor_name"]
+    self.site_names = cfg.params["asset_cfg"].site_names
     self.peak_heights = torch.zeros(
-      (env.num_envs, 4), device=env.device, dtype=torch.float32
+      (env.num_envs, len(self.site_names)), device=env.device, dtype=torch.float32
     )
     self.step_dt = env.step_dt
 
@@ -144,14 +145,14 @@ class feet_swing_height:
     contact_sensor: ContactSensor = env.scene[sensor_name]
     command = env.command_manager.get_command(command_name)
     assert command is not None
-    foot_heights = asset.data.geom_pos_w[:, asset_cfg.geom_ids, 2]  # [B, N_geoms]
+    foot_heights = asset.data.site_pos_w[:, asset_cfg.site_ids, 2]
     in_air = contact_sensor.data.found == 0
     self.peak_heights = torch.where(
       in_air,
       torch.maximum(self.peak_heights, foot_heights),
       self.peak_heights,
     )
-    first_contact = contact_sensor.compute_first_contact(dt=self.step_dt)  # [B, N_feet]
+    first_contact = contact_sensor.compute_first_contact(dt=self.step_dt)
     linear_norm = torch.norm(command[:, :2], dim=1)
     angular_norm = torch.abs(command[:, 2])
     total_command = linear_norm + angular_norm
@@ -184,7 +185,7 @@ def feet_slip(
   active = (total_command > command_threshold).float()
   assert contact_sensor.data.found is not None
   in_contact = (contact_sensor.data.found > 0).float()  # [B, N]
-  foot_vel_xy = asset.data.geom_lin_vel_w[:, asset_cfg.geom_ids, :2]  # [B, N, 2]
+  foot_vel_xy = asset.data.site_lin_vel_w[:, asset_cfg.site_ids, :2]  # [B, N, 2]
   vel_xy_norm_sq = torch.sum(torch.square(foot_vel_xy), dim=-1)  # [B, N]
   cost = torch.sum(vel_xy_norm_sq * in_contact, dim=1) * active
   return cost

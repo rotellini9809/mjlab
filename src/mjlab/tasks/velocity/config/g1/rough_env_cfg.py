@@ -17,6 +17,16 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
 
     self.scene.entities = {"robot": replace(G1_ROBOT_CFG)}
 
+    # Constants.
+    site_names = ["left_foot", "right_foot"]
+    geom_names = []
+    for i in range(1, 8):
+      geom_names.append(f"left_foot{i}_collision")
+    for i in range(1, 8):
+      geom_names.append(f"right_foot{i}_collision")
+    target_foot_height = 0.15
+
+    # Sensors.
     feet_ground_cfg = ContactSensorCfg(
       name="feet_ground_contact",
       primary=ContactMatch(
@@ -32,15 +42,13 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
     )
     self.scene.sensors = (feet_ground_cfg,)
 
+    # Actions.
     self.actions.joint_pos.scale = G1_ACTION_SCALE
 
-    geom_names = []
-    for i in range(1, 8):
-      geom_names.append(f"left_foot{i}_collision")
-    for i in range(1, 8):
-      geom_names.append(f"right_foot{i}_collision")
+    # Events.
     self.events.foot_friction.params["asset_cfg"].geom_names = geom_names
 
+    # Rewards.
     self.rewards.pose.params["std_standing"] = {
       # Lower body.
       r".*hip_pitch.*": 0.05,
@@ -79,15 +87,16 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
       r".*elbow.*": 0.25,
       r".*wrist.*": 0.3,
     }
+    self.rewards.foot_clearance.params["asset_cfg"].site_names = site_names
+    self.rewards.foot_swing_height.params["asset_cfg"].site_names = site_names
+    self.rewards.foot_slip.params["asset_cfg"].site_names = site_names
+    self.rewards.foot_swing_height.params["target_height"] = target_foot_height
+    self.rewards.foot_clearance.params["target_height"] = target_foot_height
 
-    # TODO(kevin): Generalize the rewards to support different number of feet.
-    self.rewards.foot_clearance.weight = 0.0
-    self.rewards.foot_swing_height.weight = 0.0
-    self.rewards.foot_slip.weight = 0.0
-    self.rewards.foot_swing_height.weight = 0.0
+    # Observations.
+    self.observations.critic.foot_height.params["asset_cfg"].site_names = site_names
 
-    self.observations.critic.foot_height.params["asset_cfg"].geom_names = geom_names
-
+    # Terminations.
     self.terminations.illegal_contact = None
 
     self.viewer.body_name = "torso_link"

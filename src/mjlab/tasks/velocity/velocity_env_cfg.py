@@ -129,7 +129,7 @@ class ObservationCfg:
       ObsTerm,
       func=mdp.foot_height,
       params={
-        "asset_cfg": SceneEntityCfg("robot", geom_names=[])  # Override in robot cfg.
+        "asset_cfg": SceneEntityCfg("robot", site_names=[])  # Override in robot cfg.
       },
     )
     foot_air_time: ObsTerm = term(
@@ -254,7 +254,7 @@ class RewardCfg:
       "target_height": 0.1,
       "command_name": "twist",
       "command_threshold": 0.05,
-      "asset_cfg": SceneEntityCfg("robot", geom_names=[]),
+      "asset_cfg": SceneEntityCfg("robot", site_names=[]),
     },
   )
   # Tracks peak height during swing. Did you actually reach 0.1m at some point?
@@ -268,7 +268,7 @@ class RewardCfg:
       "target_height": 0.1,
       "command_name": "twist",
       "command_threshold": 0.05,
-      "asset_cfg": SceneEntityCfg("robot", geom_names=[]),  # Override in robot cfg.
+      "asset_cfg": SceneEntityCfg("robot", site_names=[]),  # Override in robot cfg.
     },
   )
   # Don't slide when foot is on ground.
@@ -280,7 +280,7 @@ class RewardCfg:
       "sensor_name": "feet_ground_contact",
       "command_name": "twist",
       "command_threshold": 0.05,
-      "asset_cfg": SceneEntityCfg("robot", geom_names=[]),  # Override in robot cfg.
+      "asset_cfg": SceneEntityCfg("robot", site_names=[]),  # Override in robot cfg.
     },
   )
 
