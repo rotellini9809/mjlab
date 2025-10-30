@@ -210,7 +210,7 @@ class RewardCfg:
   track_angular_velocity: RewardTerm = term(
     RewardTerm,
     func=mdp.track_angular_velocity,
-    weight=2.0,
+    weight=3.0,
     params={"command_name": "twist", "std": math.sqrt(0.25)},
   )
   upright: RewardTerm = term(
