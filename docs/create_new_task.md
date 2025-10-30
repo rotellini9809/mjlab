@@ -310,16 +310,6 @@ gym.register(
     "rl_cfg_entry_point": f"{__name__}.cartpole_env_cfg:RslRlOnPolicyRunnerCfg",
   },
 )
-
-gym.register(
-  id="Mjlab-Cartpole-Play",
-  entry_point="mjlab.envs:ManagerBasedRlEnv",
-  disable_env_checker=True,
-  kwargs={
-    "env_cfg_entry_point": f"{__name__}.cartpole_env_cfg:CartPoleEnvCfg",
-    "rl_cfg_entry_point": f"{__name__}.cartpole_env_cfg:RslRlOnPolicyRunnerCfg",
-  },
-)
 ```
 
 ---
