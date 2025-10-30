@@ -77,22 +77,39 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
       r".*wrist.*": 0.1,
     }
     self.rewards.pose.params["std_moving"] = {
+      # # Lower body.
+      # r".*hip_pitch.*": 0.3,
+      # r".*hip_roll.*": 0.15,
+      # r".*hip_yaw.*": 0.15,
+      # r".*knee.*": 0.35,
+      # r".*ankle_pitch.*": 0.25,
+      # r".*ankle_roll.*": 0.1,
+      # # Waist.
+      # r".*waist_yaw.*": 0.15,
+      # r".*waist_roll.*": 0.08,
+      # r".*waist_pitch.*": 0.1,
+      # # Arms.
+      # r".*shoulder_pitch.*": 0.35,
+      # r".*shoulder_roll.*": 0.15,
+      # r".*shoulder_yaw.*": 0.1,
+      # r".*elbow.*": 0.25,
+      # r".*wrist.*": 0.3,
       # Lower body.
-      r".*hip_pitch.*": 0.3,
-      r".*hip_roll.*": 0.15,
-      r".*hip_yaw.*": 0.15,
-      r".*knee.*": 0.35,
-      r".*ankle_pitch.*": 0.25,
-      r".*ankle_roll.*": 0.1,
+      r".*hip_pitch.*": 0.5,
+      r".*hip_roll.*": 0.2,
+      r".*hip_yaw.*": 0.2,
+      r".*knee.*": 0.6,
+      r".*ankle_pitch.*": 0.35,
+      r".*ankle_roll.*": 0.15,
       # Waist.
       r".*waist_yaw.*": 0.15,
       r".*waist_roll.*": 0.08,
-      r".*waist_pitch.*": 0.1,
+      r".*waist_pitch.*": 0.25,  # Allow more pitch for running.
       # Arms.
-      r".*shoulder_pitch.*": 0.35,
-      r".*shoulder_roll.*": 0.15,
-      r".*shoulder_yaw.*": 0.1,
-      r".*elbow.*": 0.25,
+      r".*shoulder_pitch.*": 0.5,
+      r".*shoulder_roll.*": 0.2,
+      r".*shoulder_yaw.*": 0.15,
+      r".*elbow.*": 0.35,
       r".*wrist.*": 0.3,
     }
     self.rewards.foot_clearance.params["asset_cfg"].site_names = site_names

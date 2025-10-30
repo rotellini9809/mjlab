@@ -69,7 +69,7 @@ def commands_vel(
   env_ids: torch.Tensor,
   command_name: str,
   velocity_stages: list[VelocityStage],
-) -> torch.Tensor:
+) -> dict[str, torch.Tensor]:
   del env_ids  # Unused.
   command_term = env.command_manager.get_term(command_name)
   assert command_term is not None
@@ -82,7 +82,14 @@ def commands_vel(
         cfg.ranges.lin_vel_y = stage["lin_vel_y"]
       if "ang_vel_z" in stage and stage["ang_vel_z"] is not None:
         cfg.ranges.ang_vel_z = stage["ang_vel_z"]
-  return torch.tensor([cfg.ranges.lin_vel_x[1]])
+  return {
+    "lin_vel_x_min": torch.tensor(cfg.ranges.lin_vel_x[0]),
+    "lin_vel_x_max": torch.tensor(cfg.ranges.lin_vel_x[1]),
+    "lin_vel_y_min": torch.tensor(cfg.ranges.lin_vel_y[0]),
+    "lin_vel_y_max": torch.tensor(cfg.ranges.lin_vel_y[1]),
+    "ang_vel_z_min": torch.tensor(cfg.ranges.ang_vel_z[0]),
+    "ang_vel_z_max": torch.tensor(cfg.ranges.ang_vel_z[1]),
+  }
 
 
 def reward_weight(

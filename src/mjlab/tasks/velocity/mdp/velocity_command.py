@@ -35,6 +35,7 @@ class UniformVelocityCommand(CommandTerm):
 
     self.vel_command_b = torch.zeros(self.num_envs, 3, device=self.device)
     self.heading_target = torch.zeros(self.num_envs, device=self.device)
+    self.heading_error = torch.zeros(self.num_envs, device=self.device)
     self.is_heading_env = torch.zeros(
       self.num_envs, dtype=torch.bool, device=self.device
     )
@@ -89,12 +90,10 @@ class UniformVelocityCommand(CommandTerm):
 
   def _update_command(self) -> None:
     if self.cfg.heading_command:
+      self.heading_error = wrap_to_pi(self.heading_target - self.robot.data.heading_w)
       env_ids = self.is_heading_env.nonzero(as_tuple=False).flatten()
-      heading_error = wrap_to_pi(
-        self.heading_target[env_ids] - self.robot.data.heading_w[env_ids]
-      )
       self.vel_command_b[env_ids, 2] = torch.clip(
-        self.cfg.heading_control_stiffness * heading_error,
+        self.cfg.heading_control_stiffness * self.heading_error[env_ids],
         min=self.cfg.ranges.ang_vel_z[0],
         max=self.cfg.ranges.ang_vel_z[1],
       )

@@ -144,6 +144,16 @@ class ObservationCfg:
       func=mdp.foot_contact,
       params={"sensor_name": "feet_ground_contact"},
     )
+    foot_contact_forces: ObsTerm = term(
+      ObsTerm,
+      func=mdp.foot_contact_forces,
+      params={"sensor_name": "feet_ground_contact"},
+    )
+    heading_error: ObsTerm = term(
+      ObsTerm,
+      func=mdp.heading_error,
+      params={"command_name": "twist"},
+    )
 
     def __post_init__(self):
       super().__post_init__()
@@ -337,19 +347,20 @@ class CurriculumCfg:
     CurrTerm, func=mdp.terrain_levels_vel, params={"command_name": "twist"}
   )
 
-  command_vel: CurrTerm | None = term(
-    CurrTerm,
-    func=mdp.commands_vel,
-    params={
-      "command_name": "twist",
-      "velocity_stages": [
-        {"step": 0 * 24, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-1.0, 1.0)},
-        {"step": 3000 * 24, "lin_vel_x": (-1.0, 1.5), "ang_vel_z": (-1.0, 1.5)},
-        {"step": 4000 * 24, "lin_vel_x": (-1.5, 2.5), "ang_vel_z": (-1.5, 2.5)},
-        {"step": 5000 * 24, "lin_vel_x": (-2.0, 3.5), "ang_vel_z": (-2.0, 3.5)},
-      ],
-    },
-  )
+  # command_vel: CurrTerm | None = term(
+  #   CurrTerm,
+  #   func=mdp.commands_vel,
+  #   params={
+  #     "command_name": "twist",
+  #     "velocity_stages": [
+  #       {"step": 0 * 24, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-1.0, 1.0)},
+  #       {"step": 3000 * 24, "lin_vel_x": (-1.0, 1.5)},
+  #       {"step": 5000 * 24, "lin_vel_x": (-1.5, 2.5)},
+  #       {"step": 7000 * 24, "lin_vel_x": (-2.0, 3.5), "ang_vel_z": (-1.5, 1.5)},
+  #       {"step": 9000 * 24, "lin_vel_x": (-2.5, 5.0), "ang_vel_z": (-2.0, 2.0)},
+  #     ],
+  #   },
+  # )
 
   soft_landing_weight: CurrTerm | None = term(
     CurrTerm,
