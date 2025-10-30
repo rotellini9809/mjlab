@@ -40,9 +40,6 @@ cartpole/
   <actuator>
     <velocity name="slide_velocity" joint="slide" ctrlrange="-20 20" kv="20"/>
   </actuator>
-  <keyframe>
-    <key name="cartpole_init" qpos="0 0" qvel="0 0" ctrl="0 0"/>
-  </keyframe>
 </mujoco>
 ```
 
