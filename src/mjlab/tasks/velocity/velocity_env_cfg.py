@@ -210,7 +210,7 @@ class RewardCfg:
   track_angular_velocity: RewardTerm = term(
     RewardTerm,
     func=mdp.track_angular_velocity,
-    weight=3.0,
+    weight=2.0,
     params={"command_name": "twist", "std": math.sqrt(0.25)},
   )
   upright: RewardTerm = term(
@@ -229,7 +229,7 @@ class RewardCfg:
       "std_standing": {},  # Override in robot cfg.
       "std_walking": {},  # Override in robot cfg.
       "std_running": {},  # Override in robot cfg.
-      "walking_threshold": 0.5,  # m/s
+      "walking_threshold": 0.05,  # m/s
       "running_threshold": 1.5,  # m/s
     },
   )

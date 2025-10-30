@@ -8,10 +8,6 @@ from mjlab.entity import Entity
 from mjlab.managers.manager_term_config import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.sensor import BuiltinSensor, ContactSensor
-from mjlab.tasks.velocity.mdp.velocity_command import (
-  UniformVelocityCommand,
-  UniformVelocityCommandCfg,
-)
 from mjlab.third_party.isaaclab.isaaclab.utils.string import (
   resolve_matching_names_values,
 )
@@ -54,26 +50,13 @@ def track_angular_velocity(
   The commanded xy angular velocities are assumed to be zero.
   """
   asset: Entity = env.scene[asset_cfg.name]
-  actual = asset.data.root_link_ang_vel_b
   command = env.command_manager.get_command(command_name)
-  assert command is not None
-
-  cmd_cfg = env.command_manager.get_term_cfg(command_name)
-  if not isinstance(cmd_cfg, UniformVelocityCommandCfg) or not cmd_cfg.heading_command:
-    z_error = torch.square(command[:, 2] - actual[:, 2])
-    xy_error = torch.sum(torch.square(actual[:, :2]), dim=1)
-    return torch.exp(-(z_error + xy_error) / std**2)
-
-  cmd_term = env.command_manager.get_term(command_name)
-  assert isinstance(cmd_term, UniformVelocityCommand)
-
-  heading_reward = torch.exp(-(cmd_term.heading_error**2) / std**2)
+  assert command is not None, f"Command '{command_name}' not found."
+  actual = asset.data.root_link_ang_vel_b
   z_error = torch.square(command[:, 2] - actual[:, 2])
   xy_error = torch.sum(torch.square(actual[:, :2]), dim=1)
-  ang_vel_reward = torch.exp(-(z_error + xy_error) / std**2)
-
-  is_heading = cmd_term.is_heading_env.float()
-  return is_heading * heading_reward + (1.0 - is_heading) * ang_vel_reward
+  ang_vel_error = z_error + xy_error
+  return torch.exp(-ang_vel_error / std**2)
 
 
 def flat_orientation(
