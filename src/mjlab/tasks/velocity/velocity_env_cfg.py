@@ -149,11 +149,6 @@ class ObservationCfg:
       func=mdp.foot_contact_forces,
       params={"sensor_name": "feet_ground_contact"},
     )
-    heading_error: ObsTerm = term(
-      ObsTerm,
-      func=mdp.heading_error,
-      params={"command_name": "twist"},
-    )
 
     def __post_init__(self):
       super().__post_init__()
