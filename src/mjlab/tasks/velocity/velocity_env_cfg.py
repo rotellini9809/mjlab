@@ -70,7 +70,7 @@ class CommandsCfg:
     asset_name="robot",
     resampling_time_range=(3.0, 8.0),
     rel_standing_envs=0.1,
-    rel_heading_envs=1.0,
+    rel_heading_envs=0.3,
     heading_command=True,
     heading_control_stiffness=0.5,
     debug_vis=True,
@@ -211,13 +211,13 @@ class RewardCfg:
     RewardTerm,
     func=mdp.track_angular_velocity,
     weight=2.0,
-    params={"command_name": "twist", "std": math.sqrt(0.25)},
+    params={"command_name": "twist", "std": math.sqrt(0.5)},
   )
   upright: RewardTerm = term(
     RewardTerm,
     func=mdp.flat_orientation,
     weight=1.0,
-    params={"std": math.sqrt(0.1)},
+    params={"std": math.sqrt(0.2)},
   )
   pose: RewardTerm = term(
     RewardTerm,
@@ -229,7 +229,7 @@ class RewardCfg:
       "std_standing": {},  # Override in robot cfg.
       "std_walking": {},  # Override in robot cfg.
       "std_running": {},  # Override in robot cfg.
-      "walking_threshold": 0.05,  # m/s
+      "walking_threshold": 0.2,  # m/s
       "running_threshold": 1.5,  # m/s
     },
   )
@@ -244,7 +244,7 @@ class RewardCfg:
   angular_momentum: RewardTerm = term(
     RewardTerm,
     func=mdp.angular_momentum_penalty,
-    weight=0.0,
+    weight=-0.02,
     params={
       "sensor_name": "robot/root_angmom",
     },
@@ -350,11 +350,9 @@ class CurriculumCfg:
     params={
       "command_name": "twist",
       "velocity_stages": [
-        {"step": 0 * 24, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-0.5, 0.5)},
-        {"step": 3000 * 24, "lin_vel_x": (-1.0, 1.5), "ang_vel_z": (-1.0, 1.0)},
-        {"step": 5000 * 24, "lin_vel_x": (-1.5, 2.5)},
-        {"step": 7000 * 24, "lin_vel_x": (-2.0, 3.5), "ang_vel_z": (-1.5, 1.5)},
-        {"step": 9000 * 24, "lin_vel_x": (-2.5, 5.0)},
+        {"step": 0, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-0.5, 0.5)},
+        {"step": 5000 * 24, "lin_vel_x": (-1.5, 2.0), "ang_vel_z": (-0.7, 0.7)},
+        {"step": 10000 * 24, "lin_vel_x": (-2.0, 3.0)},
       ],
     },
   )
