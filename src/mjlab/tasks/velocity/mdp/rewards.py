@@ -76,21 +76,6 @@ def track_angular_velocity(
   return is_heading * heading_reward + (1.0 - is_heading) * ang_vel_reward
 
 
-def track_heading(
-  env: ManagerBasedRlEnv,
-  std: float,
-  command_name: str,
-) -> torch.Tensor:
-  """Reward for tracking heading target when in heading mode."""
-  cmd_cfg = env.command_manager.get_term_cfg(command_name)
-  if not isinstance(cmd_cfg, UniformVelocityCommandCfg) or not cmd_cfg.heading_command:
-    return torch.zeros(env.num_envs, device=env.device)
-  cmd_term = env.command_manager.get_term(command_name)
-  assert isinstance(cmd_term, UniformVelocityCommand)
-  reward = torch.exp(-(cmd_term.heading_error**2) / std**2)
-  return reward
-
-
 def flat_orientation(
   env: ManagerBasedRlEnv,
   std: float,
@@ -324,37 +309,49 @@ class variable_posture:
       std_standing, device=env.device, dtype=torch.float32
     )
 
-    _, _, std_moving = resolve_matching_names_values(
-      data=cfg.params["std_moving"],
+    _, _, std_walking = resolve_matching_names_values(
+      data=cfg.params["std_walking"],
       list_of_strings=joint_names,
     )
-    self.std_moving = torch.tensor(std_moving, device=env.device, dtype=torch.float32)
+    self.std_walking = torch.tensor(std_walking, device=env.device, dtype=torch.float32)
+
+    _, _, std_running = resolve_matching_names_values(
+      data=cfg.params["std_running"],
+      list_of_strings=joint_names,
+    )
+    self.std_running = torch.tensor(std_running, device=env.device, dtype=torch.float32)
 
   def __call__(
     self,
     env: ManagerBasedRlEnv,
     std_standing,
-    std_moving,
+    std_walking,
+    std_running,
     asset_cfg: SceneEntityCfg,
     command_name: str,
-    command_threshold: float = 0.1,
+    walking_threshold: float = 0.5,
+    running_threshold: float = 1.5,
   ) -> torch.Tensor:
-    del std_standing, std_moving  # Unused.
+    del std_standing, std_walking, std_running  # Unused.
 
     asset: Entity = env.scene[asset_cfg.name]
     command = env.command_manager.get_command(command_name)
     assert command is not None
 
-    # Determine if standing or moving.
-    # standing_mask: 1.0 when standing, 0.0 when moving.
-    linear_norm = torch.norm(command[:, :2], dim=1)
-    angular_norm = torch.abs(command[:, 2])
-    total_command = linear_norm + angular_norm
-    standing_mask = (total_command < command_threshold).float()  # [B]
+    linear_speed = torch.norm(command[:, :2], dim=1)
+    angular_speed = torch.abs(command[:, 2])
+    total_speed = linear_speed + angular_speed
 
-    # Interpolate between standing and moving std.
-    std = self.std_standing * standing_mask.unsqueeze(1) + self.std_moving * (
-      1.0 - standing_mask.unsqueeze(1)
+    standing_mask = (total_speed < walking_threshold).float()
+    walking_mask = (
+      (total_speed >= walking_threshold) & (total_speed < running_threshold)
+    ).float()
+    running_mask = (total_speed >= running_threshold).float()
+
+    std = (
+      self.std_standing * standing_mask.unsqueeze(1)
+      + self.std_walking * walking_mask.unsqueeze(1)
+      + self.std_running * running_mask.unsqueeze(1)
     )
 
     current_joint_pos = asset.data.joint_pos[:, asset_cfg.joint_ids]

@@ -59,8 +59,12 @@ class UnitreeGo1RoughEnvCfg(LocomotionVelocityEnvCfg):
       r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.05,
       r".*(FR|FL|RR|RL)_calf_joint.*": 0.1,
     }
-    self.rewards.pose.params["std_moving"] = {
-      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.3,
+    self.rewards.pose.params["std_walking"] = {
+      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.2,
+      r".*(FR|FL|RR|RL)_calf_joint.*": 0.3,
+    }
+    self.rewards.pose.params["std_running"] = {
+      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.4,
       r".*(FR|FL|RR|RL)_calf_joint.*": 0.6,
     }
     self.rewards.foot_clearance.params["asset_cfg"].site_names = site_names

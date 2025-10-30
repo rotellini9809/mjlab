@@ -77,7 +77,7 @@ class CommandsCfg:
     ranges=mdp.UniformVelocityCommandCfg.Ranges(
       lin_vel_x=(-1.0, 1.0),
       lin_vel_y=(-1.0, 1.0),
-      ang_vel_z=(-1.0, 1.0),
+      ang_vel_z=(-0.5, 0.5),
       heading=(-math.pi, math.pi),
     ),
   )
@@ -230,10 +230,12 @@ class RewardCfg:
     weight=1.0,
     params={
       "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-      "std_standing": {},  # Override in robot cfg.
-      "std_moving": {},  # Override in robot cfg.
       "command_name": "twist",
-      "command_threshold": 0.05,
+      "std_standing": {},  # Override in robot cfg.
+      "std_walking": {},  # Override in robot cfg.
+      "std_running": {},  # Override in robot cfg.
+      "walking_threshold": 0.5,  # m/s
+      "running_threshold": 1.5,  # m/s
     },
   )
   body_ang_vel: RewardTerm = term(
@@ -347,20 +349,20 @@ class CurriculumCfg:
     CurrTerm, func=mdp.terrain_levels_vel, params={"command_name": "twist"}
   )
 
-  # command_vel: CurrTerm | None = term(
-  #   CurrTerm,
-  #   func=mdp.commands_vel,
-  #   params={
-  #     "command_name": "twist",
-  #     "velocity_stages": [
-  #       {"step": 0 * 24, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-1.0, 1.0)},
-  #       {"step": 3000 * 24, "lin_vel_x": (-1.0, 1.5)},
-  #       {"step": 5000 * 24, "lin_vel_x": (-1.5, 2.5)},
-  #       {"step": 7000 * 24, "lin_vel_x": (-2.0, 3.5), "ang_vel_z": (-1.5, 1.5)},
-  #       {"step": 9000 * 24, "lin_vel_x": (-2.5, 5.0), "ang_vel_z": (-2.0, 2.0)},
-  #     ],
-  #   },
-  # )
+  command_vel: CurrTerm | None = term(
+    CurrTerm,
+    func=mdp.commands_vel,
+    params={
+      "command_name": "twist",
+      "velocity_stages": [
+        {"step": 0 * 24, "lin_vel_x": (-1.0, 1.0), "ang_vel_z": (-0.5, 0.5)},
+        {"step": 3000 * 24, "lin_vel_x": (-1.0, 1.5), "ang_vel_z": (-1.0, 1.0)},
+        {"step": 5000 * 24, "lin_vel_x": (-1.5, 2.5)},
+        {"step": 7000 * 24, "lin_vel_x": (-2.0, 3.5), "ang_vel_z": (-1.5, 1.5)},
+        {"step": 9000 * 24, "lin_vel_x": (-2.5, 5.0)},
+      ],
+    },
+  )
 
   soft_landing_weight: CurrTerm | None = term(
     CurrTerm,
