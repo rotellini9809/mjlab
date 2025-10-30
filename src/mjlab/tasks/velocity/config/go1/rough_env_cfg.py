@@ -60,11 +60,11 @@ class UnitreeGo1RoughEnvCfg(LocomotionVelocityEnvCfg):
       r".*(FR|FL|RR|RL)_calf_joint.*": 0.1,
     }
     self.rewards.pose.params["std_walking"] = {
-      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.2,
-      r".*(FR|FL|RR|RL)_calf_joint.*": 0.3,
+      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.3,
+      r".*(FR|FL|RR|RL)_calf_joint.*": 0.6,
     }
     self.rewards.pose.params["std_running"] = {
-      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.4,
+      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.3,
       r".*(FR|FL|RR|RL)_calf_joint.*": 0.6,
     }
     self.rewards.foot_clearance.params["asset_cfg"].site_names = site_names
@@ -73,6 +73,7 @@ class UnitreeGo1RoughEnvCfg(LocomotionVelocityEnvCfg):
     # Disable G1-specific rewards.
     self.rewards.self_collisions.weight = 0.0
     self.rewards.body_ang_vel.weight = 0.0
+    self.rewards.angular_momentum.weight = 0.0
 
     # Observations.
     self.observations.critic.foot_height.params["asset_cfg"].site_names = site_names

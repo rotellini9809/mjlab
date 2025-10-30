@@ -15,12 +15,6 @@ class UnitreeG1FlatEnvCfg(UnitreeG1RoughEnvCfg):
     self.scene.terrain.terrain_generator = None
     self.curriculum.terrain_levels = None
 
-    assert self.events.push_robot is not None
-    self.events.push_robot.params["velocity_range"] = {
-      "x": (-0.5, 0.5),
-      "y": (-0.5, 0.5),
-    }
-
 
 @dataclass
 class UnitreeG1FlatEnvCfg_PLAY(UnitreeG1FlatEnvCfg):

@@ -73,18 +73,13 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
       r".*waist_roll.*": 0.08,
       r".*waist_pitch.*": 0.1,
       # Arms.
-      # r".*shoulder_pitch.*": 0.15,
-      # r".*shoulder_roll.*": 0.15,
-      r".*shoulder_pitch.*": 0.4,  # Was 0.15 - needs freedom!
-      r".*shoulder_roll.*": 0.25,  # Was 0.15
-      # r".*shoulder_yaw.*": 0.1,
-      # r".*elbow.*": 0.15,
-      # r".*wrist.*": 0.3,
-      r".*shoulder_yaw.*": 0.2,  # Was 0.1
-      r".*elbow.*": 0.3,  # Was 0.15
-      r".*wrist.*": 0.3,  # Keep as is
+      r".*shoulder_pitch.*": 0.15,
+      r".*shoulder_roll.*": 0.15,
+      r".*shoulder_yaw.*": 0.1,
+      r".*elbow.*": 0.15,
+      r".*wrist.*": 0.3,
     }
-    # Maximum freedom for dynamic motion and balance recovery.
+    # Maximum freedom for dynamic motion.
     self.rewards.pose.params["std_running"] = {
       # Lower body.
       r".*hip_pitch.*": 0.5,
@@ -98,10 +93,10 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
       r".*waist_roll.*": 0.08,
       r".*waist_pitch.*": 0.2,
       # Arms.
-      r".*shoulder_pitch.*": 0.6,
-      r".*shoulder_roll.*": 0.3,
-      r".*shoulder_yaw.*": 0.25,
-      r".*elbow.*": 0.4,
+      r".*shoulder_pitch.*": 0.5,
+      r".*shoulder_roll.*": 0.2,
+      r".*shoulder_yaw.*": 0.15,
+      r".*elbow.*": 0.35,
       r".*wrist.*": 0.3,
     }
     self.rewards.foot_clearance.params["asset_cfg"].site_names = site_names
