@@ -12,8 +12,8 @@ class UnitreeG1PPORunnerCfg(RslRlOnPolicyRunnerCfg):
   policy: RslRlPpoActorCriticCfg = field(
     default_factory=lambda: RslRlPpoActorCriticCfg(
       init_noise_std=1.0,
-      actor_obs_normalization=False,
-      critic_obs_normalization=False,
+      actor_obs_normalization=True,
+      critic_obs_normalization=True,
       actor_hidden_dims=(512, 256, 128),
       critic_hidden_dims=(512, 256, 128),
       activation="elu",
@@ -39,6 +39,3 @@ class UnitreeG1PPORunnerCfg(RslRlOnPolicyRunnerCfg):
   save_interval: int = 50
   num_steps_per_env: int = 24
   max_iterations: int = 30_000
-  obs_groups: dict[str, list[str]] = field(
-    default_factory=lambda: {"policy": ["policy"], "critic": ["critic"]},
-  )

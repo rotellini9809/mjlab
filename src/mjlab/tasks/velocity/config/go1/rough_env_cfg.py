@@ -18,8 +18,10 @@ class UnitreeGo1RoughEnvCfg(LocomotionVelocityEnvCfg):
     self.scene.entities = {"robot": replace(GO1_ROBOT_CFG)}
 
     foot_names = ["FR", "FL", "RR", "RL"]
+    site_names = ["FR", "FL", "RR", "RL"]
     geom_names = [f"{name}_foot_collision" for name in foot_names]
 
+    # Sensors.
     feet_ground_cfg = ContactSensorCfg(
       name="feet_ground_contact",
       primary=ContactMatch(mode="geom", pattern=geom_names, entity="robot"),
@@ -46,25 +48,35 @@ class UnitreeGo1RoughEnvCfg(LocomotionVelocityEnvCfg):
     )
     self.scene.sensors = (feet_ground_cfg, nonfoot_ground_cfg)
 
+    # Actions.
     self.actions.joint_pos.scale = GO1_ACTION_SCALE
 
-    foot_names = ["FR", "FL", "RR", "RL"]
-    geom_names = [f"{name}_foot_collision" for name in foot_names]
+    # Events.
     self.events.foot_friction.params["asset_cfg"].geom_names = geom_names
 
+    # Rewards.
     self.rewards.pose.params["std_standing"] = {
       r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.05,
       r".*(FR|FL|RR|RL)_calf_joint.*": 0.1,
     }
-    self.rewards.pose.params["std_moving"] = {
+    self.rewards.pose.params["std_walking"] = {
       r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.3,
       r".*(FR|FL|RR|RL)_calf_joint.*": 0.6,
     }
-    self.rewards.foot_clearance.params["asset_cfg"].geom_names = geom_names
-    self.rewards.foot_swing_height.params["asset_cfg"].geom_names = geom_names
-    self.rewards.foot_slip.params["asset_cfg"].geom_names = geom_names
+    self.rewards.pose.params["std_running"] = {
+      r".*(FR|FL|RR|RL)_(hip|thigh)_joint.*": 0.3,
+      r".*(FR|FL|RR|RL)_calf_joint.*": 0.6,
+    }
+    self.rewards.foot_clearance.params["asset_cfg"].site_names = site_names
+    self.rewards.foot_swing_height.params["asset_cfg"].site_names = site_names
+    self.rewards.foot_slip.params["asset_cfg"].site_names = site_names
+    # Disable G1-specific rewards.
+    self.rewards.self_collisions.weight = 0.0
+    self.rewards.body_ang_vel.weight = 0.0
+    self.rewards.angular_momentum.weight = 0.0
 
-    self.observations.critic.foot_height.params["asset_cfg"].geom_names = geom_names
+    # Observations.
+    self.observations.critic.foot_height.params["asset_cfg"].site_names = site_names
 
     self.viewer.body_name = "trunk"
     self.viewer.distance = 1.5
