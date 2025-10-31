@@ -24,11 +24,6 @@ from mjlab.terrains.config import ROUGH_TERRAINS_CFG
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 from mjlab.viewer import ViewerConfig
 
-VELOCITY_RANGE = {
-  "x": (-0.5, 0.5),
-  "y": (-0.5, 0.5),
-}
-
 ##
 # Scene.
 ##
@@ -189,7 +184,7 @@ class EventCfg:
     func=mdp.push_by_setting_velocity,
     mode="interval",
     interval_range_s=(1.0, 3.0),
-    params={"velocity_range": VELOCITY_RANGE},
+    params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
   )
   foot_friction: EventTerm = term(
     EventTerm,
