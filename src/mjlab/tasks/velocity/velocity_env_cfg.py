@@ -27,10 +27,6 @@ from mjlab.viewer import ViewerConfig
 VELOCITY_RANGE = {
   "x": (-0.5, 0.5),
   "y": (-0.5, 0.5),
-  "z": (-0.2, 0.2),
-  "roll": (-0.52, 0.52),
-  "pitch": (-0.52, 0.52),
-  "yaw": (-0.78, 0.78),
 }
 
 ##
@@ -226,7 +222,10 @@ class RewardCfg:
     RewardTerm,
     func=mdp.flat_orientation,
     weight=1.0,
-    params={"std": math.sqrt(0.2)},
+    params={
+      "std": math.sqrt(0.2),
+      "asset_cfg": SceneEntityCfg("robot", body_names=[]),  # Override in robot cfg.
+    },
   )
   pose: RewardTerm = term(
     RewardTerm,

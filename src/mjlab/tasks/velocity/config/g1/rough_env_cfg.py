@@ -57,6 +57,7 @@ class UnitreeG1RoughEnvCfg(LocomotionVelocityEnvCfg):
     self.events.foot_friction.params["asset_cfg"].geom_names = geom_names
 
     # Rewards.
+    self.rewards.upright.params["asset_cfg"].body_names = ["torso_link"]
     # Tight control when stationary: maintain stable default pose.
     self.rewards.pose.params["std_standing"] = {".*": 0.05}
     # Moderate leg freedom for stepping, loose arms for natural pendulum swing.
