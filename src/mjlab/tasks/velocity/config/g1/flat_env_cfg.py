@@ -26,3 +26,6 @@ class UnitreeG1FlatEnvCfg_PLAY(UnitreeG1FlatEnvCfg):
 
     self.observations.policy.enable_corruption = False
     self.events.push_robot = None
+
+    self.commands.twist.ranges.lin_vel_x = (1.5, 2.0)
+    self.commands.twist.ranges.ang_vel_z = (-0.7, 0.7)
