@@ -41,12 +41,12 @@ dependencies = [
     "mujoco",
     "trimesh>=4.8.3",
     "viser>=1.0.15",
-    "wandb",
     "moviepy",
     "tensordict",
     "rsl-rl-lib",
     "tensorboard>=2.20.0",
     "onnxscript>=0.5.4",
+    "wandb>=0.22.3",
 ]
 
 [project.urls]
