@@ -78,6 +78,7 @@ class ManagerBasedEnv:
       data=self.sim.data,
     )
 
+    print_info("")
     table = PrettyTable()
     table.title = "Base Environment"
     table.field_names = ["Property", "Value"]
@@ -89,6 +90,7 @@ class ManagerBasedEnv:
     table.add_row(["Physics step-size", self.physics_dt])
     table.add_row(["Environment step-size", self.step_dt])
     print_info(table.get_string())
+    print_info("")
 
     self.load_managers()
     self.setup_manager_visualizers()
@@ -116,14 +118,14 @@ class ManagerBasedEnv:
 
   def load_managers(self) -> None:
     self.event_manager = EventManager(self.cfg.events, self)
-    print_info(f"[INFO] Event manager: {self.event_manager}")
+    print_info(f"[INFO] {self.event_manager}")
 
     self.sim.expand_model_fields(self.event_manager.domain_randomization_fields)
 
     self.action_manager = ActionManager(self.cfg.actions, self)
-    print_info(f"[INFO] Action Manager: {self.action_manager}")
+    print_info(f"[INFO] {self.action_manager}")
     self.observation_manager = ObservationManager(self.cfg.observations, self)
-    print_info(f"[INFO] Observation Manager: {self.observation_manager}")
+    print_info(f"[INFO] {self.observation_manager}")
 
     if (
       self.__class__ == ManagerBasedEnv
