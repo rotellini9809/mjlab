@@ -84,7 +84,12 @@ def get_checkpoint_path(
   return run_path / checkpoint_file
 
 
-def get_wandb_checkpoint_path(log_path: Path, run_path: Path) -> Path:
+def get_wandb_checkpoint_path(log_path: Path, run_path: Path) -> tuple[Path, bool]:
+  """Get checkpoint path from wandb, downloading if needed.
+
+  Returns:
+    Tuple of (checkpoint_path, was_cached)
+  """
   import wandb
 
   api = wandb.Api()
@@ -100,9 +105,8 @@ def get_wandb_checkpoint_path(log_path: Path, run_path: Path) -> Path:
 
   # If it exists, don't download it again.
   if checkpoint_path.exists():
-    print(f"[INFO]: Using cached checkpoint {checkpoint_file} for run {run_id}")
-    return checkpoint_path
+    return checkpoint_path, True
 
   wandb_file = wandb_run.file(str(checkpoint_file))
   wandb_file.download(str(download_dir), replace=True)
-  return checkpoint_path
+  return checkpoint_path, False
