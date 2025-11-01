@@ -59,7 +59,6 @@ def run_play(task: str, cfg: PlayConfig):
   configure_torch_backends()
 
   device = cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
-  print(f"[INFO]: Using device: {device}")
 
   env_cfg = cast(
     ManagerBasedRlEnvCfg, load_cfg_from_registry(task, "env_cfg_entry_point")

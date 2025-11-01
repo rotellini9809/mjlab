@@ -5,6 +5,7 @@ from typing import Any
 import mujoco
 import mujoco_warp as mjwarp
 import torch
+from prettytable import PrettyTable
 
 from mjlab.entity import Entity, EntityCfg
 from mjlab.sensor import BuiltinSensor, Sensor, SensorCfg
@@ -41,6 +42,21 @@ class Scene:
 
   def compile(self) -> mujoco.MjModel:
     return self._spec.compile()
+
+  def __str__(self) -> str:
+    table = PrettyTable()
+    table.title = "Scene Manager"
+    table.field_names = ["Property", "Value"]
+    table.align["Property"] = "l"
+    table.align["Value"] = "l"
+    table.add_row(["Number of environments", self.num_envs])
+    table.add_row(["Device", self.device])
+    table.add_row(
+      ["Entities", ", ".join(self._entities.keys()) if self._entities else "None"]
+    )
+    table.add_row(["Sensors", f"{len(self._sensors)} configured"])
+    table.add_row(["Terrain", "Configured" if self._terrain else "None"])
+    return table.get_string()
 
   def to_zip(self, path: Path) -> None:
     """Export the scene to a zip file.
