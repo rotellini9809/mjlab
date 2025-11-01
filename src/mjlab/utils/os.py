@@ -1,4 +1,3 @@
-import json
 import re
 from pathlib import Path
 from typing import Any, Dict, Union
@@ -91,39 +90,24 @@ def get_wandb_checkpoint_path(log_path: Path, run_path: Path) -> tuple[Path, boo
   Returns:
     Tuple of (checkpoint_path, was_cached)
   """
+  import wandb
+
   # Extract run_id from path (e.g., "entity/project/run_id" -> "run_id").
   run_id = str(run_path).split("/")[-1]
   download_dir = log_path / "wandb_checkpoints" / run_id
-  metadata_file = download_dir / ".checkpoint_metadata.json"
 
-  # Fast path: return cached checkpoint without wandb API calls.
-  if metadata_file.exists():
-    try:
-      with open(metadata_file) as f:
-        metadata = json.load(f)
-      checkpoint_path = download_dir / metadata["checkpoint_file"]
-      if checkpoint_path.exists():
-        return checkpoint_path, True
-    except (json.JSONDecodeError, KeyError, OSError):
-      pass
-
-  import wandb
-
-  # Query wandb API for checkpoint info.
+  # Query wandb API to find the latest checkpoint.
   api = wandb.Api()
   wandb_run = api.run(str(run_path))
   files = [file.name for file in wandb_run.files() if "model" in file.name]
   checkpoint_file = max(files, key=lambda x: int(x.split("_")[1].split(".")[0]))
   checkpoint_path = download_dir / checkpoint_file
 
-  download_dir.mkdir(parents=True, exist_ok=True)
-
+  # If this checkpoint is not cached locally, download it.
   was_cached = checkpoint_path.exists()
   if not was_cached:
+    download_dir.mkdir(parents=True, exist_ok=True)
     wandb_file = wandb_run.file(str(checkpoint_file))
     wandb_file.download(str(download_dir), replace=True)
-
-  with open(metadata_file, "w") as f:
-    json.dump({"checkpoint_file": checkpoint_file}, f)
 
   return checkpoint_path, was_cached
