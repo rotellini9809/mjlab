@@ -76,11 +76,20 @@ class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
     self.commands.motion.pose_range = {}
     self.commands.motion.velocity_range = {}
 
-    # Disable adaptive sampling to play through motion from start to finish.
-    self.commands.motion.disable_adaptive_sampling = True
+    self.commands.motion.sampling_mode = "start"
 
     # Effectively infinite episode length.
     self.episode_length_s = int(1e9)
+
+
+@dataclass
+class G1FlatEnvCfg_DEMO(G1FlatEnvCfg_PLAY):
+  def __post_init__(self):
+    super().__post_init__()
+
+    # The demo uses a long motion, so we use uniform sampling to see more diversity
+    # with num_envs > 1.
+    self.commands.motion.sampling_mode = "uniform"
 
 
 @dataclass
@@ -95,8 +104,7 @@ class G1FlatNoStateEstimationEnvCfg_PLAY(G1FlatNoStateEstimationEnvCfg):
     self.commands.motion.pose_range = {}
     self.commands.motion.velocity_range = {}
 
-    # Disable adaptive sampling to play through motion from start to finish.
-    self.commands.motion.disable_adaptive_sampling = True
+    self.commands.motion.sampling_mode = "start"
 
     # Effectively infinite episode length.
     self.episode_length_s = int(1e9)
