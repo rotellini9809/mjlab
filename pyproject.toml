@@ -63,11 +63,11 @@ viz-nan = "mjlab.scripts.nan_viz:main"
 [dependency-groups]
 dev = [
   "ipdb>=0.13.13",
-  "pre-commit",
-  "pyright>=1.1.386",
+  "pre-commit>=4.3.0",
+  "pyright>=1.1.407",
   "pytest>=8.4.2",
-  "ruff>=0.13.1",
-  "ty>=0.0.1a21",
+  "ruff>=0.14.3",
+  "ty>=0.0.1a23",
 ]
 cpu = ["torch>=2.7.0"]
 cu128 = ["torch>=2.7.0"]
