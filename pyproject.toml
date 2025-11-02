@@ -63,11 +63,11 @@ viz-nan = "mjlab.scripts.nan_viz:main"
 [dependency-groups]
 dev = [
   "ipdb>=0.13.13",
-  "pre-commit",
-  "pyright>=1.1.386",
+  "pre-commit>=4.3.0",
+  "pyright>=1.1.407",
   "pytest>=8.4.2",
-  "ruff>=0.13.1",
-  "ty>=0.0.1a21",
+  "ruff>=0.14.3",
+  "ty>=0.0.1a23",
 ]
 cpu = ["torch>=2.7.0"]
 cu128 = ["torch>=2.7.0"]
@@ -105,7 +105,7 @@ url = "https://py.mujoco.org"
 explicit = true
 
 [tool.uv.sources]
-mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "3f66dceed99d3c3df5574008c556830736e62c7c"}
+mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "e605c406363805d949b75d50dd5ffb3d79bc3f70"}
 warp-lang = { index = "nvidia", marker = "sys_platform != 'darwin'" }
 mujoco = { index = "mujoco" }
 torch = [
