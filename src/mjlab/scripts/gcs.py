@@ -17,8 +17,8 @@ class AssetInfo(TypedDict):
 
 ASSETS: dict[str, AssetInfo] = {
   "demo_ckpt.pt": {
-    "url": "https://storage.googleapis.com/mjlab_beta/model_22000.pt",
-    "sha256": "7e0b9d7a4e02d5f06b457dbe22a60daa400d9c7dfa226b8c29c2fda81f931bc8",
+    "url": "https://storage.googleapis.com/mjlab_beta/model_49999.pt",
+    "sha256": "f1bc404f5165b833a3933ac98ff223450392b78df3eb76b0c36cd1360ff22319",
     "path": CACHE_DIR / "demo_ckpt.pt",
   },
   "demo_motion.npz": {
