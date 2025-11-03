@@ -4,11 +4,15 @@ import gymnasium as gym
 import tyro
 from prettytable import PrettyTable
 
-import mjlab.tasks  # noqa: F401 to register environments
+import mjlab.tasks  # noqa: F401
 
 
-def main(keyword: str | None = None):
-  """Print all environments registered whose id contains `Mjlab-`."""
+def list_environments(keyword: str | None = None):
+  """List all environments registered whose id contains `Mjlab-`.
+
+  Args:
+    keyword: Optional filter to only show environments containing this keyword.
+  """
   prefix_substring = "Mjlab-"
 
   table = PrettyTable(["#", "Task ID", "Entry Point", "env_cfg_entry_point"])
@@ -20,10 +24,15 @@ def main(keyword: str | None = None):
   idx = 0
   for spec in gym.registry.values():
     try:
-      if prefix_substring in spec.id and (keyword is None or keyword in spec.id):
-        env_cfg_ep = spec.kwargs.get("env_cfg_entry_point", "")
-        table.add_row([idx + 1, spec.id, spec.entry_point, env_cfg_ep])
-        idx += 1
+      # Check if prefix matches and optionally filter by keyword.
+      if prefix_substring not in spec.id:
+        continue
+      if keyword and keyword.lower() not in spec.id.lower():
+        continue
+
+      env_cfg_ep = spec.kwargs.get("env_cfg_entry_point", "")
+      table.add_row([idx + 1, spec.id, spec.entry_point, env_cfg_ep])
+      idx += 1
     except Exception:
       continue
 
@@ -36,5 +45,9 @@ def main(keyword: str | None = None):
   return idx
 
 
+def main():
+  return tyro.cli(list_environments)
+
+
 if __name__ == "__main__":
-  tyro.cli(main)
+  main()
