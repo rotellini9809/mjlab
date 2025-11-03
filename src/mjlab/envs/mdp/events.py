@@ -134,7 +134,7 @@ def reset_root_state_uniform(
   asset.write_root_link_velocity_to_sim(velocities, env_ids=env_ids)
 
 
-def reset_joints_by_scale(
+def reset_joints_by_offset(
   env: ManagerBasedEnv,
   env_ids: torch.Tensor | None,
   position_range: tuple[float, float],
@@ -153,13 +153,12 @@ def reset_joints_by_scale(
   assert soft_joint_pos_limits is not None
 
   joint_pos = default_joint_pos[env_ids][:, asset_cfg.joint_ids].clone()
-  joint_vel = default_joint_vel[env_ids][:, asset_cfg.joint_ids].clone()
-
-  joint_pos *= sample_uniform(*position_range, joint_pos.shape, env.device)
-  joint_vel *= sample_uniform(*velocity_range, joint_vel.shape, env.device)
-
+  joint_pos += sample_uniform(*position_range, joint_pos.shape, env.device)
   joint_pos_limits = soft_joint_pos_limits[env_ids][:, asset_cfg.joint_ids]
   joint_pos = joint_pos.clamp_(joint_pos_limits[..., 0], joint_pos_limits[..., 1])
+
+  joint_vel = default_joint_vel[env_ids][:, asset_cfg.joint_ids].clone()
+  joint_vel += sample_uniform(*velocity_range, joint_vel.shape, env.device)
 
   joint_ids = asset_cfg.joint_ids
   if isinstance(joint_ids, list):
