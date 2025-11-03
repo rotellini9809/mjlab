@@ -236,7 +236,7 @@ def random_push_cart(env, env_ids, force_range=(-5, 5)):
 class EventCfg:
   reset_robot_joints: EventTerm = term(
     EventTerm,
-    func=mdp.reset_joints_by_scale,
+    func=mdp.reset_joints_by_offset,
     mode="reset",
     params={
       "asset_cfg": SceneEntityCfg("robot"),
