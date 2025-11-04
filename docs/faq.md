@@ -12,7 +12,10 @@ We recommend Linux with an NVIDIA GPU for serious training workloads.
 
 ### Does it work on Windows?
 
-We have not tested on Windows. Community contributions for Windows support are welcome!
+We have performed preliminary testing on Windows and WSL, but some workflows
+may are not guaranteed to be stable. Windows support may lag behind updates 
+and will be tested less frequently, as the primary platform targeted is Linux.
+However, community contributions for Windows support are welcome!
 
 ### CUDA Compatibility
 

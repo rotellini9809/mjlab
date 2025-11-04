@@ -6,7 +6,7 @@
 - **Operating System**:
   - Linux (recommended)
   - macOS (limited support – see note below)
-  - Windows (untested)
+  - Windows (compatible - see note below)
 - **GPU**: NVIDIA GPU strongly recommended
   - **CUDA Compatibility**: Not all CUDA versions are supported by MuJoCo Warp
     - Check
@@ -22,6 +22,10 @@
 > slower on macOS. We are working on improving this with a C-based MuJoCo
 > backend for evaluation — stay tuned for updates.
 
+> **Note on Windows**: As warp/mujoco-warp is supported on Windows, Windows
+> compatibility is available with mjlab. Core functionality (e.g. the demo and train
+> scripts) has been tested, but support for Windows should be considered
+> experimental. Windows users may also consider WSL as an option.
 ---
 
 ## ⚠️ Beta Status
