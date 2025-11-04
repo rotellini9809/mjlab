@@ -12,12 +12,10 @@ We recommend Linux with an NVIDIA GPU for serious training workloads.
 
 ### Does it work on Windows?
 
-We have performed preliminary testing on Windows and WSL. Apart from a few 
-test cases regarding the nan-guard functionality (see below), all are passed
-by native Windows, while WSL appears fully compatible. Windows support may lag
-behind updates and will be tested less frequently, as the primary platform
-targeted is Linux. However, community contributions for Windows support are
-welcome!
+We have performed preliminary testing on Windows and WSL, but some workflows
+may are not guaranteed to be stable. Windows support may lag behind updates 
+and will be tested less frequently, as the primary platform targeted is Linux.
+However, community contributions for Windows support are welcome!
 
 ### CUDA Compatibility
 

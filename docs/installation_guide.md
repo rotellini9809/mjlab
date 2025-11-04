@@ -23,10 +23,9 @@
 > backend for evaluation — stay tuned for updates.
 
 > **Note on Windows**: As warp/mujoco-warp is supported on Windows, Windows
-> compatibility is possible with mjlab. Core functionality (e.g. the demo and train
-> scripts) works natively. However, some tests of utility tests currently fail on
-> Windows, which is being investigated. Another option Windows users may consider
-> is using WSL, which passes the tests.
+> compatibility is available with mjlab. Core functionality (e.g. the demo and train
+> scripts) has been tested, but support for Windows should be considered
+> experimental. Windows users may also consider WSL as an option.
 ---
 
 ## ⚠️ Beta Status
