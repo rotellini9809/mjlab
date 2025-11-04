@@ -22,7 +22,7 @@
 > slower on macOS. We are working on improving this with a C-based MuJoCo
 > backend for evaluation — stay tuned for updates.
 
-> **Note on Windows**: As warp/mujoco-warp is supported on Windows, Windows
+> **Note on Windows**: Since warp/mujoco-warp are supported on Windows, Windows
 > compatibility is available with mjlab. Core functionality (e.g. the demo and train
 > scripts) has been tested, but support for Windows should be considered
 > experimental. Windows users may also consider WSL as an option.
