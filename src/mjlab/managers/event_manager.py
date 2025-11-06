@@ -215,7 +215,7 @@ class EventManager(ManagerBase):
         no_trigger = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._reset_term_last_triggered_once.append(no_trigger)
 
-      if term_cfg.func.__name__ == "randomize_field":
+      if term_cfg.domain_randomization:
         field_name = term_cfg.params["field"]
         if field_name not in self._domain_randomization_fields:
           self._domain_randomization_fields.append(field_name)
