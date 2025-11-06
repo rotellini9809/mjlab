@@ -190,6 +190,7 @@ class EventCfg:
     EventTerm,
     mode="startup",
     func=mdp.randomize_field,
+    domain_randomization=True,
     params={
       "asset_cfg": SceneEntityCfg("robot", geom_names=[]),  # Override in robot cfg.
       "operation": "abs",
