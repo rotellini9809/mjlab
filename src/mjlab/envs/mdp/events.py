@@ -479,7 +479,11 @@ def randomize_pd_gains(
     distribution: Distribution type ("uniform" or "log_uniform").
     operation: "scale" multiplies existing gains, "abs" sets absolute values.
   """
-  from mjlab.actuator import BuiltinPdActuator, IdealPdActuator, XmlPdActuator
+  from mjlab.actuator import (
+    BuiltinPositionActuator,
+    IdealPdActuator,
+    XmlPositionActuator,
+  )
 
   asset: Entity = env.scene[asset_cfg.name]
 
@@ -511,7 +515,7 @@ def randomize_pd_gains(
       env.device,
     )
 
-    if isinstance(actuator, (BuiltinPdActuator, XmlPdActuator)):
+    if isinstance(actuator, (BuiltinPositionActuator, XmlPositionActuator)):
       if operation == "scale":
         env.sim.model.actuator_gainprm[env_ids[:, None], ctrl_ids, 0] *= kp_samples
         env.sim.model.actuator_biasprm[env_ids[:, None], ctrl_ids, 1] *= kp_samples
@@ -535,7 +539,7 @@ def randomize_pd_gains(
 
     else:
       raise TypeError(
-        f"randomize_pd_gains only supports BuiltinPdActuator, XmlPdActuator, "
+        f"randomize_pd_gains only supports BuiltinPositionActuator, XmlPositionActuator, "
         f"and IdealPdActuator, got {type(actuator).__name__}"
       )
 
@@ -558,7 +562,11 @@ def randomize_effort_limits(
     distribution: Distribution type ("uniform" or "log_uniform").
     operation: "scale" multiplies existing limits, "abs" sets absolute values.
   """
-  from mjlab.actuator import BuiltinPdActuator, IdealPdActuator, XmlPdActuator
+  from mjlab.actuator import (
+    BuiltinPositionActuator,
+    IdealPdActuator,
+    XmlPositionActuator,
+  )
 
   asset: Entity = env.scene[asset_cfg.name]
 
@@ -587,7 +595,7 @@ def randomize_effort_limits(
       env.device,
     )
 
-    if isinstance(actuator, (BuiltinPdActuator, XmlPdActuator)):
+    if isinstance(actuator, (BuiltinPositionActuator, XmlPositionActuator)):
       if operation == "scale":
         env.sim.model.actuator_forcerange[env_ids[:, None], ctrl_ids, 0] *= (
           effort_samples
@@ -613,6 +621,6 @@ def randomize_effort_limits(
 
     else:
       raise TypeError(
-        f"randomize_effort_limits only supports BuiltinPdActuator, XmlPdActuator, "
+        f"randomize_effort_limits only supports BuiltinPositionActuator, XmlPositionActuator, "
         f"and IdealPdActuator, got {type(actuator).__name__}"
       )
