@@ -25,10 +25,11 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 **Note:** We use consistent `CamelCase` naming conventions (e.g., `RlEnv`
 instead of `RLEnv`).
 
-### 2. Configuration Classes
+### 2. Configuration Structure
 
-Isaac Lab uses `@configclass`, mjlab uses Python's standard `@dataclass` with a
-`term()` helper.
+Isaac Lab uses nested `@configclass` classes for organizing manager terms. mjlab
+uses dictionaries instead, which provides more flexibility for creating config
+variants.
 
 **Isaac Lab:**
 ```python
@@ -50,21 +51,28 @@ class RewardsCfg:
 
 **mjlab:**
 ```python
-@dataclass
-class RewardCfg:
-    motion_global_root_pos: RewTerm = term(
-        RewTerm,
+rewards = {
+    "motion_global_anchor_pos": RewardTermCfg(
         func=mdp.motion_global_anchor_position_error_exp,
         weight=0.5,
         params={"command_name": "motion", "std": 0.3},
-    )
-    motion_global_root_ori: RewTerm = term(
-        RewTerm,
+    ),
+    "motion_global_anchor_ori": RewardTermCfg(
         func=mdp.motion_global_anchor_orientation_error_exp,
         weight=0.5,
         params={"command_name": "motion", "std": 0.4},
-    )
+    ),
+}
+
+cfg = ManagerBasedRlEnvCfg(
+    scene=scene,
+    rewards=rewards,
+    # ... other manager configs
+)
 ```
+
+This applies to all manager configs: `rewards`, `observations`, `actions`,
+`commands`, `terminations`, `events`, and `curriculum`.
 
 ### 3. Scene Configuration
 
@@ -116,7 +124,7 @@ class MySceneCfg(InteractiveSceneCfg):
 **mjlab:**
 ```python
 from mjlab.scene import SceneCfg
-from mjlab.asset_zoo.robots.unitree_g1.g1_constants import G1_ROBOT_CFG
+from mjlab.asset_zoo.robots.unitree_g1.g1_constants import get_g1_robot_cfg
 from mjlab.utils.spec_config import ContactSensorCfg
 from mjlab.terrains import TerrainImporterCfg
 
@@ -131,7 +139,7 @@ self_collision_sensor = ContactSensorCfg(
 )
 
 # Add sensor to robot config
-g1_cfg = replace(G1_ROBOT_CFG, sensors=(self_collision_sensor,))
+g1_cfg = replace(get_g1_robot_cfg(), sensors=(self_collision_sensor,))
 
 # Create scene
 SCENE_CFG = SceneCfg(

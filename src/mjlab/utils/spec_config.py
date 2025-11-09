@@ -141,8 +141,8 @@ class CollisionCfg(SpecCfg):
   for fine-grained control over collision properties.
   """
 
-  geom_names_expr: list[str]
-  """List of regex patterns to match geom names."""
+  geom_names_expr: tuple[str, ...]
+  """Tuple of regex patterns to match geom names."""
   contype: int | dict[str, int] = 1
   """Collision type (int or dict mapping patterns to values). Must be non-negative."""
   conaffinity: int | dict[str, int] = 1
@@ -210,7 +210,7 @@ class CollisionCfg(SpecCfg):
     self.validate()
 
     all_geoms: list[mujoco.MjsGeom] = spec.geoms
-    all_geom_names = [g.name for g in all_geoms]
+    all_geom_names = tuple(g.name for g in all_geoms)
     geom_subset = filter_exp(self.geom_names_expr, all_geom_names)
 
     resolved_fields = {
@@ -331,8 +331,8 @@ class ActuatorCfg:
   for joint names.
   """
 
-  joint_names_expr: list[str]
-  """List of regex patterns to match joint names."""
+  joint_names_expr: tuple[str, ...]
+  """Tuple of regex patterns to match joint names."""
   effort_limit: float
   """Maximum force/torque the actuator can apply (must be positive)."""
   stiffness: float
@@ -366,7 +366,7 @@ class ActuatorSetCfg(SpecCfg):
 
     # Get all non-free joints in spec order.
     jnts = get_non_free_joints(spec)
-    joint_names = [j.name for j in jnts]
+    joint_names = tuple(j.name for j in jnts)
 
     # Build list of (cfg, joint_name) by resolving each config's regex.
     cfg_joint_pairs: list[tuple[ActuatorCfg, str]] = []
