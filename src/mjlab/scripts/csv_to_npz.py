@@ -359,7 +359,7 @@ def main(
   sim_cfg = SimulationCfg()
   sim_cfg.mujoco.timestep = 1.0 / output_fps
 
-  scene = Scene(G1_FLAT_TRACKING_ENV_CFG.scene, device=device)
+  scene = Scene(UNITREE_G1_FLAT_TRACKING_ENV_CFG.scene, device=device)
   model = scene.compile()
 
   sim = Simulation(num_envs=1, cfg=sim_cfg, model=model, device=device)
