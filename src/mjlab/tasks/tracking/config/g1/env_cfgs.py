@@ -6,7 +6,7 @@ instances for the G1 robot tracking task on flat terrain.
 
 from copy import deepcopy
 
-from mjlab.asset_zoo.robots.unitree_g1.g1_constants import (
+from mjlab.asset_zoo.robots import (
   G1_ACTION_SCALE,
   get_g1_robot_cfg,
 )
