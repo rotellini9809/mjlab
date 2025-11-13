@@ -236,7 +236,7 @@ from mjlab.actuator import XmlPositionActuatorCfg
 #   <position name="hip_joint" joint="hip_joint" kp="100"/>
 # </actuator>
 
-# Wrap existing XML actuators by joint name.
+# Wrap existing XML actuators.
 actuators = (
   XmlPositionActuatorCfg(joint_names_expr=("hip_joint",)),
 )
