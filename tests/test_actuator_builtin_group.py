@@ -32,15 +32,38 @@ ROBOT_XML = """
 </mujoco>
 """
 
+ROBOT_XML_3JOINT = """
+<mujoco>
+  <worldbody>
+    <body name="base" pos="0 0 1">
+      <freejoint name="free_joint"/>
+      <geom name="base_geom" type="box" size="0.2 0.2 0.1" mass="1.0"/>
+      <body name="link1" pos="0 0 0">
+        <joint name="joint1" type="hinge" axis="0 0 1" range="-1.57 1.57"/>
+        <geom name="link1_geom" type="box" size="0.1 0.1 0.1" mass="0.1"/>
+      </body>
+      <body name="link2" pos="0 0 0">
+        <joint name="joint2" type="hinge" axis="0 0 1" range="-1.57 1.57"/>
+        <geom name="link2_geom" type="box" size="0.1 0.1 0.1" mass="0.1"/>
+      </body>
+      <body name="link3" pos="0 0 0">
+        <joint name="joint3" type="hinge" axis="0 0 1" range="-1.57 1.57"/>
+        <geom name="link3_geom" type="box" size="0.1 0.1 0.1" mass="0.1"/>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
 
 @pytest.fixture(scope="module")
 def device():
   return get_test_device()
 
 
-def create_entity(actuator_cfgs):
+def create_entity(actuator_cfgs, robot_xml=ROBOT_XML):
   cfg = EntityCfg(
-    spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML),
+    spec_fn=lambda: mujoco.MjSpec.from_string(robot_xml),
     articulation=EntityArticulationInfoCfg(actuators=actuator_cfgs),
   )
   return Entity(cfg)
@@ -126,3 +149,39 @@ def test_builtin_and_custom_actuators(device):
   # joint1: builtin position -> ctrl = 0.5
   # joint2: ideal pd -> ctrl = kp * (0.2 - 0.0) = 50.0 * 0.2 = 10.0
   assert torch.allclose(ctrl, torch.tensor([0.5, 10.0], device=device))
+
+
+def test_builtin_group_mismatched_indices(device):
+  """Regression test for ctrl_ids/joint_ids swap bug in BuiltinActuatorGroup.
+
+  When actuators are added in different order than joints, ctrl_ids != joint_ids.
+  This test verifies controls are written to the correct indices.
+  """
+  # Add actuators in different order than joints to ensure ctrl_ids != joint_ids.
+  # joint1=0, joint2=1, joint3=2 but position actuator on joint2 (ctrl=0),
+  # motor actuator on joint1,joint3 (ctrl=1,2).
+  position_cfg = BuiltinPositionActuatorCfg(
+    joint_names_expr=("joint2",), stiffness=50.0, damping=5.0
+  )
+  motor_cfg = BuiltinMotorActuatorCfg(
+    joint_names_expr=("joint1", "joint3"), effort_limit=100.0
+  )
+  entity = create_entity((position_cfg, motor_cfg), robot_xml=ROBOT_XML_3JOINT)
+  entity, sim = initialize_entity(entity, device, num_envs=1)
+
+  # Verify test setup: at least one actuator has ctrl_ids != joint_ids.
+  has_mismatch = any(
+    not torch.equal(act.ctrl_ids, act.joint_ids) for act in entity._actuators
+  )
+  assert has_mismatch, "Test setup failed: need ctrl_ids != joint_ids"
+
+  # Set targets indexed by joint_id: joint1=10.0, joint2=20.0, joint3=30.0
+  entity.set_joint_position_target(torch.tensor([[10.0, 20.0, 30.0]], device=device))
+  entity.set_joint_effort_target(torch.tensor([[100.0, 200.0, 300.0]], device=device))
+  entity.write_data_to_sim()
+
+  # Expected ctrl values: position on joint2 -> ctrl[0]=20.0,
+  # motor on joint1 -> ctrl[1]=100.0, motor on joint3 -> ctrl[2]=300.0
+  assert torch.allclose(
+    sim.data.ctrl[0], torch.tensor([20.0, 100.0, 300.0], device=device)
+  ), f"Got {sim.data.ctrl[0]}, expected [20.0, 100.0, 300.0]"
