@@ -4,7 +4,7 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 import torch
 import tyro
@@ -119,7 +119,7 @@ def run_play(task: str, cfg: PlayConfig):
           "Tracking tasks require `registry_name` when using dummy agents."
         )
       # Check if the registry name includes alias, if not, append ":latest".
-      registry_name = cast(str, cfg.registry_name)
+      registry_name = cfg.registry_name
       if ":" not in registry_name:
         registry_name = registry_name + ":latest"
       import wandb
