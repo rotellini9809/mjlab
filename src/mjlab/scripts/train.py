@@ -16,7 +16,7 @@ from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
 from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 from mjlab.utils.os import dump_yaml, get_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
-from mjlab.wrappers import VideoRecorder
+from mjlab.utils.wrappers import VideoRecorder
 
 
 @dataclass(frozen=True)
