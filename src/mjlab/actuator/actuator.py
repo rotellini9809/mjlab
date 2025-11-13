@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 
 @dataclass(kw_only=True)
 class ActuatorCfg(ABC):
-  joint_names_expr: list[str]
+  joint_names_expr: tuple[str, ...]
   """Joints that are part of this actuator group.
 
-  Can be a list of joint names or list of regex expressions.
+  Can be a tuple of joint names or tuple of regex expressions.
   """
 
   armature: float = 0.0

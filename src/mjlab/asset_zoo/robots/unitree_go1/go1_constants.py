@@ -74,7 +74,7 @@ GO1_HIP_ACTUATOR_CFG = BuiltinPositionActuatorCfg(
   armature=HIP_ACTUATOR.reflected_inertia,
 )
 GO1_KNEE_ACTUATOR_CFG = BuiltinPositionActuatorCfg(
-  joint_names_expr=(".*_calf_joint"),
+  joint_names_expr=(".*_calf_joint",),
   stiffness=STIFFNESS_KNEE,
   damping=DAMPING_KNEE,
   effort_limit=KNEE_ACTUATOR.effort_limit,

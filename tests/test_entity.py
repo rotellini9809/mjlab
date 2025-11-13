@@ -347,7 +347,10 @@ def test_keyframe_ctrl_maps_joint_pos_to_actuators():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=["joint1", "joint2"],
+          joint_names_expr=(
+            "joint1",
+            "joint2",
+          ),
           effort_limit=1.0,
           stiffness=1.0,
           damping=1.0,
@@ -370,7 +373,7 @@ def test_keyframe_ctrl_underactuated():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=["joint1"],  # Only one actuator.
+          joint_names_expr=("joint1",),  # Only one actuator.
           effort_limit=1.0,
           stiffness=1.0,
           damping=1.0,

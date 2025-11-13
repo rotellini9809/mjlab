@@ -165,7 +165,7 @@ class Entity:
 
     joint_pos = None
     if self._non_free_joints:
-      joint_pos = resolve_expr(self.cfg.init_state.joint_pos, self.joint_names)
+      joint_pos = resolve_expr(self.cfg.init_state.joint_pos, self.joint_names, 0.0)
       qpos_components.append(joint_pos)
 
     key_qpos = np.hstack(qpos_components) if qpos_components else np.array([])
@@ -218,8 +218,8 @@ class Entity:
     return self._actuators
 
   @property
-  def joint_names(self) -> list[str]:
-    return [j.name.split("/")[-1] for j in self._non_free_joints]
+  def joint_names(self) -> tuple[str, ...]:
+    return tuple(j.name.split("/")[-1] for j in self._non_free_joints)
 
   @property
   def body_names(self) -> tuple[str, ...]:
@@ -351,10 +351,12 @@ class Entity:
     # Joint state.
     if self.is_articulated:
       default_joint_pos = torch.tensor(
-        resolve_expr(self.cfg.init_state.joint_pos, self.joint_names), device=device
+        resolve_expr(self.cfg.init_state.joint_pos, self.joint_names, 0.0),
+        device=device,
       )[None].repeat(nworld, 1)
       default_joint_vel = torch.tensor(
-        resolve_expr(self.cfg.init_state.joint_vel, self.joint_names), device=device
+        resolve_expr(self.cfg.init_state.joint_vel, self.joint_names, 0.0),
+        device=device,
       )[None].repeat(nworld, 1)
 
       # Joint limits.

@@ -55,7 +55,7 @@ def test_dc_motor_stall_torque(device):
 
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
-      joint_names_expr=["joint.*"],
+      joint_names_expr=("joint.*",),
       effort_limit=float("inf"),
       stiffness=kp,
       damping=kd,
@@ -91,7 +91,7 @@ def test_dc_motor_zero_torque_at_max_velocity(device):
 
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
-      joint_names_expr=["joint.*"],
+      joint_names_expr=("joint.*",),
       effort_limit=float("inf"),
       stiffness=kp,
       damping=kd,
@@ -127,7 +127,7 @@ def test_dc_motor_linear_torque_speed_curve(device):
 
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
-      joint_names_expr=["joint.*"],
+      joint_names_expr=("joint.*",),
       effort_limit=float("inf"),
       stiffness=kp,
       damping=kd,
@@ -165,7 +165,7 @@ def test_dc_motor_effort_limit_constrains_output(device):
 
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
-      joint_names_expr=["joint.*"],
+      joint_names_expr=("joint.*",),
       effort_limit=effort_limit,
       stiffness=kp,
       damping=kd,
@@ -201,7 +201,7 @@ def test_dc_motor_negative_velocity_behavior(device):
 
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
-      joint_names_expr=["joint.*"],
+      joint_names_expr=("joint.*",),
       effort_limit=float("inf"),
       stiffness=kp,
       damping=kd,
@@ -239,7 +239,7 @@ def test_dc_motor_corner_velocity_transition(device):
 
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
-      joint_names_expr=["joint.*"],
+      joint_names_expr=("joint.*",),
       effort_limit=effort_limit,
       stiffness=kp,
       damping=kd,
