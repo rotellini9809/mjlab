@@ -38,7 +38,7 @@ robot_cfg = EntityCfg(
   articulation=EntityArticulationInfoCfg(
     actuators=(
       BuiltinPositionActuatorCfg(
-        joint_names_expr=[".*_hip_.*", ".*_knee_.*"],
+        joint_names_expr=(".*_hip_.*", ".*_knee_.*"),
         stiffness=80.0,
         damping=10.0,
         effort_limit=100.0,
@@ -54,9 +54,9 @@ robot_cfg = EntityCfg(
 from mjlab.actuator import DelayedActuatorCfg, BuiltinPositionActuatorCfg
 
 DelayedActuatorCfg(
-  joint_names_expr=[".*"],
+  joint_names_expr=(".*",),
   base_cfg=BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*"],
+    joint_names_expr=(".*",),
     stiffness=80.0,
     damping=10.0,
   ),
@@ -117,13 +117,13 @@ from mjlab.actuator import BuiltinPositionActuatorCfg, BuiltinVelocityActuatorCf
 # Mobile manipulator: PD for arm joints, velocity control for wheels.
 actuators = (
   BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*_shoulder_.*", ".*_elbow_.*", ".*_wrist_.*"],
+    joint_names_expr=(".*_shoulder_.*", ".*_elbow_.*", ".*_wrist_.*"),
     stiffness=100.0,
     damping=10.0,
     effort_limit=150.0,
   ),
   BuiltinVelocityActuatorCfg(
-    joint_names_expr=[".*_wheel_.*"],
+    joint_names_expr=(".*_wheel_.*",),
     damping=20.0,
     effort_limit=50.0,
   ),
@@ -155,13 +155,13 @@ from mjlab.actuator import IdealPdActuatorCfg, DcMotorActuatorCfg
 # Ideal PD for hips, DC motor model with torque-speed curve for knees.
 actuators = (
   IdealPdActuatorCfg(
-    joint_names_expr=[".*_hip_.*"],
+    joint_names_expr=(".*_hip_.*",),
     stiffness=80.0,
     damping=10.0,
     effort_limit=100.0,
   ),
   DcMotorActuatorCfg(
-    joint_names_expr=[".*_knee_.*"],
+    joint_names_expr=(".*_knee_.*",),
     stiffness=80.0,
     damping=10.0,
     effort_limit=25.0,       # Continuous torque limit
@@ -200,7 +200,7 @@ from mjlab.actuator import XmlPositionActuatorCfg
 
 # Wrap existing XML actuators by joint name.
 actuators = (
-  XmlPositionActuatorCfg(joint_names_expr=["hip_joint"]),
+  XmlPositionActuatorCfg(joint_names_expr=("hip_joint",)),
 )
 ```
 
@@ -216,9 +216,9 @@ from mjlab.actuator import DelayedActuatorCfg, IdealPdActuatorCfg
 # Add 2-5 step delay to position commands.
 actuators = (
   DelayedActuatorCfg(
-    joint_names_expr=[".*"],
+    joint_names_expr=(".*",),
     base_cfg=IdealPdActuatorCfg(
-      joint_names_expr=[".*"],
+      joint_names_expr=(".*",),
       stiffness=80.0,
       damping=10.0,
     ),
@@ -235,7 +235,7 @@ actuators = (
 
 ```python
 DelayedActuatorCfg(
-  joint_names_expr=[".*"],
+  joint_names_expr=(".*",),
   base_cfg=IdealPdActuatorCfg(...),
   delay_target=("position", "velocity", "effort"),
   delay_min_lag=2,
@@ -311,28 +311,28 @@ from mjlab.actuator import BuiltinPositionActuatorCfg
 # G1 humanoid with different gains per joint group.
 G1_ACTUATORS = (
   BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*_hip_.*", "waist_yaw_joint"],
+    joint_names_expr=(".*_hip_.*", "waist_yaw_joint"),
     stiffness=180.0,
     damping=18.0,
     effort_limit=88.0,
     armature=0.0015,
   ),
   BuiltinPositionActuatorCfg(
-    joint_names_expr=["left_hip_pitch_joint", "right_hip_pitch_joint"],
+    joint_names_expr=("left_hip_pitch_joint", "right_hip_pitch_joint"),
     stiffness=200.0,
     damping=20.0,
     effort_limit=88.0,
     armature=0.0015,
   ),
   BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*_knee_joint"],
+    joint_names_expr=(".*_knee_joint",),
     stiffness=150.0,
     damping=15.0,
     effort_limit=139.0,
     armature=0.0025,
   ),
   BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*_ankle_.*"],
+    joint_names_expr=(".*_ankle_.*",),
     stiffness=40.0,
     damping=5.0,
     effort_limit=25.0,
@@ -403,7 +403,7 @@ DAMPING = 2 * DAMPING_RATIO * ARMATURE_7520_14 * NATURAL_FREQ
 from mjlab.actuator import BuiltinPositionActuatorCfg
 
 actuator = BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*_hip_pitch_joint"],
+    joint_names_expr=(".*_hip_pitch_joint",),
     stiffness=STIFFNESS,
     damping=DAMPING,
     effort_limit=ACTUATOR_7520_14.effort_limit,
@@ -428,7 +428,7 @@ sum of the individual motor armatures:
 ```python
 # Two 5020 motors driving ankle through parallel linkage.
 G1_ACTUATOR_ANKLE = BuiltinPositionActuatorCfg(
-    joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
+    joint_names_expr=(".*_ankle_pitch_joint", ".*_ankle_roll_joint"),
     stiffness=STIFFNESS_5020 * 2,
     damping=DAMPING_5020 * 2,
     effort_limit=ACTUATOR_5020.effort_limit * 2,
@@ -451,7 +451,7 @@ from mjlab.managers.manager_term_config import ActionTermCfg
 ActionTermCfg(
   cls=JointPositionActionCfg,
   asset_name="robot",
-  actuator_names=[".*"],  # Regex patterns for joint selection
+  actuator_names=(".*",),  # Regex patterns for joint selection
   scale=1.0,
   offset=0.0,
 )
@@ -478,7 +478,7 @@ EventTermCfg(
   func=events.randomize_pd_gains,
   mode="reset",
   params={
-    "asset_cfg": SceneEntityCfg("robot", actuator_names=[".*"]),
+    "asset_cfg": SceneEntityCfg("robot", actuator_names=(".*",)),
     "kp_range": (0.8, 1.2),
     "kd_range": (0.8, 1.2),
     "distribution": "uniform",
@@ -490,7 +490,7 @@ EventTermCfg(
   func=events.randomize_effort_limits,
   mode="reset",
   params={
-    "asset_cfg": SceneEntityCfg("robot", actuator_names=[".*_leg_.*"]),
+    "asset_cfg": SceneEntityCfg("robot", actuator_names=(".*_leg_.*",)),
     "effort_limit_range": (0.7, 1.0),  # Reduce effort by 0-30%
     "operation": "scale",
   },
