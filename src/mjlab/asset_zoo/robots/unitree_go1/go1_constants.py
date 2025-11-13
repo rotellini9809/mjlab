@@ -90,6 +90,7 @@ GO1_LEARNED_ACTUATOR_PATH = (
 GO1_LEARNED_ACTUATOR_CFG = LearnedMlpActuatorCfg(
   joint_names_expr=(".*_hip_joint", ".*_thigh_joint", ".*_calf_joint"),
   network_file=str(GO1_LEARNED_ACTUATOR_PATH),
+  # NOTE: Network was trained with negative position error (current - target).
   pos_scale=-1.0,
   vel_scale=1.0,
   torque_scale=1.0,
@@ -98,6 +99,9 @@ GO1_LEARNED_ACTUATOR_CFG = LearnedMlpActuatorCfg(
   saturation_effort=23.7,
   velocity_limit=30.0,
   effort_limit=23.7,
+  # NOTE: This is technically wrong since the calf actuator has different armature,
+  # but we don't currently support dict-based fields for the actuator parameters.
+  armature=HIP_ACTUATOR.reflected_inertia,
 )
 
 ##

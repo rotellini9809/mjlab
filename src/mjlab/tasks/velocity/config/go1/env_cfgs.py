@@ -117,8 +117,4 @@ def UNITREE_GO1_FLAT_ENV_CFG_LEARNED() -> ManagerBasedRlEnvCfg:
   # Replace robot with learned actuator variant.
   cfg.scene.entities["robot"] = get_go1_robot_cfg_learned()
 
-  # Remove bad contact termination.
-  assert cfg.terminations is not None
-  del cfg.terminations["illegal_contact"] 
-
   return cfg

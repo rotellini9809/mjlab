@@ -1,6 +1,7 @@
 # walk-these-ways
 
-This directory contains assets from the [walk-these-ways](https://github.com/Improbable-AI/walk-these-ways) project.
+This directory contains assets from the
+[walk-these-ways](https://github.com/Improbable-AI/walk-these-ways) project.
 
 ## License
 
@@ -10,7 +11,8 @@ See [LICENSE](LICENSE) file for full license text.
 
 ## Contents
 
-**`unitree_go1.pt`** - Pretrained actuator network for Unitree GO1 robot, copied from walk-these-ways.
+**`unitree_go1.pt`** - Pretrained actuator network for Unitree GO1 robot, copied
+from walk-these-ways.
 
 ## Citation
 
