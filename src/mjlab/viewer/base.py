@@ -48,8 +48,10 @@ class EnvProtocol(Protocol):
   `ManagerBasedRlEnv` objects or wrapped with `VideoRecorder`,
   `RslRlVecEnvWrapper`, etc."""
 
-  device: torch.device
   num_envs: int
+
+  @property
+  def device(self) -> torch.device | str: ...
 
   @property
   def cfg(self) -> ManagerBasedRlEnvCfg: ...

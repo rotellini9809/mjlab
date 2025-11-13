@@ -4,10 +4,7 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
-
-if TYPE_CHECKING:
-  from mjlab.viewer.base import EnvProtocol
+from typing import Literal
 
 import torch
 import tyro
@@ -122,7 +119,7 @@ def run_play(task: str, cfg: PlayConfig):
           "Tracking tasks require `registry_name` when using dummy agents."
         )
       # Check if the registry name includes alias, if not, append ":latest".
-      registry_name = cast(str, cfg.registry_name)
+      registry_name = cfg.registry_name
       if ":" not in registry_name:
         registry_name = registry_name + ":latest"
       import wandb
@@ -243,9 +240,9 @@ def run_play(task: str, cfg: PlayConfig):
     resolved_viewer = cfg.viewer
 
   if resolved_viewer == "native":
-    NativeMujocoViewer(cast("EnvProtocol", env), policy).run()
+    NativeMujocoViewer(env, policy).run()
   elif resolved_viewer == "viser":
-    ViserPlayViewer(cast("EnvProtocol", env), policy).run()
+    ViserPlayViewer(env, policy).run()
   else:
     raise RuntimeError(f"Unsupported viewer backend: {resolved_viewer}")
 
