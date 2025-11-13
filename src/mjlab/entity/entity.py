@@ -337,11 +337,10 @@ class Entity:
     for act in self._actuators:
       act.initialize(mj_model, model, data, device)
 
-    self._builtin_group = BuiltinActuatorGroup()
-    self._builtin_group.add_actuators(self._actuators)
-    self._custom_actuators = self._builtin_group.filter_custom_actuators(
-      self._actuators
-    )
+    # Vectorize built-in actuators; we'll loop through custom ones.
+    builtin_group, custom_actuators = BuiltinActuatorGroup.process(self._actuators)
+    self._builtin_group = builtin_group
+    self._custom_actuators = custom_actuators
 
     # Root state.
     root_state_components = [self.cfg.init_state.pos, self.cfg.init_state.rot]

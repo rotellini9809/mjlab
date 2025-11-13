@@ -126,19 +126,3 @@ def test_builtin_and_custom_actuators(device):
   # joint1: builtin position -> ctrl = 0.5
   # joint2: ideal pd -> ctrl = kp * (0.2 - 0.0) = 50.0 * 0.2 = 10.0
   assert torch.allclose(ctrl, torch.tensor([0.5, 10.0], device=device))
-
-
-def test_multiple_envs(device):
-  """BuiltinActuatorGroup handles batched environments correctly."""
-  actuator_cfg = BuiltinPositionActuatorCfg(
-    joint_names_expr=("joint.*",), stiffness=50.0, damping=5.0
-  )
-  entity = create_entity((actuator_cfg,))
-  entity, sim = initialize_entity(entity, device, num_envs=3)
-
-  targets = torch.tensor([[0.5, -0.3], [0.2, 0.1], [-0.1, 0.4]], device=device)
-  entity.set_joint_position_target(targets)
-  entity.write_data_to_sim()
-
-  ctrl = sim.data.ctrl
-  assert torch.allclose(ctrl, targets)

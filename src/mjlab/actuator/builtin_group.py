@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import torch
+
+from mjlab.actuator.builtin_actuator import (
+  BuiltinMotorActuator,
+  BuiltinPositionActuator,
+  BuiltinVelocityActuator,
+)
 
 if TYPE_CHECKING:
   from mjlab.actuator.actuator import Actuator
   from mjlab.entity.data import EntityData
 
+BUILTIN_TYPES = {BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator}
 
+
+@dataclass(frozen=True)
 class BuiltinActuatorGroup:
   """Groups builtin actuators for batch processing.
 
@@ -17,53 +27,43 @@ class BuiltinActuatorGroup:
   enables direct writes without per-actuator overhead.
   """
 
-  def __init__(self) -> None:
-    self._position_ctrl_ids: torch.Tensor | None = None
-    self._position_joint_ids: torch.Tensor | None = None
-    self._velocity_ctrl_ids: torch.Tensor | None = None
-    self._velocity_joint_ids: torch.Tensor | None = None
-    self._motor_ctrl_ids: torch.Tensor | None = None
-    self._motor_joint_ids: torch.Tensor | None = None
+  # Map from BuiltinActuator type to (ctrl_ids, joint_ids).
+  _index_groups: dict[type, tuple[torch.Tensor, torch.Tensor]]
 
-  def add_actuators(self, actuators: list[Actuator]) -> None:
+  @staticmethod
+  def process(
+    actuators: list[Actuator],
+  ) -> tuple[BuiltinActuatorGroup, tuple[Actuator, ...]]:
     """Register builtin actuators and pre-compute their mappings.
 
     Args:
       actuators: List of initialized actuators to process.
+
+    Returns:
+      A tuple containing:
+        - BuiltinActuatorGroup with pre-computed mappings.
+        - List of custom (non-builtin) actuators.
     """
-    from mjlab.actuator.builtin_actuator import (
-      BuiltinMotorActuator,
-      BuiltinPositionActuator,
-      BuiltinVelocityActuator,
-    )
 
-    position_ctrl_ids = []
-    position_joint_ids = []
-    velocity_ctrl_ids = []
-    velocity_joint_ids = []
-    motor_ctrl_ids = []
-    motor_joint_ids = []
+    builtin_groups: dict[type, list[Actuator]] = {}
+    custom_actuators: list[Actuator] = []
 
+    # Group actuators by type.
     for act in actuators:
-      if isinstance(act, BuiltinPositionActuator):
-        position_ctrl_ids.append(act.ctrl_ids)
-        position_joint_ids.append(act.joint_ids)
-      elif isinstance(act, BuiltinVelocityActuator):
-        velocity_ctrl_ids.append(act.ctrl_ids)
-        velocity_joint_ids.append(act.joint_ids)
-      elif isinstance(act, BuiltinMotorActuator):
-        motor_ctrl_ids.append(act.ctrl_ids)
-        motor_joint_ids.append(act.joint_ids)
+      if type(act) in BUILTIN_TYPES:
+        builtin_groups.setdefault(type(act), []).append(act)
+      else:
+        custom_actuators.append(act)
 
-    if position_ctrl_ids:
-      self._position_ctrl_ids = torch.cat(position_ctrl_ids)
-      self._position_joint_ids = torch.cat(position_joint_ids)
-    if velocity_ctrl_ids:
-      self._velocity_ctrl_ids = torch.cat(velocity_ctrl_ids)
-      self._velocity_joint_ids = torch.cat(velocity_joint_ids)
-    if motor_ctrl_ids:
-      self._motor_ctrl_ids = torch.cat(motor_ctrl_ids)
-      self._motor_joint_ids = torch.cat(motor_joint_ids)
+    # Return stacked indices for each builtin actuator type.
+    index_groups = {
+      k: (
+        torch.cat([act.ctrl_ids for act in v], dim=0),
+        torch.cat([act.joint_ids for act in v], dim=0),
+      )
+      for k, v in builtin_groups.items()
+    }
+    return BuiltinActuatorGroup(index_groups), tuple(custom_actuators)
 
   def apply_controls(self, data: EntityData) -> None:
     """Write builtin actuator controls directly to simulation data.
@@ -71,41 +71,11 @@ class BuiltinActuatorGroup:
     Args:
       data: Entity data containing targets and control arrays.
     """
-    if self._position_ctrl_ids is not None:
-      data.write_ctrl(
-        data.joint_pos_target[:, self._position_joint_ids],
-        self._position_ctrl_ids,
-      )
-    if self._velocity_ctrl_ids is not None:
-      data.write_ctrl(
-        data.joint_vel_target[:, self._velocity_joint_ids],
-        self._velocity_ctrl_ids,
-      )
-    if self._motor_ctrl_ids is not None:
-      data.write_ctrl(
-        data.joint_effort_target[:, self._motor_joint_ids],
-        self._motor_ctrl_ids,
-      )
-
-  def filter_custom_actuators(self, actuators: list[Actuator]) -> list[Actuator]:
-    """Filter out builtin actuators, returning only custom ones.
-
-    Args:
-      actuators: List of all actuators.
-
-    Returns:
-      List containing only custom (non-builtin) actuators.
-    """
-    from mjlab.actuator.builtin_actuator import (
-      BuiltinMotorActuator,
-      BuiltinPositionActuator,
-      BuiltinVelocityActuator,
-    )
-
-    return [
-      act
-      for act in actuators
-      if not isinstance(
-        act, (BuiltinPositionActuator, BuiltinVelocityActuator, BuiltinMotorActuator)
-      )
-    ]
+    target_tensor_map = {
+      BuiltinPositionActuator: data.joint_pos_target,
+      BuiltinVelocityActuator: data.joint_vel_target,
+      BuiltinMotorActuator: data.joint_effort_target,
+    }
+    for actuator_type, index_group in self._index_groups.items():
+      joint_ids, ctrl_ids = index_group
+      data.write_ctrl(target_tensor_map[actuator_type][:, joint_ids], ctrl_ids)
