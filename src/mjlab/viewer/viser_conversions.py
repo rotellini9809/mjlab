@@ -298,6 +298,44 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
     mesh = trimesh.creation.cylinder(radius=size[0], height=2.0 * size[1])
   elif geom_type == mjtGeom.mjGEOM_PLANE:
     mesh = trimesh.creation.box((20, 20, 0.01))
+  elif geom_type == mjtGeom.mjGEOM_ELLIPSOID:
+    mesh = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
+    mesh.apply_scale(size)
+  elif geom_type == mjtGeom.mjGEOM_HFIELD:
+    if mj_model.nhfield > 1: print(f"WARNING: {mj_model.nhfield} hfields found, using only the first one.")
+    # Get the hfield id properly
+    hfield_id = 0
+    nrow = mj_model.hfield_nrow[hfield_id]
+    ncol = mj_model.hfield_ncol[hfield_id]
+    sx, sy, sz, base = mj_model.hfield_size[hfield_id]
+
+    start = 0
+    end = nrow * ncol
+    hfield = mj_model.hfield_data[start:end].reshape(nrow, ncol)
+
+    # Generate grid (MuJoCo coordinates: x ∈ [-sx, sx], y ∈ [-sy, sy])
+    x = np.linspace(-sx, sx, ncol)
+    y = np.linspace(-sy, sy, nrow)
+    xx, yy = np.meshgrid(x, y)
+    zz = base + sz * hfield
+
+    # Flatten to vertices
+    vertices = np.column_stack((xx.ravel(), yy.ravel(), zz.ravel()))
+
+    # Build faces (two triangles per grid cell)
+    faces = []
+    for i in range(nrow - 1):
+        for j in range(ncol - 1):
+            i0 = i * ncol + j
+            i1 = i0 + 1
+            i2 = i0 + ncol
+            i3 = i2 + 1
+            faces.append([i0, i2, i1])
+            faces.append([i1, i2, i3])
+    faces = np.array(faces)
+
+    # Create trimesh
+    mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)    
   else:
     raise ValueError(f"Unsupported primitive geom type: {geom_type}")
 
