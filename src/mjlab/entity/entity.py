@@ -294,16 +294,14 @@ class Entity:
     actuator_name_keys: str | Sequence[str],
     preserve_order: bool = False,
   ) -> tuple[list[int], list[str]]:
-    actuator_ids, _ = self.find_actuators(
-      actuator_name_keys, preserve_order=preserve_order
+    actuated_joint_names = []
+    for act in self._actuators:
+      actuated_joint_names.extend(act.joint_names)
+    return self.find_joints(
+      actuator_name_keys,
+      joint_subset=actuated_joint_names,
+      preserve_order=preserve_order,
     )
-    all_joint_ids = []
-    all_joint_names = []
-    for actuator_id in actuator_ids:
-      actuator = self._actuators[actuator_id]
-      all_joint_ids.extend(actuator._joint_ids_list)
-      all_joint_names.extend(actuator._joint_names)
-    return all_joint_ids, all_joint_names
 
   def find_geoms(
     self,

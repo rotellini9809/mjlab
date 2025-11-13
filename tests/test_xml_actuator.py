@@ -2,7 +2,6 @@
 
 import mujoco
 import pytest
-import torch
 from conftest import get_test_device
 
 from mjlab.actuator import XmlMotorActuatorCfg
