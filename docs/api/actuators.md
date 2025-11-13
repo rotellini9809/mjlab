@@ -12,11 +12,11 @@ integrator cannot account for their velocity derivatives).
 MuJoCo's native implementations. The physics engine computes torques and
 integrates damping forces implicitly, providing the best numerical stability.
 
-**Explicit actuators** (`IdealPdActuator`, `DcMotorActuator`): Compute
-torques explicitly so the simulator cannot account for velocity derivatives.
-Use when you need custom control laws or actuator dynamics that
-can't be expressed with built-in types (e.g., velocity-dependent torque
-limits, learned actuator networks).
+**Explicit actuators** (`IdealPdActuator`, `DcMotorActuator`,
+`LearnedMlpActuator`): Compute torques explicitly so the simulator cannot
+account for velocity derivatives. Use when you need custom control laws or
+actuator dynamics that can't be expressed with built-in types (e.g.,
+velocity-dependent torque limits, learned actuator networks).
 
 **XML actuators** (`XmlPositionActuator`, `XmlMotorActuator`,
 `XmlVelocityActuator`): Wrap actuators already defined in your robot's XML
@@ -175,6 +175,45 @@ actuators = (
 - **`saturation_effort`**: Peak motor torque at zero velocity (stall torque)
 - **`velocity_limit`**: Maximum motor velocity (no-load speed, *rad/s*)
 - **`effort_limit`**: Continuous torque limit (from base class)
+
+**LearnedMlpActuator**: Neural network-based actuator that uses a trained MLP
+to predict torque outputs from joint state history. Useful when analytical
+models can't capture complex actuator dynamics like delays, nonlinearities, and
+friction effects. Inherits DC motor velocity-based torque limits.
+
+```python
+from mjlab.actuator import LearnedMlpActuatorCfg
+
+actuators = (
+  LearnedMlpActuatorCfg(
+    joint_names_expr=(".*_ankle_.*",),
+    network_file="models/ankle_actuator.pt",  # TorchScript model
+    pos_scale=1.0,        # Input scaling for position errors
+    vel_scale=0.05,       # Input scaling for velocities
+    torque_scale=10.0,    # Output scaling for torques
+    input_order="pos_vel",
+    history_length=3,     # Use current + 2 previous timesteps
+    saturation_effort=50.0,
+    velocity_limit=30.0,
+    effort_limit=25.0,
+  ),
+)
+```
+
+**LearnedMlpActuator parameters:**
+
+- **`network_file`**: Path to TorchScript MLP model (`.pt` file)
+- **`pos_scale`**: Scaling factor for position error inputs
+- **`vel_scale`**: Scaling factor for velocity inputs
+- **`torque_scale`**: Scaling factor for network torque outputs
+- **`input_order`**: `"pos_vel"` (position then velocity) or `"vel_pos"`
+- **`history_length`**: Number of timesteps to use (e.g., 3 = current + 2 past)
+- **`saturation_effort`**, **`velocity_limit`**, **`effort_limit`**: Same as
+  DcMotorActuator
+
+The network receives scaled inputs
+`[pos_error[t], pos_error[t-1], ..., vel[t], vel[t-1], ...]` and outputs torques
+that are scaled and clipped by DC motor limits.
 
 ### XML Actuators
 
