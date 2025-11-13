@@ -21,6 +21,7 @@ from mjlab.actuator.builtin_actuator import (
 from mjlab.actuator.builtin_actuator import (
   BuiltinVelocityActuatorCfg as BuiltinVelocityActuatorCfg,
 )
+from mjlab.actuator.builtin_group import BuiltinActuatorGroup as BuiltinActuatorGroup
 from mjlab.actuator.dc_actuator import DcMotorActuator as DcMotorActuator
 from mjlab.actuator.dc_actuator import DcMotorActuatorCfg as DcMotorActuatorCfg
 from mjlab.actuator.delayed_actuator import DelayedActuator as DelayedActuator
