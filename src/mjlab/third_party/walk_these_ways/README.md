@@ -12,7 +12,7 @@ See [LICENSE](LICENSE) file for full license text.
 ## Contents
 
 **`unitree_go1.pt`** - Pretrained actuator network for Unitree GO1 robot, copied
-from walk-these-ways.
+from walk-these-ways (commit `0e7236bdc81ce855cbe3d70345a7899452bdeb1c`).
 
 ## Citation
 
