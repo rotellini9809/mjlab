@@ -17,8 +17,8 @@ from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
 from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
+from mjlab.utils.wrappers import VideoRecorder
 from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
-from mjlab.wrappers import VideoRecorder
 
 
 @dataclass(frozen=True)
