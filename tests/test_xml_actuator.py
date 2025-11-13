@@ -2,10 +2,19 @@
 
 import mujoco
 import pytest
+import torch
 from conftest import get_test_device
 
 from mjlab.actuator import XmlMotorActuatorCfg
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
+from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg, mdp
+from mjlab.managers.manager_term_config import (
+  ObservationGroupCfg,
+  ObservationTermCfg,
+)
+from mjlab.scene import SceneCfg
+from mjlab.sim import MujocoCfg, SimulationCfg
+from mjlab.terrains import TerrainImporterCfg
 
 # Robot with 2 joints but only 1 actuator defined (underactuated).
 ROBOT_XML_UNDERACTUATED = """
@@ -66,3 +75,48 @@ def test_xml_actuator_no_matching_actuators_raises_error(device):
     )
     entity = Entity(cfg)
     entity.compile()
+
+
+def test_joint_action_underactuated_with_wildcard(device):
+  """JointAction with wildcard pattern matches only actuated joints."""
+  robot_cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML_UNDERACTUATED),
+    articulation=EntityArticulationInfoCfg(
+      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+    ),
+  )
+
+  env_cfg = ManagerBasedRlEnvCfg(
+    scene=SceneCfg(
+      terrain=TerrainImporterCfg(terrain_type="plane"),
+      num_envs=1,
+      extent=1.0,
+      entities={"robot": robot_cfg},
+    ),
+    observations={
+      "policy": ObservationGroupCfg(
+        terms={
+          "joint_pos": ObservationTermCfg(
+            func=lambda env: env.scene["robot"].data.joint_pos
+          ),
+        },
+      ),
+    },
+    actions={
+      "joint_effort": mdp.JointEffortActionCfg(
+        asset_name="robot", actuator_names=(".*",), scale=1.0
+      )
+    },
+    sim=SimulationCfg(mujoco=MujocoCfg(timestep=0.01, iterations=1)),
+    decimation=1,
+    episode_length_s=1.0,
+  )
+
+  env = ManagerBasedRlEnv(cfg=env_cfg, device=device)
+  action_term = env.action_manager._terms["joint_effort"]
+
+  # Wildcard should resolve to only actuated joint (joint1), not all joints
+  assert action_term.action_dim == 1
+  assert action_term._joint_names == ["joint1"]  # type: ignore[attr-defined]
+
+  env.close()

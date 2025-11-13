@@ -120,9 +120,6 @@ class ManagerBasedRlEnv:
       device=device,
     )
 
-    if "cuda" in self.device:
-      torch.cuda.set_device(self.device)
-
     self.scene.initialize(
       mj_model=self.sim.mj_model,
       model=self.sim.model,
