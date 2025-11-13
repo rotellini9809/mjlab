@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Literal, TypeVar, cast, overload
+from typing import Literal, overload
 
 from typing_extensions import assert_never
 
@@ -36,9 +36,6 @@ class Dict(Space):
   spaces: dict[str, Space] = field(default_factory=dict)
 
 
-T = TypeVar("T", Dict, Box, Space)
-
-
 @overload
 def batch_space(space: Dict, batch_size: int) -> Dict: ...
 
@@ -51,7 +48,7 @@ def batch_space(space: Box, batch_size: int) -> Box: ...
 def batch_space(space: Space, batch_size: int) -> Space: ...
 
 
-def batch_space(space: T, batch_size: int) -> T:
+def batch_space(space: Space, batch_size: int) -> Space:
   """Create a batched version of a space.
 
   Prepends batch_size dimension to the space's shape.
@@ -65,34 +62,25 @@ def batch_space(space: T, batch_size: int) -> T:
   """
   if isinstance(space, Dict):
     # For Dict spaces, batch each subspace.
-    return cast(
-      T,
-      Dict(
-        spaces={
-          key: batch_space(subspace, batch_size)
-          for key, subspace in space.spaces.items()
-        },
-        shape=(batch_size,),
-        dtype=space.dtype,
-      ),
+    return Dict(
+      spaces={
+        key: batch_space(subspace, batch_size) for key, subspace in space.spaces.items()
+      },
+      shape=(batch_size,),
+      dtype=space.dtype,
     )
-
   elif isinstance(space, Box):
     # For Box spaces, prepend batch dimension.
     batched_shape = (batch_size,) + space.shape
-    return cast(
-      T,
-      Box(
-        shape=batched_shape,
-        low=space.low,
-        high=space.high,
-        dtype=space.dtype,
-      ),
+    return Box(
+      shape=batched_shape,
+      low=space.low,
+      high=space.high,
+      dtype=space.dtype,
     )
-
   elif isinstance(space, Space):
     # For generic Space, prepend batch dimension.
     batched_shape = (batch_size,) + space.shape
-    return cast(T, Space(shape=batched_shape, dtype=space.dtype))
-
-  assert_never(space)
+    return Space(shape=batched_shape, dtype=space.dtype)
+  else:
+    assert_never(space)
