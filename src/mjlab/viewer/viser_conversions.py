@@ -303,7 +303,7 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
     mesh.apply_scale(size)
   elif geom_type == mjtGeom.mjGEOM_HFIELD:
     if mj_model.nhfield > 1: print(f"WARNING: {mj_model.nhfield} hfields found, using only the first one.")
-    # Get the hfield id properly
+
     hfield_id = 0
     nrow = mj_model.hfield_nrow[hfield_id]
     ncol = mj_model.hfield_ncol[hfield_id]
@@ -313,16 +313,13 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
     end = nrow * ncol
     hfield = mj_model.hfield_data[start:end].reshape(nrow, ncol)
 
-    # Generate grid (MuJoCo coordinates: x ∈ [-sx, sx], y ∈ [-sy, sy])
     x = np.linspace(-sx, sx, ncol)
     y = np.linspace(-sy, sy, nrow)
     xx, yy = np.meshgrid(x, y)
     zz = base + sz * hfield
 
-    # Flatten to vertices
     vertices = np.column_stack((xx.ravel(), yy.ravel(), zz.ravel()))
 
-    # Build faces (two triangles per grid cell)
     faces = []
     for i in range(nrow - 1):
         for j in range(ncol - 1):
