@@ -130,7 +130,7 @@ def test_learned_mlp_network_loads(device, identity_network_file):
       vel_scale=1.0,
       torque_scale=1.0,
       input_order="pos_vel",
-      input_idx=(0,),
+      history_length=1,
       saturation_effort=100.0,
       velocity_limit=30.0,
       effort_limit=50.0,
@@ -148,8 +148,7 @@ def test_learned_mlp_network_loads(device, identity_network_file):
 
 
 def test_learned_mlp_history_indexing(device, identity_network_file):
-  """Test that input_idx correctly selects history frames."""
-  # Use input_idx=(0, 2) to select current and 2 steps back.
+  """Test that history_length uses consecutive timesteps."""
   entity = create_entity_with_actuator(
     LearnedMlpActuatorCfg(
       joint_names_expr=("joint.*",),
@@ -158,7 +157,7 @@ def test_learned_mlp_history_indexing(device, identity_network_file):
       vel_scale=0.0,  # Zero out velocity contribution.
       torque_scale=1.0,
       input_order="pos_vel",
-      input_idx=(0, 2),  # Current and 2 steps back.
+      history_length=3,  # Use current + 2 previous timesteps.
       saturation_effort=100.0,
       velocity_limit=30.0,
       effort_limit=100.0,
@@ -188,13 +187,11 @@ def test_learned_mlp_history_indexing(device, identity_network_file):
     entity.set_joint_effort_target(torch.zeros(1, 1, device=device))
     entity.write_data_to_sim()
 
-  # After 3 steps with input_idx=(0, 2):
-  # Network input should be [current_pos_error, pos_error_from_2_steps_back]
-  # = [3.0, 1.0] (scaled by pos_scale=1.0)
-  # Identity network sums: 3.0 + 1.0 = 4.0
-  # Scaled by torque_scale=1.0 = 4.0
+  # After 3 steps with history_length=3:
+  # Network input: [current, -1 step, -2 steps] = [3.0, 2.0, 1.0]
+  # Identity network sums: 3.0 + 2.0 + 1.0 = 6.0
   ctrl = sim.data.ctrl[0]
-  assert torch.allclose(ctrl, torch.tensor([4.0], device=device), atol=1e-4)
+  assert torch.allclose(ctrl, torch.tensor([6.0], device=device), atol=1e-4)
 
 
 def test_learned_mlp_input_order_pos_vel(device, subtract_network_file):
@@ -207,7 +204,7 @@ def test_learned_mlp_input_order_pos_vel(device, subtract_network_file):
       vel_scale=1.0,
       torque_scale=1.0,
       input_order="pos_vel",
-      input_idx=(0,),
+      history_length=1,
       saturation_effort=100.0,
       velocity_limit=30.0,
       effort_limit=100.0,
@@ -242,7 +239,7 @@ def test_learned_mlp_input_order_vel_pos(device, subtract_network_file):
       vel_scale=1.0,
       torque_scale=1.0,
       input_order="vel_pos",
-      input_idx=(0,),
+      history_length=1,
       saturation_effort=100.0,
       velocity_limit=30.0,
       effort_limit=100.0,
@@ -277,7 +274,7 @@ def test_learned_mlp_scaling_applied(device, identity_network_file):
       vel_scale=3.0,
       torque_scale=4.0,
       input_order="pos_vel",
-      input_idx=(0,),
+      history_length=1,
       saturation_effort=100.0,
       velocity_limit=30.0,
       effort_limit=100.0,
@@ -313,7 +310,7 @@ def test_learned_mlp_reset_clears_history(device, identity_network_file):
       vel_scale=1.0,
       torque_scale=1.0,
       input_order="pos_vel",
-      input_idx=(0, 1),
+      history_length=2,
       saturation_effort=100.0,
       velocity_limit=30.0,
       effort_limit=100.0,
@@ -359,7 +356,7 @@ def test_learned_mlp_inherits_dc_motor_limits(device, constant_network_file):
       vel_scale=1.0,
       torque_scale=100.0,  # Scale to 1000.0 to exceed limits.
       input_order="pos_vel",
-      input_idx=(0,),
+      history_length=1,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
       effort_limit=float("inf"),
@@ -399,7 +396,7 @@ def test_learned_mlp_dc_motor_zero_torque_at_max_velocity(
       vel_scale=1.0,
       torque_scale=100.0,  # Scale to 1000.0.
       input_order="pos_vel",
-      input_idx=(0,),
+      history_length=1,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
       effort_limit=float("inf"),
@@ -436,7 +433,7 @@ def test_learned_mlp_multi_joint_reshaping(device, identity_network_file):
           vel_scale=1.0,
           torque_scale=1.0,
           input_order="pos_vel",
-          input_idx=(0,),
+          history_length=1,
           saturation_effort=100.0,
           velocity_limit=30.0,
           effort_limit=100.0,

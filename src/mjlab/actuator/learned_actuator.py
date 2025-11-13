@@ -50,12 +50,11 @@ class LearnedMlpActuatorCfg(DcMotorActuatorCfg):
   - "vel_pos": velocities followed by position errors
   """
 
-  input_idx: tuple[int, ...] = (0, 1, 2)
-  """History indices to use as network inputs.
+  history_length: int = 3
+  """Number of timesteps of history to use as network inputs.
 
-  Index 0 is the current timestep, 1 is one step in the past, etc.
-  For example, (0, 1, 2) uses current state plus 2 previous timesteps.
-  History buffer length is automatically set to max(input_idx) + 1.
+  For example, history_length=3 uses the current timestep plus the previous
+  2 timesteps (total of 3 frames).
   """
 
   # Learned actuators don't use stiffness/damping from PD controller.
@@ -107,16 +106,15 @@ class LearnedMlpActuator(DcMotorActuator[LearnedMlpActuatorCfg]):
     self.network.eval()
 
     # Create history buffers.
-    history_length = max(self.cfg.input_idx) + 1
     num_envs = data.nworld
 
     self._pos_error_history = CircularBuffer(
-      max_len=history_length,
+      max_len=self.cfg.history_length,
       batch_size=num_envs,
       device=device,
     )
     self._vel_history = CircularBuffer(
-      max_len=history_length,
+      max_len=self.cfg.history_length,
       batch_size=num_envs,
       device=device,
     )
@@ -168,12 +166,14 @@ class LearnedMlpActuator(DcMotorActuator[LearnedMlpActuatorCfg]):
     num_envs = cmd.joint_pos.shape[0]
     num_joints = cmd.joint_pos.shape[1]
 
-    # Extract history at specified indices.
+    # Extract history from current to history_length-1 steps back.
     # Each returns shape: (num_envs, num_joints).
-    pos_inputs = [self._pos_error_history[lag] for lag in self.cfg.input_idx]
-    vel_inputs = [self._vel_history[lag] for lag in self.cfg.input_idx]
+    pos_inputs = [
+      self._pos_error_history[lag] for lag in range(self.cfg.history_length)
+    ]
+    vel_inputs = [self._vel_history[lag] for lag in range(self.cfg.history_length)]
 
-    # Stack along feature dimension: (num_envs, num_joints, num_history_steps).
+    # Stack along feature dimension: (num_envs, num_joints, history_length).
     pos_stacked = torch.stack(pos_inputs, dim=2)
     vel_stacked = torch.stack(vel_inputs, dim=2)
 
