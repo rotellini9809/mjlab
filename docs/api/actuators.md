@@ -96,6 +96,12 @@ def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
 - **`update`**: Pre-step updates
 - **`compute`**: Convert commands to control signals
 
+**Properties:**
+
+- **`joint_ids`**: Tensor of local joint indices controlled by this actuator
+- **`joint_names`**: List of joint names controlled by this actuator
+- **`ctrl_ids`**: Tensor of global control input indices for this actuator
+
 ## Actuator Types
 
 ### Built-in Actuators
@@ -482,14 +488,12 @@ Actuators are typically controlled via action terms in the action manager:
 
 ```python
 from mjlab.envs.mdp.actions import JointPositionActionCfg
-from mjlab.managers.manager_term_config import ActionTermCfg
 
-ActionTermCfg(
-  cls=JointPositionActionCfg,
+JointPositionActionCfg(
   asset_name="robot",
   actuator_names=(".*",),  # Regex patterns for joint selection
   scale=1.0,
-  offset=0.0,
+  use_default_offset=True,  # Use robot's default joint positions as offset
 )
 ```
 
