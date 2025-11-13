@@ -69,13 +69,13 @@ def _apply_play_env_overrides(
   cfg.events.pop("push_robot", None)
 
   # Disable terrain curriculum for rough terrain environments.
-  assert cfg.scene.terrain is not None
-  terrain_gen = cfg.scene.terrain.terrain_generator
-  if terrain_gen is not None:
-    terrain_gen.curriculum = False
-    terrain_gen.num_cols = 5
-    terrain_gen.num_rows = 5
-    terrain_gen.border_width = 10.0
+  if cfg.scene.terrain is not None:
+    terrain_gen = cfg.scene.terrain.terrain_generator
+    if terrain_gen is not None:
+      terrain_gen.curriculum = False
+      terrain_gen.num_cols = 5
+      terrain_gen.num_rows = 5
+      terrain_gen.border_width = 10.0
 
   # Disable RSI randomization for tracking tasks.
   if cfg.commands is not None and "motion" in cfg.commands:

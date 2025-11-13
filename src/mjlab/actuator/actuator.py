@@ -92,6 +92,11 @@ class Actuator(ABC):
     return self._joint_ids
 
   @property
+  def joint_names(self) -> list[str]:
+    """Names of joints controlled by this actuator."""
+    return self._joint_names
+
+  @property
   def ctrl_ids(self) -> torch.Tensor:
     """Global indices of control inputs for this actuator."""
     assert self._ctrl_ids is not None

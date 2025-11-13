@@ -289,6 +289,20 @@ class Entity:
       actuator_subset = self.actuator_names
     return resolve_matching_names(name_keys, actuator_subset, preserve_order)
 
+  def find_joints_by_actuator_names(
+    self,
+    actuator_name_keys: str | Sequence[str],
+    preserve_order: bool = False,
+  ) -> tuple[list[int], list[str]]:
+    actuated_joint_names = []
+    for act in self._actuators:
+      actuated_joint_names.extend(act.joint_names)
+    return self.find_joints(
+      actuator_name_keys,
+      joint_subset=actuated_joint_names,
+      preserve_order=preserve_order,
+    )
+
   def find_geoms(
     self,
     name_keys: str | Sequence[str],
