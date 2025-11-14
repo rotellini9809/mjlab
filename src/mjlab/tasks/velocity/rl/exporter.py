@@ -44,11 +44,11 @@ def attach_onnx_metadata(
   joint_damping = -env.sim.mj_model.actuator_biasprm[ctrl_ids, 2]
   metadata = {
     "run_path": run_path,
-    "joint_names": robot.joint_names,
+    "joint_names": list(robot.joint_names),
     "joint_stiffness": joint_stiffness.tolist(),
     "joint_damping": joint_damping.tolist(),
     "default_joint_pos": robot.data.default_joint_pos[0].cpu().tolist(),
-    "command_names": env.command_manager.active_terms,
+    "command_names": list(env.command_manager.active_terms),
     "observation_names": env.observation_manager.active_terms["policy"],
     "action_scale": joint_action._scale[0].cpu().tolist()
     if isinstance(joint_action._scale, torch.Tensor)
