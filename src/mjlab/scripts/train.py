@@ -1,5 +1,6 @@
 """Script to train RL agent with RSL-RL."""
 
+import os
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -28,10 +29,26 @@ class TrainConfig:
   video_length: int = 200
   video_interval: int = 2000
   enable_nan_guard: bool = False
+  distributed: bool = False
 
 
 def run_train(task_id: str, cfg: TrainConfig) -> None:
   configure_torch_backends()
+
+  # Multi-GPU training configuration.
+  device = cfg.device
+  if cfg.distributed:
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    device = f"cuda:{local_rank}"
+
+    # Set seed to have diversity in different processes.
+    seed = cfg.agent.seed + local_rank
+    cfg.env.seed = seed
+    cfg.agent.seed = seed
+
+    print(
+      f"[INFO] Multi-GPU training enabled: local_rank={local_rank}, device={device}, seed={seed}"
+    )
 
   registry_name: str | None = None
 
@@ -75,7 +92,7 @@ def run_train(task_id: str, cfg: TrainConfig) -> None:
   log_dir = log_root_path / log_dir
 
   env = ManagerBasedRlEnv(
-    cfg=cfg.env, device=cfg.device, render_mode="rgb_array" if cfg.video else None
+    cfg=cfg.env, device=device, render_mode="rgb_array" if cfg.video else None
   )
 
   resume_path = (
@@ -107,7 +124,7 @@ def run_train(task_id: str, cfg: TrainConfig) -> None:
   if is_tracking_task:
     runner_kwargs["registry_name"] = registry_name
 
-  runner = runner_cls(env, agent_cfg, str(log_dir), cfg.device, **runner_kwargs)
+  runner = runner_cls(env, agent_cfg, str(log_dir), device, **runner_kwargs)
 
   runner.add_git_repo_to_log(__file__)
   if resume_path is not None:
