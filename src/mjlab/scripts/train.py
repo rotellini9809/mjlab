@@ -7,13 +7,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import tyro
+from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
-from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg
+from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
-from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
-from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 from mjlab.utils.os import dump_yaml, get_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wrappers import VideoRecorder
@@ -31,7 +30,7 @@ class TrainConfig:
   enable_nan_guard: bool = False
 
 
-def run_train(cfg: TrainConfig) -> None:
+def run_train(task_id: str, cfg: TrainConfig) -> None:
   configure_torch_backends()
 
   registry_name: str | None = None
@@ -100,12 +99,15 @@ def run_train(cfg: TrainConfig) -> None:
   agent_cfg = asdict(cfg.agent)
   env_cfg = asdict(cfg.env)
 
+  runner_cls = load_runner_cls(task_id)
+  if runner_cls is None:
+    runner_cls = OnPolicyRunner
+
+  runner_kwargs = {}
   if is_tracking_task:
-    runner = MotionTrackingOnPolicyRunner(
-      env, agent_cfg, str(log_dir), cfg.device, registry_name
-    )
-  else:
-    runner = VelocityOnPolicyRunner(env, agent_cfg, str(log_dir), cfg.device)
+    runner_kwargs["registry_name"] = registry_name
+
+  runner = runner_cls(env, agent_cfg, str(log_dir), cfg.device, **runner_kwargs)
 
   runner.add_git_repo_to_log(__file__)
   if resume_path is not None:
@@ -151,7 +153,7 @@ def main():
   )
   del env_cfg, agent_cfg, remaining_args
 
-  run_train(args)
+  run_train(chosen_task, args)
 
 
 if __name__ == "__main__":
