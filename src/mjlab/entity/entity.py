@@ -292,15 +292,19 @@ class Entity:
   def find_joints_by_actuator_names(
     self,
     actuator_name_keys: str | Sequence[str],
-    preserve_order: bool = False,
   ) -> tuple[list[int], list[str]]:
-    actuated_joint_names = []
+    """Find actuated joints matching the given patterns in natural joint order."""
+    # Collect all actuated joint names.
+    actuated_joint_names_set = set()
     for act in self._actuators:
-      actuated_joint_names.extend(act.joint_names)
+      actuated_joint_names_set.update(act.joint_names)
+    # Filter self.joint_names to only actuated joints, preserving natural order.
+    actuated_in_natural_order = [
+      name for name in self.joint_names if name in actuated_joint_names_set
+    ]
+    # Find joints matching the pattern within actuated joints.
     return self.find_joints(
-      actuator_name_keys,
-      joint_subset=actuated_joint_names,
-      preserve_order=preserve_order,
+      actuator_name_keys, joint_subset=actuated_in_natural_order, preserve_order=False
     )
 
   def find_geoms(

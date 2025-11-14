@@ -6,7 +6,7 @@ import pytest
 import torch
 from conftest import get_test_device
 
-from mjlab.actuator import BuiltinPositionActuatorCfg
+from mjlab.actuator import BuiltinPositionActuatorCfg, XmlMotorActuatorCfg
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
 
@@ -69,6 +69,33 @@ FLOATING_BASE_ARTICULATED_XML = """
   <sensor>
     <jointpos name="joint1_pos" joint="joint1"/>
   </sensor>
+</mujoco>
+"""
+
+ACTUATOR_ORDER_TEST_XML = """
+<mujoco>
+  <worldbody>
+    <body name="base" pos="0 0 0">
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+      <geom type="box" size="0.1 0.1 0.1" rgba="0.5 0.5 0.5 1"/>
+      <joint name="joint_a" axis="1 0 0" range="-1 1"/>
+      <body name="link1" pos="0.2 0 0">
+        <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+        <geom type="box" size="0.1 0.1 0.1" rgba="0.5 0.5 0.5 1"/>
+        <joint name="joint_b" axis="0 1 0" range="-1 1"/>
+        <body name="link2" pos="0.2 0 0">
+          <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+          <geom type="box" size="0.1 0.1 0.1" rgba="0.5 0.5 0.5 1"/>
+          <joint name="joint_c" axis="0 0 1" range="-1 1"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="act_c" joint="joint_c" kp="10"/>
+    <position name="act_b" joint="joint_b" kp="10"/>
+    <position name="act_a" joint="joint_a" kp="10"/>
+  </actuator>
 </mujoco>
 """
 
@@ -416,3 +443,34 @@ def test_fixed_base_mocap_runtime_pose_change(device):
 
   sim.forward()
   assert torch.allclose(entity.data.root_link_pose_w, new_pose, atol=1e-5)
+
+
+def test_find_joints_by_actuator_names_preserves_natural_order(device):
+  """Test that find_joints_by_actuator_names returns joints in natural joint order.
+
+  This is a regression test for a bug where joints were returned in actuator
+  definition order instead of natural joint order, breaking motion tracking tasks.
+  """
+  robot_cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(ACTUATOR_ORDER_TEST_XML),
+    articulation=EntityArticulationInfoCfg(
+      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+    ),
+  )
+
+  robot = Entity(robot_cfg)
+  robot.compile()
+
+  # Natural joint order should be: joint_a, joint_b, joint_c.
+  assert list(robot.joint_names) == ["joint_a", "joint_b", "joint_c"]
+
+  # Actuator order is: act_c, act_b, act_a (reverse).
+  # But find_joints_by_actuator_names should still return joints in natural order.
+  joint_ids, joint_names = robot.find_joints_by_actuator_names(".*")
+
+  # Critical: joints must be in natural order, not actuator order.
+  assert joint_names == ["joint_a", "joint_b", "joint_c"]
+  assert joint_ids == [0, 1, 2]
+
+  # Verify this differs from actuator order (which is reverse).
+  assert list(robot.actuator_names) == ["act_c", "act_b", "act_a"]

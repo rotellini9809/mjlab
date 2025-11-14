@@ -24,7 +24,7 @@ class JointAction(ActionTerm):
     super().__init__(cfg=cfg, env=env)
 
     joint_ids, joint_names = self._asset.find_joints_by_actuator_names(
-      cfg.actuator_names, preserve_order=cfg.preserve_order
+      cfg.actuator_names
     )
     self._joint_ids = torch.tensor(joint_ids, device=self.device, dtype=torch.long)
     self._joint_names = joint_names
