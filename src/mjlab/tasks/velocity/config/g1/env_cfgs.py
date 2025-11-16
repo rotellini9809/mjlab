@@ -166,16 +166,8 @@ def unitree_g1_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   return cfg
 
 
-def unitree_g1_rough_env_cfg_default() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_rough_env_cfg()
-
-
 def unitree_g1_rough_env_cfg_play() -> ManagerBasedRlEnvCfg:
   return unitree_g1_rough_env_cfg(play=True)
-
-
-def unitree_g1_flat_env_cfg_default() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_flat_env_cfg()
 
 
 def unitree_g1_flat_env_cfg_play() -> ManagerBasedRlEnvCfg:

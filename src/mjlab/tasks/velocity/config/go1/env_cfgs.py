@@ -134,24 +134,12 @@ def unitree_go1_flat_env_cfg_learned(play: bool = False) -> ManagerBasedRlEnvCfg
   return cfg
 
 
-def unitree_go1_rough_env_cfg_default() -> ManagerBasedRlEnvCfg:
-  return unitree_go1_rough_env_cfg()
-
-
 def unitree_go1_rough_env_cfg_play() -> ManagerBasedRlEnvCfg:
   return unitree_go1_rough_env_cfg(play=True)
 
 
-def unitree_go1_flat_env_cfg_default() -> ManagerBasedRlEnvCfg:
-  return unitree_go1_flat_env_cfg()
-
-
 def unitree_go1_flat_env_cfg_play() -> ManagerBasedRlEnvCfg:
   return unitree_go1_flat_env_cfg(play=True)
-
-
-def unitree_go1_flat_env_cfg_learned_default() -> ManagerBasedRlEnvCfg:
-  return unitree_go1_flat_env_cfg_learned()
 
 
 def unitree_go1_flat_env_cfg_learned_play() -> ManagerBasedRlEnvCfg:

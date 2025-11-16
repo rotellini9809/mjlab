@@ -100,10 +100,6 @@ def unitree_g1_flat_tracking_env_cfg(
   return cfg
 
 
-def unitree_g1_flat_tracking_env_cfg_default() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_flat_tracking_env_cfg()
-
-
 def unitree_g1_flat_tracking_env_cfg_play() -> ManagerBasedRlEnvCfg:
   return unitree_g1_flat_tracking_env_cfg(play=True)
 
