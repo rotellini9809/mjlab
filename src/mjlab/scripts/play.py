@@ -10,7 +10,7 @@ import torch
 import tyro
 from rsl_rl.runners import OnPolicyRunner
 
-from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg
+from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
@@ -37,55 +37,8 @@ class PlayConfig:
   camera: int | str | None = None
   viewer: Literal["auto", "native", "viser"] = "auto"
 
-  motion_command_sampling_mode: Literal["start", "uniform"] = "start"
-  """Motion command sampling mode for tracking tasks."""
-
-
-def _apply_play_env_overrides(
-  cfg: ManagerBasedRlEnvCfg, motion_command_sampling_mode: Literal["start", "uniform"]
-) -> None:
-  """Apply PLAY mode overrides to an environment configuration.
-
-  PLAY mode is used for inference/evaluation with trained agents. This function
-  applies common overrides:
-  - Sets infinite episode length.
-  - Disables observation corruption.
-  - Removes stochastic training events (e.g., push_robot).
-  - Disables terrain curriculum if present.
-  - Disables RSI randomization for tracking tasks.
-
-  Args:
-    cfg: The environment configuration to modify in-place.
-  """
-  # Infinite episodes for continuous inference.
-  cfg.episode_length_s = int(1e9)
-
-  # Disable observation corruption for clean state information.
-  assert "policy" in cfg.observations
-  cfg.observations["policy"].enable_corruption = False
-
-  # Remove stochastic training events.
-  assert cfg.events is not None
-  cfg.events.pop("push_robot", None)
-
-  # Disable terrain curriculum for rough terrain environments.
-  if cfg.scene.terrain is not None:
-    terrain_gen = cfg.scene.terrain.terrain_generator
-    if terrain_gen is not None:
-      terrain_gen.curriculum = False
-      terrain_gen.num_cols = 5
-      terrain_gen.num_rows = 5
-      terrain_gen.border_width = 10.0
-
-  # Disable RSI randomization for tracking tasks.
-  if cfg.commands is not None and "motion" in cfg.commands:
-    from mjlab.tasks.tracking.mdp import MotionCommandCfg
-
-    motion_cmd = cfg.commands["motion"]
-    assert isinstance(motion_cmd, MotionCommandCfg)
-    motion_cmd.pose_range = {}
-    motion_cmd.velocity_range = {}
-    motion_cmd.sampling_mode = motion_command_sampling_mode
+  # Internal flag used by demo script.
+  _demo_mode: tyro.conf.Suppress[bool] = False
 
 
 def run_play(task: str, cfg: PlayConfig):
@@ -94,8 +47,6 @@ def run_play(task: str, cfg: PlayConfig):
   device = cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
 
   env_cfg = load_env_cfg(task)
-  _apply_play_env_overrides(env_cfg, cfg.motion_command_sampling_mode)
-
   agent_cfg = load_rl_cfg(task)
 
   DUMMY_MODE = cfg.agent in {"zero", "random"}
@@ -107,6 +58,13 @@ def run_play(task: str, cfg: PlayConfig):
     and "motion" in env_cfg.commands
     and isinstance(env_cfg.commands["motion"], MotionCommandCfg)
   )
+
+  if is_tracking_task and cfg._demo_mode:
+    # Demo mode: use uniform sampling to see more diversity with num_envs > 1.
+    assert env_cfg.commands is not None
+    motion_cmd = env_cfg.commands["motion"]
+    assert isinstance(motion_cmd, MotionCommandCfg)
+    motion_cmd.sampling_mode = "uniform"
 
   if is_tracking_task:
     assert env_cfg.commands is not None
