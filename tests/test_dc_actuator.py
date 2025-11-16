@@ -56,7 +56,7 @@ def test_dc_motor_stall_torque(device):
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
       joint_names_expr=("joint.*",),
-      effort_limit=float("inf"),
+      effort_limit=saturation_effort,  # Set to saturation to not constrain.
       stiffness=kp,
       damping=kd,
       saturation_effort=saturation_effort,
@@ -92,7 +92,7 @@ def test_dc_motor_zero_torque_at_max_velocity(device):
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
       joint_names_expr=("joint.*",),
-      effort_limit=float("inf"),
+      effort_limit=saturation_effort,  # Set to saturation to not constrain.
       stiffness=kp,
       damping=kd,
       saturation_effort=saturation_effort,
@@ -128,7 +128,7 @@ def test_dc_motor_linear_torque_speed_curve(device):
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
       joint_names_expr=("joint.*",),
-      effort_limit=float("inf"),
+      effort_limit=saturation_effort,  # Set to saturation to not constrain.
       stiffness=kp,
       damping=kd,
       saturation_effort=saturation_effort,
@@ -202,7 +202,7 @@ def test_dc_motor_negative_velocity_behavior(device):
   entity = create_entity_with_actuator(
     DcMotorActuatorCfg(
       joint_names_expr=("joint.*",),
-      effort_limit=float("inf"),
+      effort_limit=saturation_effort,  # Set to saturation to not constrain
       stiffness=kp,
       damping=kd,
       saturation_effort=saturation_effort,
@@ -267,3 +267,36 @@ def test_dc_motor_corner_velocity_transition(device):
   # At corner velocity, should produce exactly effort_limit.
   ctrl = sim.data.ctrl[0]
   assert torch.allclose(ctrl, torch.tensor([effort_limit], device=device), rtol=1e-4)
+
+
+def test_dc_motor_warns_when_effort_limit_is_inf():
+  """DcMotorActuatorCfg warns when effort_limit is inf."""
+  import warnings
+
+  # inf triggers both warnings (is inf + exceeds saturation), so catch both.
+  with warnings.catch_warnings(record=True) as w:
+    warnings.simplefilter("always")
+    DcMotorActuatorCfg(
+      joint_names_expr=("joint.*",),
+      stiffness=100.0,
+      damping=10.0,
+      saturation_effort=20.0,
+      velocity_limit=30.0,
+      # effort_limit intentionally not set (defaults to inf).
+    )
+    # Should trigger the "is inf" warning.
+    assert len(w) >= 1
+    assert any("effort_limit is set to inf" in str(warning.message) for warning in w)
+
+
+def test_dc_motor_warns_when_effort_limit_exceeds_saturation():
+  """DcMotorActuatorCfg warns when effort_limit > saturation_effort."""
+  with pytest.warns(UserWarning, match="effort_limit.*exceeds saturation_effort"):
+    DcMotorActuatorCfg(
+      joint_names_expr=("joint.*",),
+      stiffness=100.0,
+      damping=10.0,
+      saturation_effort=20.0,
+      velocity_limit=30.0,
+      effort_limit=25.0,  # > saturation_effort.
+    )
