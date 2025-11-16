@@ -302,16 +302,17 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
     mesh = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
     mesh.apply_scale(size)
   elif geom_type == mjtGeom.mjGEOM_HFIELD:
-    if mj_model.nhfield > 1: print(f"WARNING: {mj_model.nhfield} hfields found, using only the first one.")
-
-    hfield_id = 0
+    # Which heightfield does this geom use?
+    hfield_id = mj_model.geom_dataid[geom_id]
     nrow = mj_model.hfield_nrow[hfield_id]
     ncol = mj_model.hfield_ncol[hfield_id]
     sx, sy, sz, base = mj_model.hfield_size[hfield_id]
 
-    start = 0
-    end = nrow * ncol
-    hfield = mj_model.hfield_data[start:end].reshape(nrow, ncol)
+    # Compute offset into the flat hfield_data array.
+    offset = 0
+    for k in range(hfield_id):
+        offset += mj_model.hfield_nrow[k] * mj_model.hfield_ncol[k]
+    hfield = mj_model.hfield_data[offset:offset + nrow * ncol].reshape(nrow, ncol)
 
     x = np.linspace(-sx, sx, ncol)
     y = np.linspace(-sy, sy, nrow)
@@ -329,10 +330,8 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
             i3 = i2 + 1
             faces.append([i0, i2, i1])
             faces.append([i1, i2, i3])
-    faces = np.array(faces)
-
-    # Create trimesh
-    mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)    
+    faces = np.array(faces, dtype=np.int64)
+    mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
   else:
     raise ValueError(f"Unsupported primitive geom type: {geom_type}")
 
