@@ -1,12 +1,10 @@
-"""Tests for task configuration integrity and correctness."""
+"""Generic tests for task config integrity."""
 
 import pytest
 
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers.manager_term_config import ObservationGroupCfg
 from mjlab.tasks.registry import list_tasks, load_env_cfg
-
-# Fixtures
 
 
 @pytest.fixture(scope="module")
@@ -42,63 +40,86 @@ def test_all_tasks_loadable(all_task_ids: list[str]) -> None:
       pytest.fail(f"Failed to load task '{task_id}': {e}")
 
 
+def test_play_task_pairs_exist(all_task_ids: list[str]) -> None:
+  """All tasks should have a corresponding Play variant."""
+  non_play_tasks = [
+    t for t in all_task_ids if not t.endswith("-Play") and not t.endswith("-Demo")
+  ]
+  for task_id in non_play_tasks:
+    play_id = f"{task_id}-Play"
+    assert play_id in all_task_ids, f"Task {task_id} missing Play variant: {play_id}"
+
+
 def test_play_mode_episode_length(play_task_pairs: list[tuple[str, str]]) -> None:
-  """Play mode tasks should have effectively infinite episode length."""
+  """Play mode tasks should have infinite episode length."""
   for _, play_task_id in play_task_pairs:
     cfg = load_env_cfg(play_task_id)
     assert cfg.episode_length_s >= 1e9, (
-      f"Play task {play_task_id} episode_length_s={cfg.episode_length_s}, expected >= 1e9"
+      f"{play_task_id} episode_length_s={cfg.episode_length_s}, expected >= 1e9"
     )
 
 
-def test_play_mode_observation_corruption_disabled(
-  play_task_pairs: list[tuple[str, str]],
-) -> None:
-  """Play mode tasks should have observation corruption disabled for policy."""
-  for _, play_task_id in play_task_pairs:
-    cfg = load_env_cfg(play_task_id)
+def test_play_mode_observation_corruption_disabled(all_task_ids: list[str]) -> None:
+  """Play/Demo mode tasks should have observation corruption disabled for policy."""
+  play_demo_tasks = [
+    t for t in all_task_ids if t.endswith("-Play") or t.endswith("-Demo")
+  ]
+
+  for task_id in play_demo_tasks:
+    cfg = load_env_cfg(task_id)
 
     assert "policy" in cfg.observations, (
-      f"Play task {play_task_id} missing 'policy' observation group"
+      f"Play/Demo task {task_id} missing 'policy' observation group"
     )
 
     policy_obs = cfg.observations["policy"]
     assert isinstance(policy_obs, ObservationGroupCfg), (
-      f"Play task {play_task_id} policy observation is not ObservationGroupCfg"
+      f"Play/Demo task {task_id} policy observation is not ObservationGroupCfg"
     )
 
     assert not policy_obs.enable_corruption, (
-      f"Play task {play_task_id} has enable_corruption=True, expected False"
+      f"Play/Demo task {task_id} has enable_corruption=True, expected False"
     )
 
 
-def test_training_mode_observation_corruption_enabled(
-  play_task_pairs: list[tuple[str, str]],
-) -> None:
-  """Training mode tasks should have observation corruption enabled."""
-  for training_task_id, _ in play_task_pairs:
-    cfg = load_env_cfg(training_task_id)
+def test_training_mode_observation_corruption_enabled(all_task_ids: list[str]) -> None:
+  """Training mode tasks should have observation corruption enabled for policy."""
+  training_tasks = [
+    t for t in all_task_ids if not t.endswith("-Play") and not t.endswith("-Demo")
+  ]
 
-    assert "policy" in cfg.observations, (
-      f"Training task {training_task_id} missing 'policy' observation group"
-    )
-
-    policy_obs = cfg.observations["policy"]
-    assert policy_obs.enable_corruption, (
-      f"Training task {training_task_id} has enable_corruption=False, expected True"
-    )
-
-
-def test_policy_observation_group_exists(all_task_ids: list[str]) -> None:
-  """All tasks should have a 'policy' observation group."""
-  for task_id in all_task_ids:
+  for task_id in training_tasks:
     cfg = load_env_cfg(task_id)
 
     assert "policy" in cfg.observations, (
-      f"Task {task_id} missing 'policy' observation group"
+      f"Training task {task_id} missing 'policy' observation group"
     )
-    assert isinstance(cfg.observations["policy"], ObservationGroupCfg), (
-      f"Task {task_id} 'policy' observation is not ObservationGroupCfg"
+
+    policy_obs = cfg.observations["policy"]
+    assert isinstance(policy_obs, ObservationGroupCfg), (
+      f"Training task {task_id} policy observation is not ObservationGroupCfg"
+    )
+
+    assert policy_obs.enable_corruption, (
+      f"Training task {task_id} has enable_corruption=False, expected True"
+    )
+
+
+def test_critic_observation_corruption_always_disabled(all_task_ids: list[str]) -> None:
+  """Critic observations should always have corruption disabled."""
+  for task_id in all_task_ids:
+    cfg = load_env_cfg(task_id)
+
+    if "critic" not in cfg.observations:
+      continue
+
+    critic_obs = cfg.observations["critic"]
+    assert isinstance(critic_obs, ObservationGroupCfg), (
+      f"Task {task_id} critic observation is not ObservationGroupCfg"
+    )
+
+    assert not critic_obs.enable_corruption, (
+      f"Task {task_id} has critic enable_corruption=True, expected False"
     )
 
 
@@ -139,21 +160,14 @@ def test_play_training_action_structure_match(
     )
 
 
-def test_no_none_observation_configs(all_task_ids: list[str]) -> None:
-  """Observation configs should not have None values where unexpected."""
-  for task_id in all_task_ids:
+def test_play_mode_disables_push_robot(all_task_ids: list[str]) -> None:
+  """Play/Demo mode tasks should disable push_robot event."""
+  play_demo_tasks = [
+    t for t in all_task_ids if t.endswith("-Play") or t.endswith("-Demo")
+  ]
+
+  for task_id in play_demo_tasks:
     cfg = load_env_cfg(task_id)
-
-    for obs_group_name, obs_group_cfg in cfg.observations.items():
-      assert obs_group_cfg is not None, (
-        f"Task {task_id} observation group '{obs_group_name}' is None"
-      )
-
-      assert obs_group_cfg.terms is not None, (
-        f"Task {task_id} observation group '{obs_group_name}' has None terms"
-      )
-
-      for term_name, term_cfg in obs_group_cfg.terms.items():
-        assert term_cfg is not None, (
-          f"Task {task_id} observation term '{obs_group_name}.{term_name}' is None"
-        )
+    assert "push_robot" not in cfg.events, (
+      f"Play/Demo task {task_id} has push_robot event, expected it to be removed"
+    )

@@ -1,4 +1,4 @@
-"""Unitree Go1 velocity tracking environment configurations."""
+"""Unitree Go1 velocity environment configurations."""
 
 from mjlab.asset_zoo.robots import (
   GO1_ACTION_SCALE,
@@ -14,7 +14,7 @@ from mjlab.tasks.velocity.velocity_env_cfg import make_velocity_env_cfg
 
 
 def unitree_go1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
-  """Create Unitree Go1 rough terrain velocity tracking configuration."""
+  """Create Unitree Go1 rough terrain velocity configuration."""
   cfg = make_velocity_env_cfg()
 
   cfg.scene.entities = {"robot": get_go1_robot_cfg()}
@@ -113,7 +113,7 @@ def unitree_go1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
 
 def unitree_go1_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
-  """Create Unitree Go1 flat terrain velocity tracking configuration."""
+  """Create Unitree Go1 flat terrain velocity configuration."""
   cfg = unitree_go1_rough_env_cfg(play=play)
 
   # Switch to flat terrain.
