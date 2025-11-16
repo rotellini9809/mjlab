@@ -29,6 +29,10 @@ class DcMotorActuatorCfg(IdealPdActuatorCfg):
   This actuator implements a DC motor torque-speed curve for more realistic
   actuator behavior. The motor produces maximum torque (saturation_effort) at
   zero velocity and reduces linearly to zero torque at maximum velocity.
+
+  Note: effort_limit should be explicitly set to a realistic value for proper
+  motor modeling. Using the default (inf) will trigger a warning. Use
+  IdealPdActuator if unlimited torque is desired.
   """
 
   saturation_effort: float
@@ -36,6 +40,29 @@ class DcMotorActuatorCfg(IdealPdActuatorCfg):
 
   velocity_limit: float
   """Maximum motor velocity (no-load speed)."""
+
+  def __post_init__(self) -> None:
+    """Validate DC motor parameters."""
+    import warnings
+
+    if self.effort_limit == float("inf"):
+      warnings.warn(
+        "effort_limit is set to inf for DcMotorActuator, which creates an "
+        "unrealistic motor with unlimited continuous torque. Consider setting "
+        "effort_limit to your motor's continuous rating (<= saturation_effort). "
+        "Use IdealPdActuator if you truly want unlimited torque.",
+        UserWarning,
+        stacklevel=2,
+      )
+
+    if self.effort_limit > self.saturation_effort:
+      warnings.warn(
+        f"effort_limit ({self.effort_limit}) exceeds saturation_effort "
+        f"({self.saturation_effort}). For realistic motors, continuous torque "
+        "should be <= peak torque.",
+        UserWarning,
+        stacklevel=2,
+      )
 
   def build(
     self, entity: Entity, joint_ids: list[int], joint_names: list[str]
