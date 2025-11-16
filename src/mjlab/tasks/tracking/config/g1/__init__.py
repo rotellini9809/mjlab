@@ -1,19 +1,21 @@
 from mjlab.tasks.registry import register_mjlab_task
+from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
 
-from .env_cfgs import (
-  UNITREE_G1_FLAT_TRACKING_ENV_CFG,
-  UNITREE_G1_FLAT_TRACKING_NO_STATE_ESTIMATION_ENV_CFG,
-)
-from .rl_cfg import UNITREE_G1_TRACKING_PPO_RUNNER_CFG
+from .env_cfgs import unitree_g1_flat_tracking_env_cfg
+from .rl_cfg import unitree_g1_tracking_ppo_runner_cfg
 
 register_mjlab_task(
   task_id="Mjlab-Tracking-Flat-Unitree-G1",
-  env_cfg=UNITREE_G1_FLAT_TRACKING_ENV_CFG,
-  rl_cfg=UNITREE_G1_TRACKING_PPO_RUNNER_CFG,
+  env_cfg=unitree_g1_flat_tracking_env_cfg(),
+  play_env_cfg=unitree_g1_flat_tracking_env_cfg(play=True),
+  rl_cfg=unitree_g1_tracking_ppo_runner_cfg(),
+  runner_cls=MotionTrackingOnPolicyRunner,
 )
 
 register_mjlab_task(
   task_id="Mjlab-Tracking-Flat-Unitree-G1-No-State-Estimation",
-  env_cfg=UNITREE_G1_FLAT_TRACKING_NO_STATE_ESTIMATION_ENV_CFG,
-  rl_cfg=UNITREE_G1_TRACKING_PPO_RUNNER_CFG,
+  env_cfg=unitree_g1_flat_tracking_env_cfg(has_state_estimation=False),
+  play_env_cfg=unitree_g1_flat_tracking_env_cfg(has_state_estimation=False, play=True),
+  rl_cfg=unitree_g1_tracking_ppo_runner_cfg(),
+  runner_cls=MotionTrackingOnPolicyRunner,
 )

@@ -1,5 +1,6 @@
 """Script to train RL agent with RSL-RL."""
 
+import os
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -7,16 +8,15 @@ from pathlib import Path
 from typing import Any, cast
 
 import tyro
+from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
-from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg
+from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
-from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
-from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 from mjlab.utils.os import dump_yaml, get_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
-from mjlab.wrappers import VideoRecorder
+from mjlab.utils.wrappers import VideoRecorder
 
 
 @dataclass(frozen=True)
@@ -29,10 +29,26 @@ class TrainConfig:
   video_length: int = 200
   video_interval: int = 2000
   enable_nan_guard: bool = False
+  distributed: bool = False
 
 
-def run_train(task: str, cfg: TrainConfig) -> None:
+def run_train(task_id: str, cfg: TrainConfig) -> None:
   configure_torch_backends()
+
+  # Multi-GPU training configuration.
+  device = cfg.device
+  if cfg.distributed:
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    device = f"cuda:{local_rank}"
+
+    # Set seed to have diversity in different processes.
+    seed = cfg.agent.seed + local_rank
+    cfg.env.seed = seed
+    cfg.agent.seed = seed
+
+    print(
+      f"[INFO] Multi-GPU training enabled: local_rank={local_rank}, device={device}, seed={seed}"
+    )
 
   registry_name: str | None = None
 
@@ -76,7 +92,7 @@ def run_train(task: str, cfg: TrainConfig) -> None:
   log_dir = log_root_path / log_dir
 
   env = ManagerBasedRlEnv(
-    cfg=cfg.env, device=cfg.device, render_mode="rgb_array" if cfg.video else None
+    cfg=cfg.env, device=device, render_mode="rgb_array" if cfg.video else None
   )
 
   resume_path = (
@@ -100,12 +116,15 @@ def run_train(task: str, cfg: TrainConfig) -> None:
   agent_cfg = asdict(cfg.agent)
   env_cfg = asdict(cfg.env)
 
+  runner_cls = load_runner_cls(task_id)
+  if runner_cls is None:
+    runner_cls = OnPolicyRunner
+
+  runner_kwargs = {}
   if is_tracking_task:
-    runner = MotionTrackingOnPolicyRunner(
-      env, agent_cfg, str(log_dir), cfg.device, registry_name
-    )
-  else:
-    runner = VelocityOnPolicyRunner(env, agent_cfg, str(log_dir), cfg.device)
+    runner_kwargs["registry_name"] = registry_name
+
+  runner = runner_cls(env, agent_cfg, str(log_dir), device, **runner_kwargs)
 
   runner.add_git_repo_to_log(__file__)
   if resume_path is not None:

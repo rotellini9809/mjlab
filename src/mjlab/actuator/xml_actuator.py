@@ -21,14 +21,26 @@ class XmlActuator(Actuator):
   """Base class for XML-defined actuators."""
 
   def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    for joint_name in joint_names:
+    # Filter to only joints that have corresponding XML actuators.
+    filtered_joint_ids = []
+    filtered_joint_names = []
+    for i, joint_name in enumerate(joint_names):
       actuator = self._find_actuator_for_joint(spec, joint_name)
-      if actuator is None:
-        raise ValueError(
-          f"No XML actuator found for joint '{joint_name}'. "
-          f"XML actuator config expects actuators to already exist in the XML."
-        )
-      self._mjs_actuators.append(actuator)
+      if actuator is not None:
+        self._mjs_actuators.append(actuator)
+        filtered_joint_ids.append(self._joint_ids_list[i])
+        filtered_joint_names.append(joint_name)
+
+    if len(filtered_joint_names) == 0:
+      raise ValueError(
+        f"No XML actuators found for any joints matching the patterns. "
+        f"Searched joints: {joint_names}. "
+        f"XML actuator config expects actuators to already exist in the XML."
+      )
+
+    # Update joint IDs and names to only include those with actuators.
+    self._joint_ids_list = filtered_joint_ids
+    self._joint_names = filtered_joint_names
 
   def _find_actuator_for_joint(
     self, spec: mujoco.MjSpec, joint_name: str

@@ -27,7 +27,7 @@ class BuiltinActuatorGroup:
   enables direct writes without per-actuator overhead.
   """
 
-  # Map from BuiltinActuator type to (ctrl_ids, joint_ids).
+  # Map from BuiltinActuator type to (joint_ids, ctrl_ids).
   _index_groups: dict[type, tuple[torch.Tensor, torch.Tensor]]
 
   @staticmethod
@@ -58,8 +58,8 @@ class BuiltinActuatorGroup:
     # Return stacked indices for each builtin actuator type.
     index_groups = {
       k: (
-        torch.cat([act.ctrl_ids for act in v], dim=0),
         torch.cat([act.joint_ids for act in v], dim=0),
+        torch.cat([act.ctrl_ids for act in v], dim=0),
       )
       for k, v in builtin_groups.items()
     }

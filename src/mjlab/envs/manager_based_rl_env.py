@@ -30,10 +30,10 @@ from mjlab.scene import Scene
 from mjlab.scene.scene import SceneCfg
 from mjlab.sim import SimulationCfg
 from mjlab.sim.sim import Simulation
-from mjlab.spaces import Box
-from mjlab.spaces import Dict as DictSpace
 from mjlab.utils import random as random_utils
 from mjlab.utils.logging import print_info
+from mjlab.utils.spaces import Box
+from mjlab.utils.spaces import Dict as DictSpace
 from mjlab.viewer.debug_visualizer import DebugVisualizer
 from mjlab.viewer.offscreen_renderer import OffscreenRenderer
 from mjlab.viewer.viewer_config import ViewerConfig
@@ -119,9 +119,6 @@ class ManagerBasedRlEnv:
       model=self.scene.compile(),
       device=device,
     )
-
-    if "cuda" in self.device:
-      torch.cuda.set_device(self.device)
 
     self.scene.initialize(
       mj_model=self.sim.mj_model,
@@ -385,7 +382,7 @@ class ManagerBasedRlEnv:
 
     Uses mjlab.spaces instead of gymnasium.spaces.
     """
-    from mjlab.spaces import batch_space
+    from mjlab.utils.spaces import batch_space
 
     self.single_observation_space = DictSpace()
     for group_name, group_term_names in self.observation_manager.active_terms.items():
