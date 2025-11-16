@@ -4,51 +4,30 @@ from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 from .env_cfgs import (
   unitree_go1_flat_env_cfg,
   unitree_go1_flat_env_cfg_learned,
-  unitree_go1_flat_env_cfg_learned_play,
-  unitree_go1_flat_env_cfg_play,
   unitree_go1_rough_env_cfg,
-  unitree_go1_rough_env_cfg_play,
 )
-from .rl_cfg import UNITREE_GO1_PPO_RUNNER_CFG
+from .rl_cfg import unitree_go1_ppo_runner_cfg
 
 register_mjlab_task(
   task_id="Mjlab-Velocity-Rough-Unitree-Go1",
-  env_cfg=unitree_go1_rough_env_cfg,
-  rl_cfg=UNITREE_GO1_PPO_RUNNER_CFG,
-  runner_cls=VelocityOnPolicyRunner,
-)
-
-register_mjlab_task(
-  task_id="Mjlab-Velocity-Rough-Unitree-Go1-Play",
-  env_cfg=unitree_go1_rough_env_cfg_play,
-  rl_cfg=UNITREE_GO1_PPO_RUNNER_CFG,
+  env_cfg=unitree_go1_rough_env_cfg(),
+  play_env_cfg=unitree_go1_rough_env_cfg(play=True),
+  rl_cfg=unitree_go1_ppo_runner_cfg(),
   runner_cls=VelocityOnPolicyRunner,
 )
 
 register_mjlab_task(
   task_id="Mjlab-Velocity-Flat-Unitree-Go1",
-  env_cfg=unitree_go1_flat_env_cfg,
-  rl_cfg=UNITREE_GO1_PPO_RUNNER_CFG,
-  runner_cls=VelocityOnPolicyRunner,
-)
-
-register_mjlab_task(
-  task_id="Mjlab-Velocity-Flat-Unitree-Go1-Play",
-  env_cfg=unitree_go1_flat_env_cfg_play,
-  rl_cfg=UNITREE_GO1_PPO_RUNNER_CFG,
+  env_cfg=unitree_go1_flat_env_cfg(),
+  play_env_cfg=unitree_go1_flat_env_cfg(play=True),
+  rl_cfg=unitree_go1_ppo_runner_cfg(),
   runner_cls=VelocityOnPolicyRunner,
 )
 
 register_mjlab_task(
   task_id="Mjlab-Velocity-Flat-Unitree-Go1-ActuatorNet",
-  env_cfg=unitree_go1_flat_env_cfg_learned,
-  rl_cfg=UNITREE_GO1_PPO_RUNNER_CFG,
-  runner_cls=VelocityOnPolicyRunner,
-)
-
-register_mjlab_task(
-  task_id="Mjlab-Velocity-Flat-Unitree-Go1-ActuatorNet-Play",
-  env_cfg=unitree_go1_flat_env_cfg_learned_play,
-  rl_cfg=UNITREE_GO1_PPO_RUNNER_CFG,
+  env_cfg=unitree_go1_flat_env_cfg_learned(),
+  play_env_cfg=unitree_go1_flat_env_cfg_learned(play=True),
+  rl_cfg=unitree_go1_ppo_runner_cfg(),
   runner_cls=VelocityOnPolicyRunner,
 )

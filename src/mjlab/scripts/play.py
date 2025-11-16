@@ -36,6 +36,7 @@ class PlayConfig:
   video_width: int | None = None
   camera: int | str | None = None
   viewer: Literal["auto", "native", "viser"] = "auto"
+  demo_mode: bool = False
 
 
 def run_play(task: str, cfg: PlayConfig):
@@ -55,6 +56,13 @@ def run_play(task: str, cfg: PlayConfig):
     and "motion" in env_cfg.commands
     and isinstance(env_cfg.commands["motion"], MotionCommandCfg)
   )
+
+  if is_tracking_task and cfg.demo_mode:
+    # Demo mode: use uniform sampling to see more diversity with num_envs > 1.
+    assert env_cfg.commands is not None
+    motion_cmd = env_cfg.commands["motion"]
+    assert isinstance(motion_cmd, MotionCommandCfg)
+    motion_cmd.sampling_mode = "uniform"
 
   if is_tracking_task:
     assert env_cfg.commands is not None

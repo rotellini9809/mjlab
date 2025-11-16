@@ -119,43 +119,6 @@ def test_tracking_play_uses_start_sampling_mode() -> None:
     )
 
 
-def test_tracking_demo_disables_rsi_randomization() -> None:
-  """Tracking demo tasks should disable RSI randomization."""
-  demo_task = "Mjlab-Tracking-Flat-Unitree-G1-Demo"
-  cfg = load_env_cfg(demo_task)
-
-  assert cfg.commands is not None, f"Task {demo_task} has no commands"
-  motion_cmd = cfg.commands["motion"]
-  assert isinstance(motion_cmd, MotionCommandCfg), (
-    f"Task {demo_task} motion command is not MotionCommandCfg"
-  )
-
-  assert motion_cmd.pose_range == {}, (
-    f"Task {demo_task} has non-empty pose_range={motion_cmd.pose_range}, "
-    "expected empty dict for disabled RSI"
-  )
-  assert motion_cmd.velocity_range == {}, (
-    f"Task {demo_task} has non-empty velocity_range={motion_cmd.velocity_range}, "
-    "expected empty dict for disabled RSI"
-  )
-
-
-def test_tracking_demo_uses_uniform_sampling_mode() -> None:
-  """Tracking demo tasks should use sampling_mode='uniform'."""
-  demo_task = "Mjlab-Tracking-Flat-Unitree-G1-Demo"
-  cfg = load_env_cfg(demo_task)
-
-  assert cfg.commands is not None, f"Task {demo_task} has no commands"
-  motion_cmd = cfg.commands["motion"]
-  assert isinstance(motion_cmd, MotionCommandCfg), (
-    f"Task {demo_task} motion command is not MotionCommandCfg"
-  )
-
-  assert motion_cmd.sampling_mode == "uniform", (
-    f"Task {demo_task} sampling_mode={motion_cmd.sampling_mode}, expected 'uniform'"
-  )
-
-
 def test_g1_tracking_has_correct_action_scale(g1_tracking_task_ids: list[str]) -> None:
   """G1 tracking tasks should use G1_ACTION_SCALE."""
   for task_id in g1_tracking_task_ids:

@@ -132,15 +132,3 @@ def unitree_go1_flat_env_cfg_learned(play: bool = False) -> ManagerBasedRlEnvCfg
   cfg = unitree_go1_flat_env_cfg(play=play)
   cfg.scene.entities["robot"] = get_go1_robot_cfg_learned()
   return cfg
-
-
-def unitree_go1_rough_env_cfg_play() -> ManagerBasedRlEnvCfg:
-  return unitree_go1_rough_env_cfg(play=True)
-
-
-def unitree_go1_flat_env_cfg_play() -> ManagerBasedRlEnvCfg:
-  return unitree_go1_flat_env_cfg(play=True)
-
-
-def unitree_go1_flat_env_cfg_learned_play() -> ManagerBasedRlEnvCfg:
-  return unitree_go1_flat_env_cfg_learned(play=True)

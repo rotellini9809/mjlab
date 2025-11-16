@@ -29,9 +29,10 @@ def main() -> None:
       motion_file=motion_path,
       num_envs=8,
       viewer="viser",
+      demo_mode=True,
     ),
   )
-  run_play("Mjlab-Tracking-Flat-Unitree-G1-Demo", args)
+  run_play("Mjlab-Tracking-Flat-Unitree-G1-Play", args)
 
 
 if __name__ == "__main__":

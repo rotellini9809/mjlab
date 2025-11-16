@@ -98,29 +98,3 @@ def unitree_g1_flat_tracking_env_cfg(
     motion_cmd.sampling_mode = "start"
 
   return cfg
-
-
-def unitree_g1_flat_tracking_env_cfg_play() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_flat_tracking_env_cfg(play=True)
-
-
-def unitree_g1_flat_tracking_env_cfg_demo() -> ManagerBasedRlEnvCfg:
-  cfg = unitree_g1_flat_tracking_env_cfg(play=True)
-
-  assert cfg.commands is not None
-  motion_cmd = cfg.commands["motion"]
-  assert isinstance(motion_cmd, MotionCommandCfg)
-
-  # The demo uses a long motion, so we use uniform sampling to see more diversity
-  # with num_envs > 1.
-  motion_cmd.sampling_mode = "uniform"
-
-  return cfg
-
-
-def unitree_g1_flat_tracking_no_state_estimation_env_cfg() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_flat_tracking_env_cfg(has_state_estimation=False)
-
-
-def unitree_g1_flat_tracking_no_state_estimation_env_cfg_play() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_flat_tracking_env_cfg(has_state_estimation=False, play=True)

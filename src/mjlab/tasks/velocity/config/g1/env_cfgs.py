@@ -164,11 +164,3 @@ def unitree_g1_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     twist_cmd.ranges.ang_vel_z = (-0.7, 0.7)
 
   return cfg
-
-
-def unitree_g1_rough_env_cfg_play() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_rough_env_cfg(play=True)
-
-
-def unitree_g1_flat_env_cfg_play() -> ManagerBasedRlEnvCfg:
-  return unitree_g1_flat_env_cfg(play=True)
