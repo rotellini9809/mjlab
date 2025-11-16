@@ -311,8 +311,8 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
     # Compute offset into the flat hfield_data array.
     offset = 0
     for k in range(hfield_id):
-        offset += mj_model.hfield_nrow[k] * mj_model.hfield_ncol[k]
-    hfield = mj_model.hfield_data[offset:offset + nrow * ncol].reshape(nrow, ncol)
+      offset += mj_model.hfield_nrow[k] * mj_model.hfield_ncol[k]
+    hfield = mj_model.hfield_data[offset : offset + nrow * ncol].reshape(nrow, ncol)
 
     x = np.linspace(-sx, sx, ncol)
     y = np.linspace(-sy, sy, nrow)
@@ -323,13 +323,13 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
 
     faces = []
     for i in range(nrow - 1):
-        for j in range(ncol - 1):
-            i0 = i * ncol + j
-            i1 = i0 + 1
-            i2 = i0 + ncol
-            i3 = i2 + 1
-            faces.append([i0, i2, i1])
-            faces.append([i1, i2, i3])
+      for j in range(ncol - 1):
+        i0 = i * ncol + j
+        i1 = i0 + 1
+        i2 = i0 + ncol
+        i3 = i2 + 1
+        faces.append([i0, i2, i1])
+        faces.append([i1, i2, i3])
     faces = np.array(faces, dtype=np.int64)
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
   else:
