@@ -16,7 +16,7 @@ from mjlab.rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.utils.gpu import select_gpus
-from mjlab.utils.os import dump_yaml, get_checkpoint_path
+from mjlab.utils.os import dump_yaml, get_checkpoint_path, get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wrappers import VideoRecorder
 
@@ -31,6 +31,7 @@ class TrainConfig:
   video_interval: int = 2000
   enable_nan_guard: bool = False
   torchrunx_log_dir: str | None = None
+  wandb_run_path: str | None = None
   gpu_ids: list[int] | Literal["all"] | None = field(default_factory=lambda: [0])
 
   @staticmethod
@@ -105,11 +106,27 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
   log_root_path = (
     log_dir.parent.parent
   )  # Go up from specific run dir to experiment dir.
-  resume_path = (
-    get_checkpoint_path(log_root_path, cfg.agent.load_run, cfg.agent.load_checkpoint)
-    if cfg.agent.resume
-    else None
-  )
+
+  resume_path: Path | None = None
+  if cfg.agent.resume:
+    if cfg.wandb_run_path is not None:
+      # Load checkpoint from W&B.
+      resume_path, was_cached = get_wandb_checkpoint_path(
+        log_root_path, Path(cfg.wandb_run_path)
+      )
+      if rank == 0:
+        run_id = resume_path.parent.name
+        checkpoint_name = resume_path.name
+        cached_str = "cached" if was_cached else "downloaded"
+        print(
+          f"[INFO]: Loading checkpoint from W&B: {checkpoint_name} "
+          f"(run: {run_id}, {cached_str})"
+        )
+    else:
+      # Load checkpoint from local filesystem.
+      resume_path = get_checkpoint_path(
+        log_root_path, cfg.agent.load_run, cfg.agent.load_checkpoint
+      )
 
   # Only record videos on rank 0 to avoid multiple workers writing to the same files.
   if cfg.video and rank == 0:
