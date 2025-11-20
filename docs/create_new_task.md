@@ -50,8 +50,7 @@ from pathlib import Path
 import mujoco
 
 from mjlab import MJLAB_SRC_PATH
-from mjlab.entity import Entity, EntityCfg, EntityArticulationInfoCfg
-from mjlab.utils.spec_config import ActuatorCfg
+from mjlab.entity import Entity, EntityCfg
 
 CARTPOLE_XML: Path = (
   MJLAB_SRC_PATH / "asset_zoo" / "robots" / "cartpole" / "xmls" / "cartpole.xml"
