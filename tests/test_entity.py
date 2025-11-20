@@ -502,11 +502,10 @@ def test_find_joints_by_actuator_names_preserves_natural_order(device):
 
 
 def test_ctrl_ids_follow_natural_joint_order(device):
-  """Test that entity.indexing.ctrl_ids are in natural joint order.
+  """Test that entity.indexing.ctrl_ids are in actuator definition order.
 
-  This is a regression test for a bug where ctrl_ids were in actuator definition
-  order, causing mismatched stiffness/damping values in ONNX export and other
-  control issues.
+  ctrl_ids follow actuator definition order for simplicity. ONNX export builds
+  the natural joint order mapping where needed.
   """
   robot_cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(ACTUATOR_ORDER_TEST_XML),
@@ -529,9 +528,7 @@ def test_ctrl_ids_follow_natural_joint_order(device):
   # Actuator definition order (from XML): act_c, act_b, act_a.
   assert list(robot.actuator_names) == ["act_c", "act_b", "act_a"]
 
-  # ctrl_ids should be in natural joint order, not actuator definition order.
-  # The actuators in XML are defined in reverse order (c, b, a) but ctrl_ids
-  # should follow natural joint order (a, b, c).
+  # ctrl_ids should be in actuator definition order (c, b, a).
   ctrl_ids = robot.indexing.ctrl_ids.cpu().tolist()
 
   # Map actuator names to their MuJoCo IDs in the compiled model.
@@ -539,11 +536,11 @@ def test_ctrl_ids_follow_natural_joint_order(device):
     mj_model.actuator(i).name.split("/")[-1]: i for i in range(mj_model.nu)
   }
 
-  # ctrl_ids should be ordered as: act_a, act_b, act_c (natural joint order).
+  # ctrl_ids should be ordered as: act_c, act_b, act_a (actuator definition order).
   expected_ctrl_ids = [
-    actuator_name_to_id["act_a"],
-    actuator_name_to_id["act_b"],
     actuator_name_to_id["act_c"],
+    actuator_name_to_id["act_b"],
+    actuator_name_to_id["act_a"],
   ]
   assert ctrl_ids == expected_ctrl_ids
 

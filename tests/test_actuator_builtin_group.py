@@ -154,13 +154,14 @@ def test_builtin_and_custom_actuators(device):
 def test_builtin_group_mismatched_indices(device):
   """Test that controls are written correctly when actuators use different joints.
 
-  Actuators are defined on joints in non-sequential order (joint2, then joint1+joint3).
-  With ctrl_ids now following natural joint order, we verify controls are written
-  to the correct indices.
+  Regression test for ctrl_ids/joint_ids swap bug in BuiltinActuatorGroup.
+  When actuators are added in different order than joints, ctrl_ids != joint_ids.
+  This test verifies controls are written to the correct MuJoCo actuator indices.
   """
   # Add actuators in different order than joints.
   # Actuators: position on joint2, motor on joint1+joint3.
   # Natural joint order: joint1, joint2, joint3.
+  # MuJoCo actuator IDs (definition order): act0=joint2, act1=joint1, act2=joint3.
   position_cfg = BuiltinPositionActuatorCfg(
     joint_names_expr=("joint2",), stiffness=50.0, damping=5.0
   )
@@ -175,10 +176,10 @@ def test_builtin_group_mismatched_indices(device):
   entity.set_joint_effort_target(torch.tensor([[100.0, 200.0, 300.0]], device=device))
   entity.write_data_to_sim()
 
-  # Expected ctrl values in natural joint order:
-  # ctrl[0] = joint1 effort = 100.0
-  # ctrl[1] = joint2 position = 20.0
-  # ctrl[2] = joint3 effort = 300.0
+  # Expected ctrl values in MuJoCo actuator definition order:
+  # ctrl[0] = joint2 position = 20.0 (actuator 0 controls joint2)
+  # ctrl[1] = joint1 effort = 100.0 (actuator 1 controls joint1)
+  # ctrl[2] = joint3 effort = 300.0 (actuator 2 controls joint3)
   assert torch.allclose(
-    sim.data.ctrl[0], torch.tensor([100.0, 20.0, 300.0], device=device)
-  ), f"Got {sim.data.ctrl[0]}, expected [100.0, 20.0, 300.0]"
+    sim.data.ctrl[0], torch.tensor([20.0, 100.0, 300.0], device=device)
+  ), f"Got {sim.data.ctrl[0]}, expected [20.0, 100.0, 300.0]"
