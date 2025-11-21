@@ -168,20 +168,18 @@ def test_get_base_metadata_skips_non_actuated_joints(device):
 
   robot = env.scene["robot"]
 
-  # joint_names is a list in this context – narrow the type for the checker.
+  # All joints (including non-actuated) should be listed in joint_names metadata.
   joint_names_meta = metadata["joint_names"]
   assert isinstance(joint_names_meta, list)
   assert joint_names_meta == list(robot.joint_names)
   assert "joint1" in joint_names_meta
   assert "joint2" in joint_names_meta
 
-  # Stiffness/damping are lists as well – narrow and compare lengths.
+  # Stiffness/damping are only defined for actuated joints, in natural joint order.
   stiffness_meta = metadata["joint_stiffness"]
   damping_meta = metadata["joint_damping"]
   assert isinstance(stiffness_meta, list)
   assert isinstance(damping_meta, list)
-
-  # Stiffness/damping are only defined for actuated joints, in natural joint order.
   assert len(stiffness_meta) == len(robot.spec.actuators)
   assert len(damping_meta) == len(robot.spec.actuators)
 
