@@ -122,6 +122,9 @@ class ObservationManager(ManagerBase):
   # Methods.
 
   def reset(self, env_ids: torch.Tensor | slice | None = None) -> dict[str, float]:
+    # Invalidate cache since reset envs will have different observations.
+    self._obs_buffer = None
+
     for group_name, group_cfg in self._group_obs_class_term_cfgs.items():
       for term_cfg in group_cfg:
         term_cfg.func.reset(env_ids=env_ids)
@@ -142,6 +145,12 @@ class ObservationManager(ManagerBase):
   def compute(
     self, update_history: bool = False
   ) -> dict[str, torch.Tensor | dict[str, torch.Tensor]]:
+    # Return cached observations if not updating and cache exists.
+    # This prevents double-pushing to delay buffers when compute() is called
+    # multiple times per control step (e.g., in get_observations() after step()).
+    if not update_history and self._obs_buffer is not None:
+      return self._obs_buffer
+
     obs_buffer: dict[str, torch.Tensor | dict[str, torch.Tensor]] = dict()
     for group_name in self._group_obs_term_names:
       obs_buffer[group_name] = self.compute_group(group_name, update_history)
