@@ -52,15 +52,6 @@ class EntityIndexing:
 class EntityCfg:
   @dataclass
   class InitialStateCfg:
-    """Initial state for an entity.
-
-    For floating-base and fixed-base mocap entities, `pos` and `rot` are
-    relative to `scene.env_origins`. At reset: `world_pos = pos + env_origins[env_id]`.
-
-    For fixed-base static entities, `pos` and `rot` are absolute and identical
-    across all envs.
-    """
-
     # Root position and orientation.
     pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
     rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
@@ -122,32 +113,6 @@ class Entity:
   | Fixed Articulated         | Robot arm, door     | True          | True           | True/False  |
   | Floating Non-articulated  | Box, ball, mug      | False         | False          | False       |
   | Floating Articulated      | Humanoid, quadruped | False         | True           | True/False  |
-
-  Position and Orientation
-  ========================
-  Entity pose is controlled by `init_state.pos` and `init_state.rot` in EntityCfg
-  (not `body.pos`/`body.quat` in spec_fn, which are ignored).
-
-  Per-env positioning and env_origins
-  ------------------------------------
-  `scene.env_origins` defines an XYZ offset per environment. This enables terrain
-  curriculum (different envs interact with different terrain features) and spatial
-  separation for visualization. At reset, entity positions are computed as:
-  `init_state.pos + env_origins[env_id]`. Whether this works depends on the entity
-  type and how it stores its position:
-
-  | Entity Type       | Position Storage   | Per-env? | env_origins? |
-  |-------------------|--------------------|----------|--------------|
-  | Floating-base     | data.qpos          | Yes      | Yes          |
-  | Fixed-base mocap  | data.mocap_pos     | Yes      | Yes          |
-  | Fixed-base static | model.body_pos     | No       | No           |
-
-  Fixed-base: static vs mocap
-  ---------------------------
-  - Static (no mocap): Position is identical across all envs.
-    Use for terrain, walls, and shared geometry.
-  - Mocap (`body.mocap = True`): Position can differ per env.
-    Use for props needing per-env positioning (e.g., tables, obstacles, etc.).
   """
 
   def __init__(self, cfg: EntityCfg) -> None:
