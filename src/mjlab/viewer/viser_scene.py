@@ -495,24 +495,15 @@ class ViserMujocoScene(DebugVisualizer):
         mocap_id = self.mj_model.body_mocapid[body_id]
         if mocap_id >= 0:
           # Use mocap pos/quat for mocap bodies.
+          # Note: mocap_quat is already in wxyz format (MuJoCo convention).
           if self.show_only_selected and self.num_envs > 1:
             single_pos = mocap_pos[env_idx, mocap_id, :] + scene_offset
-            # Convert quaternion from xyzw to wxyz format.
-            quat_xyzw = mocap_quat[env_idx, mocap_id, :]
-            single_quat = np.array(
-              [quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]]
-            )
+            single_quat = mocap_quat[env_idx, mocap_id, :]
             handle.batched_positions = np.tile(single_pos[None, :], (self.num_envs, 1))
             handle.batched_wxyzs = np.tile(single_quat[None, :], (self.num_envs, 1))
           else:
-            # Convert quaternion from xyzw to wxyz format for all envs.
-            quat_xyzw = mocap_quat[:, mocap_id, :]
-            quat_wxyz = np.stack(
-              [quat_xyzw[:, 3], quat_xyzw[:, 0], quat_xyzw[:, 1], quat_xyzw[:, 2]],
-              axis=-1,
-            )
             handle.batched_positions = mocap_pos[:, mocap_id, :] + scene_offset
-            handle.batched_wxyzs = quat_wxyz
+            handle.batched_wxyzs = mocap_quat[:, mocap_id, :]
         else:
           # Use xpos/xmat for regular bodies.
           if self.show_only_selected and self.num_envs > 1:
