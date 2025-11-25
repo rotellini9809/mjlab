@@ -103,9 +103,7 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
     cfg=cfg.env, device=device, render_mode="rgb_array" if cfg.video else None
   )
 
-  log_root_path = (
-    log_dir.parent.parent
-  )  # Go up from specific run dir to experiment dir.
+  log_root_path = log_dir.parent  # Go up from specific run dir to experiment dir.
 
   resume_path: Path | None = None
   if cfg.agent.resume:
