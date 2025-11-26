@@ -148,7 +148,7 @@ class Scene:
 
   def _add_entities(self) -> None:
     for ent_name, ent_cfg in self._cfg.entities.items():
-      ent = Entity(ent_cfg)
+      ent = ent_cfg.build()
       self._entities[ent_name] = ent
       frame = self._spec.worldbody.add_frame()
       self._spec.attach(ent.spec, prefix=f"{ent_name}/", frame=frame)

@@ -78,6 +78,13 @@ class EntityCfg:
   # Misc.
   debug_vis: bool = False
 
+  def build(self) -> Entity:
+    """Build entity instance from this config.
+
+    Override in subclasses to return custom Entity types.
+    """
+    return Entity(self)
+
 
 @dataclass
 class EntityArticulationInfoCfg:
