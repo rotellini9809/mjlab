@@ -1,5 +1,7 @@
 """Tests for entity module."""
 
+from dataclasses import dataclass
+
 import mujoco
 import numpy as np
 import pytest
@@ -8,6 +10,7 @@ from conftest import get_test_device
 
 from mjlab.actuator import BuiltinPositionActuatorCfg, XmlMotorActuatorCfg
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
+from mjlab.scene import Scene, SceneCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
 
 FIXED_BASE_XML = """
@@ -566,3 +569,44 @@ def test_find_joints_by_actuator_names_returns_entity_local_indices():
   # Should return entity-local index [2], not subset-local [0].
   assert joint_names == ["joint_c"]
   assert joint_ids == [2]  # Index of joint_c in self.joint_names.
+
+
+@dataclass
+class CustomEntityCfg(EntityCfg):
+  """Custom entity config with additional fields."""
+
+  custom_threshold: float = 0.5
+
+  def build(self) -> "CustomEntity":
+    return CustomEntity(self)
+
+
+class CustomEntity(Entity):
+  """Custom entity with additional properties."""
+
+  cfg: CustomEntityCfg
+
+  @property
+  def custom_value(self) -> float:
+    """Custom property that uses config field."""
+    return self.cfg.custom_threshold * 2
+
+
+def test_custom_entity_subclass(device):
+  """Test that custom Entity subclasses work through the scene."""
+  scene_cfg = SceneCfg(
+    num_envs=1,
+    entities={
+      "custom": CustomEntityCfg(
+        spec_fn=lambda: mujoco.MjSpec.from_string(FIXED_BASE_XML),
+        custom_threshold=0.9,
+      ),
+    },
+  )
+  scene = Scene(scene_cfg, device)
+
+  # Scene should have instantiated our custom entity type.
+  custom_entity = scene.entities["custom"]
+  assert isinstance(custom_entity, CustomEntity)
+  assert custom_entity.cfg.custom_threshold == 0.9
+  assert custom_entity.custom_value == 1.8
