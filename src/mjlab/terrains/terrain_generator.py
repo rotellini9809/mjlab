@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 import mujoco
@@ -54,7 +54,7 @@ class TerrainGeneratorCfg:
   num_rows: int = 1
   num_cols: int = 1
   color_scheme: Literal["height", "random", "none"] = "height"
-  sub_terrains: dict[str, SubTerrainCfg]
+  sub_terrains: dict[str, SubTerrainCfg] = field(default_factory=dict)
   difficulty_range: tuple[float, float] = (0.0, 1.0)
   add_lights: bool = False
 
