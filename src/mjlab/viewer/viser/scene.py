@@ -1,4 +1,4 @@
-"""ViserMujocoScene manages all Viser visualization handles and state for MuJoCo models."""
+"""Manages all Viser visualization handles and state for MuJoCo models."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from mujoco import mj_id2name, mjtGeom, mjtObj
 from typing_extensions import override
 
 from mjlab.viewer.debug_visualizer import DebugVisualizer
-from mjlab.viewer.viser_conversions import (
+from mjlab.viewer.viser.conversions import (
   create_primitive_mesh,
   get_body_name,
   is_fixed_body,
@@ -29,6 +29,15 @@ try:
   import mujoco_warp as mjwarp
 except ImportError:
   mjwarp = None  # type: ignore
+
+
+# Viser visualization defaults.
+_DEFAULT_FOV_DEGREES = 60
+_DEFAULT_FOV_MIN = 20
+_DEFAULT_FOV_MAX = 150
+_DEFAULT_ENVIRONMENT_INTENSITY = 0.8
+_DEFAULT_CONTACT_POINT_COLOR = (230, 153, 51)
+_DEFAULT_CONTACT_FORCE_COLOR = (255, 0, 0)
 
 
 @dataclass
@@ -95,8 +104,8 @@ class ViserMujocoScene(DebugVisualizer):
   )
   show_contact_points: bool = False
   show_contact_forces: bool = False
-  contact_point_color: tuple[int, int, int] = (230, 153, 51)
-  contact_force_color: tuple[int, int, int] = (255, 0, 0)
+  contact_point_color: tuple[int, int, int] = _DEFAULT_CONTACT_POINT_COLOR
+  contact_force_color: tuple[int, int, int] = _DEFAULT_CONTACT_FORCE_COLOR
   meansize_override: float | None = None
   needs_update: bool = False
   _tracked_body_id: int | None = field(init=False, default=None)
@@ -159,7 +168,9 @@ class ViserMujocoScene(DebugVisualizer):
     scene._viz_data = mujoco.MjData(mj_model)
 
     # Configure environment lighting.
-    server.scene.configure_environment_map(environment_intensity=0.8)
+    server.scene.configure_environment_map(
+      environment_intensity=_DEFAULT_ENVIRONMENT_INTENSITY
+    )
 
     # Create frame for fixed world geometry.
     scene.fixed_bodies_frame = server.scene.add_frame("/fixed_bodies", show_axes=False)
@@ -220,10 +231,10 @@ class ViserMujocoScene(DebugVisualizer):
     with self.server.gui.add_folder("Visualization"):
       slider_fov = self.server.gui.add_slider(
         "FOV (°)",
-        min=20,
-        max=150,
+        min=_DEFAULT_FOV_MIN,
+        max=_DEFAULT_FOV_MAX,
         step=1,
-        initial_value=90,
+        initial_value=_DEFAULT_FOV_DEGREES,
         hint="Vertical FOV of viewer camera, in degrees.",
       )
 
@@ -495,24 +506,15 @@ class ViserMujocoScene(DebugVisualizer):
         mocap_id = self.mj_model.body_mocapid[body_id]
         if mocap_id >= 0:
           # Use mocap pos/quat for mocap bodies.
+          # Note: mocap_quat is already in wxyz format (MuJoCo convention).
           if self.show_only_selected and self.num_envs > 1:
             single_pos = mocap_pos[env_idx, mocap_id, :] + scene_offset
-            # Convert quaternion from xyzw to wxyz format.
-            quat_xyzw = mocap_quat[env_idx, mocap_id, :]
-            single_quat = np.array(
-              [quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]]
-            )
+            single_quat = mocap_quat[env_idx, mocap_id, :]
             handle.batched_positions = np.tile(single_pos[None, :], (self.num_envs, 1))
             handle.batched_wxyzs = np.tile(single_quat[None, :], (self.num_envs, 1))
           else:
-            # Convert quaternion from xyzw to wxyz format for all envs.
-            quat_xyzw = mocap_quat[:, mocap_id, :]
-            quat_wxyz = np.stack(
-              [quat_xyzw[:, 3], quat_xyzw[:, 0], quat_xyzw[:, 1], quat_xyzw[:, 2]],
-              axis=-1,
-            )
             handle.batched_positions = mocap_pos[:, mocap_id, :] + scene_offset
-            handle.batched_wxyzs = quat_wxyz
+            handle.batched_wxyzs = mocap_quat[:, mocap_id, :]
         else:
           # Use xpos/xmat for regular bodies.
           if self.show_only_selected and self.num_envs > 1:

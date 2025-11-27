@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import mujoco
 import mujoco_warp as mjwarp
@@ -21,6 +21,7 @@ class SceneCfg:
   entities: dict[str, EntityCfg] = field(default_factory=dict)
   sensors: tuple[SensorCfg, ...] = field(default_factory=tuple)
   extent: float | None = None
+  spec_fn: Callable[[mujoco.MjSpec], None] | None = None
 
 
 class Scene:
@@ -38,6 +39,8 @@ class Scene:
     self._add_terrain()
     self._add_entities()
     self._add_sensors()
+    if self._cfg.spec_fn is not None:
+      self._cfg.spec_fn(self._spec)
 
   def compile(self) -> mujoco.MjModel:
     return self._spec.compile()
@@ -148,7 +151,7 @@ class Scene:
 
   def _add_entities(self) -> None:
     for ent_name, ent_cfg in self._cfg.entities.items():
-      ent = Entity(ent_cfg)
+      ent = ent_cfg.build()
       self._entities[ent_name] = ent
       frame = self._spec.worldbody.add_frame()
       self._spec.attach(ent.spec, prefix=f"{ent_name}/", frame=frame)

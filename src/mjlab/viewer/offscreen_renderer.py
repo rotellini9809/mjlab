@@ -1,10 +1,12 @@
+"""MuJoCo offscreen renderer for headless visualization."""
+
 from typing import Any, Callable
 
 import mujoco
 import numpy as np
 
 from mjlab.scene import Scene
-from mjlab.viewer.mujoco_native_visualizer import MujocoNativeDebugVisualizer
+from mjlab.viewer.native.visualizer import MujocoNativeDebugVisualizer
 from mjlab.viewer.viewer_config import ViewerConfig
 
 _MAX_ENVS = 32  # Max number of envs to visualize (for performance).
