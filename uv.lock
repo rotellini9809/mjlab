@@ -1177,7 +1177,7 @@ dev = [
 requires-dist = [
     { name = "moviepy" },
     { name = "mujoco", specifier = "<=3.3.8", index = "https://py.mujoco.org/" },
-    { name = "mujoco-warp", git = "https://github.com/google-deepmind/mujoco_warp?rev=e605c406363805d949b75d50dd5ffb3d79bc3f70" },
+    { name = "mujoco-warp", git = "https://github.com/google-deepmind/mujoco_warp?rev=46b4421c19a9d72eeeb7ed8c083d275746513d38" },
     { name = "onnxscript", specifier = ">=0.5.4" },
     { name = "prettytable" },
     { name = "rsl-rl-lib", specifier = ">=3.2.0" },
@@ -1370,7 +1370,7 @@ wheels = [
 [[package]]
 name = "mujoco-warp"
 version = "0.0.1"
-source = { git = "https://github.com/google-deepmind/mujoco_warp?rev=e605c406363805d949b75d50dd5ffb3d79bc3f70#e605c406363805d949b75d50dd5ffb3d79bc3f70" }
+source = { git = "https://github.com/google-deepmind/mujoco_warp?rev=46b4421c19a9d72eeeb7ed8c083d275746513d38#46b4421c19a9d72eeeb7ed8c083d275746513d38" }
 dependencies = [
     { name = "absl-py" },
     { name = "etils", extra = ["epath"] },
@@ -3354,17 +3354,17 @@ wheels = [
 
 [[package]]
 name = "warp-lang"
-version = "1.11.0.dev20251027"
+version = "1.11.0.dev20251124"
 source = { registry = "https://pypi.nvidia.com/" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 wheels = [
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251027-py3-none-macosx_11_0_arm64.whl", hash = "sha256:ce02774f04d1c5fbb147c457081183499ee9fcae0ce04ca72245ef6e3ad429f4" },
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251027-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:03907be5580a9b7cb76217fc691ba49cee5de6556ad379cfaf2878844d9bb821" },
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251027-py3-none-manylinux_2_34_aarch64.whl", hash = "sha256:1e42a226f9087a3a8ae383e3031d7855b360eb25a1b75cb9ee90ac631da897d5" },
-    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251027-py3-none-win_amd64.whl", hash = "sha256:1195827b96ad3c9db9e8994d15750e6014f4ee5098ba6cfaeef4b5cb7b652fd0" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251124-py3-none-macosx_11_0_arm64.whl", hash = "sha256:583624bebd5c4b83c874ce77402a8b2e9ea1b9a5ad04629ff54aa06c529f5de4" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251124-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:2a2ff81ad629b21b4861a14bdd6839f44f57f8352e9b71ba94f815b8743ef397" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251124-py3-none-manylinux_2_34_aarch64.whl", hash = "sha256:8df87b52f3ce5f58ec02e1932510fc2713e014bfccf6b7a61302c91d93323aff" },
+    { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.11.0.dev20251124-py3-none-win_amd64.whl", hash = "sha256:df7f003f407b0306bd0d41e01e83f34a8efd81b3a301c3219ec60828622ffd2e" },
 ]
 
 [[package]]
