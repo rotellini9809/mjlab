@@ -12,9 +12,8 @@ from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import RslRlVecEnvWrapper
-from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg
+from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
-from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
 from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wrappers import VideoRecorder
@@ -178,14 +177,8 @@ def run_play(task_id: str, cfg: PlayConfig):
 
       policy = PolicyRandom()
   else:
-    if is_tracking_task:
-      runner = MotionTrackingOnPolicyRunner(
-        env, asdict(agent_cfg), log_dir=str(log_dir), device=device
-      )
-    else:
-      runner = OnPolicyRunner(
-        env, asdict(agent_cfg), log_dir=str(log_dir), device=device
-      )
+    runner_cls = load_runner_cls(task_id) or OnPolicyRunner
+    runner = runner_cls(env, asdict(agent_cfg), log_dir=str(log_dir), device=device)
     runner.load(str(resume_path), map_location=device)
     policy = runner.get_inference_policy(device=device)
 
