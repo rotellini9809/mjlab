@@ -159,7 +159,7 @@ def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
   )
 
   rewards = {
-    "lift_task": RewardTermCfg(
+    "lift": RewardTermCfg(
       func=manipulation_mdp.staged_position_reward,
       weight=1.0,
       params={
@@ -168,6 +168,15 @@ def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
         "reaching_std": 0.2,
         "bringing_std": 0.3,
         "asset_cfg": SceneEntityCfg("robot", site_names=()),  # Set per-robot.
+      },
+    ),
+    "lift_precise": RewardTermCfg(
+      func=manipulation_mdp.bring_object_reward,
+      weight=1.0,
+      params={
+        "command_name": "lift_height",
+        "object_name": "cube",
+        "std": 0.05,
       },
     ),
     "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.01),
@@ -201,8 +210,8 @@ def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
         "reward_name": "joint_vel_hinge",
         "weight_stages": [
           {"step": 0, "weight": -0.01},
-          {"step": 2000 * 24, "weight": -0.1},
-          {"step": 4000 * 24, "weight": -1.0},
+          {"step": 1000 * 24, "weight": -0.1},
+          {"step": 1500 * 24, "weight": -1.0},
         ],
       },
     ),
