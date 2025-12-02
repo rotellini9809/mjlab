@@ -9,6 +9,7 @@ from mjlab.actuator import BuiltinPositionActuatorCfg
 from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
 from mjlab.utils.actuator import (
   ElectricActuator,
+  reflect_rotary_to_linear,
 )
 from mjlab.utils.os import update_assets
 from mjlab.utils.spec_config import CollisionCfg
@@ -70,11 +71,56 @@ ACTUATOR_DM_4340 = BuiltinPositionActuatorCfg(
   armature=DM_4340.reflected_inertia,
 )
 ACTUATOR_DM_4310 = BuiltinPositionActuatorCfg(
-  joint_names_expr=("joint4", "joint5", "joint6", "left_finger"),
+  joint_names_expr=("joint4", "joint5", "joint6"),
   stiffness=STIFFNESS_DM_4310,
   damping=DAMPING_DM_4310,
   effort_limit=DM_4310.effort_limit,
   armature=DM_4310.reflected_inertia,
+)
+
+##
+# Gripper transmission parameters.
+##
+
+# Reference: https://github.com/i2rt-robotics/i2rt/blob/cbe48976b44aae45af856c62545be00ea2feed11/i2rt/robots/utils.py#L106-L118
+
+# Crank gripper: DM 4310 drives a crank arm that converts rotation to linear motion.
+# The mechanism geometry (8° to 170°) provides 71mm stroke, but we operate over
+# 10° to 165° (2.7 rad motor range) for safety, giving ~70mm usable stroke.
+# Note: Transmission ratio varies with position as r(θ) = r_crank*sin(θ); we use
+# an effective average (dx/dθ) for simulation.
+GRIPPER_MOTOR_STROKE_CRANK = 2.7  # [rad]: operational motor range (from limits)
+GRIPPER_LINEAR_STROKE_CRANK = 0.071  # [m]: design stroke (full mechanism range)
+GRIPPER_TRANSMISSION_RATIO_CRANK = (
+  GRIPPER_LINEAR_STROKE_CRANK / GRIPPER_MOTOR_STROKE_CRANK
+)
+
+# Reflect motor properties to linear gripper joint.
+(
+  ARMATURE_DM_4310_LINEAR_CRANK,
+  VELOCITY_LIMIT_DM_4310_LINEAR_CRANK,
+  EFFORT_LIMIT_DM_4310_LINEAR_CRANK,
+) = reflect_rotary_to_linear(
+  armature_rotary=ARMATURE_DM_4310,
+  velocity_limit_rotary=DM_4310.velocity_limit,
+  effort_limit_rotary=DM_4310.effort_limit,
+  transmission_ratio=GRIPPER_TRANSMISSION_RATIO_CRANK,
+)
+
+# PD controller gains.
+NATURAL_FREQ_GRIPPER = 2 * 2.0 * 3.1415926535  # 2Hz
+STIFFNESS_DM_4310_LINEAR_CRANK = ARMATURE_DM_4310_LINEAR_CRANK * NATURAL_FREQ_GRIPPER**2
+DAMPING_DM_4310_LINEAR_CRANK = (
+  2.0 * DAMPING_RATIO * ARMATURE_DM_4310_LINEAR_CRANK * NATURAL_FREQ_GRIPPER
+)
+
+# Only actuate left_finger; right_finger is coupled via equality constraint.
+ACTUATOR_DM_4310_LINEAR_CRANK = BuiltinPositionActuatorCfg(
+  joint_names_expr=("left_finger",),
+  stiffness=STIFFNESS_DM_4310_LINEAR_CRANK,
+  damping=DAMPING_DM_4310_LINEAR_CRANK,
+  effort_limit=EFFORT_LIMIT_DM_4310_LINEAR_CRANK,
+  armature=ARMATURE_DM_4310_LINEAR_CRANK,
 )
 
 ##
@@ -145,7 +191,7 @@ GRIPPER_ONLY_COLLISION = CollisionCfg(
 ##
 
 ARTICULATION = EntityArticulationInfoCfg(
-  actuators=(ACTUATOR_DM_4340, ACTUATOR_DM_4310),
+  actuators=(ACTUATOR_DM_4340, ACTUATOR_DM_4310, ACTUATOR_DM_4310_LINEAR_CRANK),
   soft_joint_pos_limit_factor=0.9,
 )
 
