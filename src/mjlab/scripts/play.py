@@ -178,7 +178,7 @@ def run_play(task_id: str, cfg: PlayConfig):
       policy = PolicyRandom()
   else:
     runner_cls = load_runner_cls(task_id) or OnPolicyRunner
-    runner = runner_cls(env, asdict(agent_cfg), log_dir=str(log_dir), device=device)
+    runner = runner_cls(env, asdict(agent_cfg), device=device)
     runner.load(str(resume_path), map_location=device)
     policy = runner.get_inference_policy(device=device)
 
