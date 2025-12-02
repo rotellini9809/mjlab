@@ -43,14 +43,16 @@ def get_spec() -> mujoco.MjSpec:
 ARMATURE_DM_4340 = 0.032
 ARMATURE_DM_4310 = 0.0018
 
+# Reference: https://github.com/i2rt-robotics/i2rt/blob/cbe48976b44aae45af856c62545be00ea2feed11/i2rt/motor_drivers/utils.py#L159-L169
 DM_4340 = ElectricActuator(
   reflected_inertia=ARMATURE_DM_4340,
-  velocity_limit=37.0,
+  velocity_limit=10.0,
   effort_limit=28.0,
 )
+# Reference: https://github.com/i2rt-robotics/i2rt/blob/cbe48976b44aae45af856c62545be00ea2feed11/i2rt/motor_drivers/utils.py#L139-L149
 DM_4310 = ElectricActuator(
   reflected_inertia=ARMATURE_DM_4310,
-  velocity_limit=40.0,
+  velocity_limit=30.0,
   effort_limit=10.0,
 )
 
