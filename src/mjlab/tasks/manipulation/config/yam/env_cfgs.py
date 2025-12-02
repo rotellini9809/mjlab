@@ -47,7 +47,7 @@ def yam_lift_cube_env_cfg(
   cfg.observations["policy"].terms["ee_to_cube"].params["asset_cfg"].site_names = (
     "grasp_site",
   )
-  cfg.rewards["lift_task"].params["asset_cfg"].site_names = ("grasp_site",)
+  cfg.rewards["lift"].params["asset_cfg"].site_names = ("grasp_site",)
 
   fingertip_geoms = r"[lr]f_down(6|7|8|9|10|11)_collision"
   cfg.events["fingertip_friction_slide"].params[

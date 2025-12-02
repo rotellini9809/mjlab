@@ -116,12 +116,15 @@ DAMPING_DM_4310_LINEAR_CRANK = (
   2.0 * DAMPING_RATIO * ARMATURE_DM_4310_LINEAR_CRANK * NATURAL_FREQ_GRIPPER
 )
 
+# Artificially limit gripper force for sim stability (must also be done on hardware).
+EFFORT_LIMIT_DM_4310_LINEAR_CRANK_SAFE = EFFORT_LIMIT_DM_4310_LINEAR_CRANK * 0.1
+
 # Only actuate left_finger; right_finger is coupled via equality constraint.
 ACTUATOR_DM_4310_LINEAR_CRANK = BuiltinPositionActuatorCfg(
   joint_names_expr=("left_finger",),
   stiffness=STIFFNESS_DM_4310_LINEAR_CRANK,
   damping=DAMPING_DM_4310_LINEAR_CRANK,
-  effort_limit=EFFORT_LIMIT_DM_4310_LINEAR_CRANK,
+  effort_limit=EFFORT_LIMIT_DM_4310_LINEAR_CRANK_SAFE,
   armature=ARMATURE_DM_4310_LINEAR_CRANK,
 )
 

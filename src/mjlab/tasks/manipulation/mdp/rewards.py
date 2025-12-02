@@ -39,6 +39,20 @@ def staged_position_reward(
   return reaching * (1.0 + bringing)
 
 
+def bring_object_reward(
+  env: ManagerBasedRlEnv,
+  command_name: str,
+  object_name: str,
+  std: float,
+) -> torch.Tensor:
+  obj: Entity = env.scene[object_name]
+  command = cast(LiftingCommand, env.command_manager.get_term(command_name))
+  position_error = torch.sum(
+    torch.square(command.target_pos - obj.data.root_link_pos_w), dim=-1
+  )
+  return torch.exp(-position_error / std**2)
+
+
 def joint_velocity_hinge_penalty(
   env: ManagerBasedRlEnv,
   max_vel: float,
