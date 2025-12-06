@@ -673,7 +673,7 @@ def generate_dashboard_html(runs: list[dict], metrics_by_category: dict) -> str:
 
 def main(
   run_paths: list[str] | None = None,
-  entity: str = "rll_humanoid",
+  entity: str = "gcbc_researchers",
   project: str = "mjlab",
   tag: str | None = None,
   limit: int = 30,

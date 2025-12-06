@@ -73,9 +73,24 @@ jobs:
         with:
           path: .
 
+  deploy-generated:
+    needs: generate
+    if: needs.generate.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   deploy:
-    needs: [generate, deploy-from-branch]
-    if: always() && (needs.generate.result == 'success' || needs.deploy-from-branch.result == 'success')
+    needs: deploy-from-branch
+    if: needs.deploy-from-branch.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

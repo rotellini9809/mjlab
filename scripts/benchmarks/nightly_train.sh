@@ -28,8 +28,6 @@ NUM_ENVS=4096
 MAX_ITERATIONS=6000
 REGISTRY_NAME="rll_humanoid/wandb-registry-Motions/side_kick_test"
 
-# Report output
-REPORT_DIR="${MJLAB_DIR}/benchmark_results"
 GH_PAGES_BRANCH="gh-pages"
 
 log() {
@@ -41,11 +39,31 @@ error() {
     exit 1
 }
 
+# Use a worktree for training to avoid touching the main repo
+WORKTREE_DIR="/tmp/mjlab-nightly-$$"
+REPORT_DIR="${WORKTREE_DIR}/benchmark_results"
+
+cleanup() {
+    if [[ -d "$WORKTREE_DIR" ]]; then
+        log "Cleaning up worktree..."
+        git -C "$MJLAB_DIR" worktree remove --force "$WORKTREE_DIR" 2>/dev/null || rm -rf "$WORKTREE_DIR"
+    fi
+}
+trap cleanup EXIT
+
 cd "$MJLAB_DIR" || error "Failed to cd to $MJLAB_DIR"
 
 log "Starting nightly benchmark run"
 log "Task: $TASK"
 log "GPU: $CUDA_DEVICE"
+
+# Fetch latest and create worktree
+git fetch origin main || log "Warning: Failed to fetch origin/main"
+git worktree prune
+git worktree add "$WORKTREE_DIR" origin/main --detach || error "Failed to create worktree"
+cd "$WORKTREE_DIR"
+
+log "Running on commit: $(git rev-parse HEAD)"
 
 # Run training
 if [[ "$SKIP_TRAINING" != "1" ]]; then
@@ -55,7 +73,7 @@ if [[ "$SKIP_TRAINING" != "1" ]]; then
         --env.scene.num-envs "$NUM_ENVS" \
         --agent.max-iterations "$MAX_ITERATIONS" \
         --registry-name "$REGISTRY_NAME" \
-        --agent.wandb-tags "[$WANDB_TAGS]"
+        --agent.wandb-tags "$WANDB_TAGS"
 
     log "Training completed"
 else
@@ -65,46 +83,49 @@ fi
 # Generate report
 log "Generating benchmark report..."
 uv run python scripts/benchmarks/generate_report.py \
+    --entity gcbc_researchers \
     --tag nightly \
     --output-dir "$REPORT_DIR"
 
 log "Report generated at $REPORT_DIR"
 
-# Deploy to GitHub Pages (if on a machine with git configured)
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    log "Deploying to GitHub Pages..."
+# Deploy to GitHub Pages using a separate worktree
+log "Deploying to GitHub Pages..."
 
-    # Save current branch
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-    # Stash any uncommitted changes
-    git stash push -m "nightly-benchmark-stash" --quiet 2>/dev/null || true
-
-    # Create or switch to gh-pages branch
-    if git show-ref --verify --quiet "refs/heads/$GH_PAGES_BRANCH"; then
-        git checkout "$GH_PAGES_BRANCH"
-        git pull origin "$GH_PAGES_BRANCH" --rebase 2>/dev/null || true
-    else
-        git checkout --orphan "$GH_PAGES_BRANCH"
-        git rm -rf . 2>/dev/null || true
+GH_PAGES_WORKTREE="/tmp/mjlab-gh-pages-$$"
+cleanup_gh_pages() {
+    if [[ -d "$GH_PAGES_WORKTREE" ]]; then
+        git -C "$MJLAB_DIR" worktree remove --force "$GH_PAGES_WORKTREE" 2>/dev/null || rm -rf "$GH_PAGES_WORKTREE"
     fi
+}
 
-    # Copy report files to nightly/ subdirectory
-    mkdir -p nightly
-    cp -r "$REPORT_DIR"/* nightly/
-
-    # Commit and push
-    git add -A
-    git commit -m "Update nightly benchmarks $(date '+%Y-%m-%d')" || log "No changes to commit"
-    git push origin "$GH_PAGES_BRANCH" || log "Failed to push (may need manual push)"
-
-    # Return to original branch
-    git checkout "$CURRENT_BRANCH"
-    git stash pop --quiet 2>/dev/null || true
-
-    log "Deployed to GitHub Pages"
+# Checkout gh-pages in separate worktree
+if git -C "$MJLAB_DIR" ls-remote --exit-code --heads origin "$GH_PAGES_BRANCH" > /dev/null 2>&1; then
+    git -C "$MJLAB_DIR" fetch origin "$GH_PAGES_BRANCH"
+    git -C "$MJLAB_DIR" worktree add "$GH_PAGES_WORKTREE" "origin/$GH_PAGES_BRANCH" || { log "Failed to create gh-pages worktree"; cleanup_gh_pages; exit 0; }
+    cd "$GH_PAGES_WORKTREE"
+    git checkout -B "$GH_PAGES_BRANCH"
 else
-    log "Not in a git repository, skipping GitHub Pages deployment"
+    # Create new orphan gh-pages branch
+    git -C "$MJLAB_DIR" worktree add --detach "$GH_PAGES_WORKTREE" HEAD || { log "Failed to create gh-pages worktree"; cleanup_gh_pages; exit 0; }
+    cd "$GH_PAGES_WORKTREE"
+    git checkout --orphan "$GH_PAGES_BRANCH"
+    git reset --hard
+    git clean -fdx
 fi
+
+# Copy report files
+mkdir -p nightly
+cp -r "$REPORT_DIR"/* nightly/
+
+# Commit and push
+git add -A
+git commit -m "Update nightly benchmarks $(date '+%Y-%m-%d')" || log "No changes to commit"
+git push origin "$GH_PAGES_BRANCH" || log "Failed to push"
+
+log "Deployed to GitHub Pages"
+
+cd "$MJLAB_DIR"
+cleanup_gh_pages
 
 log "Nightly benchmark complete"
