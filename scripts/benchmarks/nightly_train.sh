@@ -11,6 +11,7 @@
 #   CUDA_DEVICE: GPU device to use (default: 0)
 #   WANDB_TAGS: Comma-separated tags for the run (default: nightly)
 #   SKIP_TRAINING: Set to "1" to skip training and only generate report
+#   SKIP_THROUGHPUT: Set to "1" to skip throughput benchmarking
 
 set -euo pipefail
 
@@ -18,6 +19,7 @@ set -euo pipefail
 CUDA_DEVICE="${CUDA_DEVICE:-0}"
 WANDB_TAGS="${WANDB_TAGS:-nightly}"
 SKIP_TRAINING="${SKIP_TRAINING:-0}"
+SKIP_THROUGHPUT="${SKIP_THROUGHPUT:-0}"
 
 # Training configuration
 TASK="Mjlab-Tracking-Flat-Unitree-G1"
@@ -93,6 +95,17 @@ fi
 # Copy cached data if exists
 REPORT_DIR="$GH_PAGES_DIR/nightly"
 mkdir -p "$REPORT_DIR"
+
+# Run throughput benchmark
+if [[ "$SKIP_THROUGHPUT" != "1" ]]; then
+    log "Running throughput benchmark..."
+    CUDA_VISIBLE_DEVICES="$CUDA_DEVICE" uv run python scripts/benchmarks/measure_throughput.py \
+        --num-envs "$NUM_ENVS" \
+        --output-dir "$REPORT_DIR"
+    log "Throughput benchmark completed"
+else
+    log "Skipping throughput benchmark (SKIP_THROUGHPUT=1)"
+fi
 
 # Generate report (uses cached data.json if present, only evaluates new runs)
 log "Generating benchmark report..."

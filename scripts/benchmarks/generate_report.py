@@ -49,6 +49,15 @@ def evaluate_run(run_path: str, num_envs: int = 1024) -> dict:
   }
 
 
+def load_throughput_data(output_dir: Path) -> list[dict]:
+  """Load throughput benchmark data if available."""
+  data_file = output_dir / "throughput_data.json"
+  if not data_file.exists():
+    return []
+  with open(data_file) as f:
+    return json.load(f)
+
+
 def generate_html_report(runs: list[dict], output_dir: Path) -> None:
   """Generate static HTML dashboard from evaluation data."""
   output_dir.mkdir(parents=True, exist_ok=True)
@@ -57,17 +66,21 @@ def generate_html_report(runs: list[dict], output_dir: Path) -> None:
   with open(output_dir / "data.json", "w") as f:
     json.dump(runs, f, indent=2, default=str)
 
-  html = generate_dashboard_html(runs)
+  # Load throughput data if available.
+  throughput_data = load_throughput_data(output_dir)
+
+  html = generate_dashboard_html(runs, throughput_data)
   with open(output_dir / "index.html", "w") as f:
     f.write(html)
 
   print(f"Report generated at {output_dir / 'index.html'}")
 
 
-def generate_dashboard_html(runs: list[dict]) -> str:
+def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> str:
   """Generate the HTML dashboard content."""
   runs_json = json.dumps(runs, default=str)
   metrics_json = json.dumps(METRICS)
+  throughput_json = json.dumps(throughput_data, default=str)
   timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
 
   return f"""<!DOCTYPE html>
@@ -199,11 +212,40 @@ def generate_dashboard_html(runs: list[dict]) -> str:
         }}
         .theme-toggle:hover {{ border-color: var(--accent); }}
         .header-right {{ display: flex; align-items: center; gap: 1rem; }}
+        .tabs {{
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }}
+        .tab {{
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }}
+        .tab:hover {{ border-color: var(--accent); }}
+        .tab.active {{
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }}
+        .tab-content {{ display: none; }}
+        .tab-content.active {{ display: block; }}
+        .section-title {{
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 1.5rem 0 1rem 0;
+            color: var(--text-dim);
+        }}
     </style>
 </head>
 <body>
     <header>
-        <h1>MJLab Nightly Tracking Benchmark</h1>
+        <h1>MJLab Nightly Benchmark</h1>
         <div class="header-right">
             <span class="timestamp">Updated: {timestamp}</span>
             <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
@@ -212,22 +254,46 @@ def generate_dashboard_html(runs: list[dict]) -> str:
         </div>
     </header>
 
-    <div class="summary" id="summary"></div>
-    <div class="charts" id="charts"></div>
+    <div class="tabs">
+        <button class="tab active" data-tab="training">Training Metrics</button>
+        <button class="tab" data-tab="throughput">Throughput</button>
+    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Commit</th>
-                <th>Run</th>
-                <th>Success Rate</th>
-                <th>MPKPE (m)</th>
-                <th>EE Pos Error (m)</th>
-            </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-    </table>
+    <div id="training" class="tab-content active">
+        <div class="summary" id="summary"></div>
+        <div class="charts" id="charts"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Commit</th>
+                    <th>Run</th>
+                    <th>Success Rate</th>
+                    <th>MPKPE (m)</th>
+                    <th>EE Pos Error (m)</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+
+    <div id="throughput" class="tab-content">
+        <div class="summary" id="throughput-summary"></div>
+        <div class="charts" id="throughput-charts"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Commit</th>
+                    <th>Task</th>
+                    <th>Physics FPS</th>
+                    <th>Env FPS</th>
+                    <th>Overhead</th>
+                </tr>
+            </thead>
+            <tbody id="throughput-table-body"></tbody>
+        </table>
+    </div>
 
     <script>
         // Theme toggle logic
@@ -438,6 +504,155 @@ def generate_dashboard_html(runs: list[dict]) -> str:
                 </tr>
             `;
         }});
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {{
+            tab.addEventListener('click', () => {{
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+                // Update URL hash
+                history.replaceState(null, '', '#' + tab.dataset.tab);
+            }});
+        }});
+
+        // Handle URL hash on load
+        if (window.location.hash) {{
+            const tab = document.querySelector(`.tab[data-tab="${{window.location.hash.slice(1)}}"]`);
+            if (tab) tab.click();
+        }}
+
+        // Throughput data and charts
+        const throughputData = {throughput_json};
+        const throughputChartsContainer = document.getElementById('throughput-charts');
+        const throughputSummary = document.getElementById('throughput-summary');
+        const throughputTbody = document.getElementById('throughput-table-body');
+
+        if (throughputData.length > 0) {{
+            // Get unique tasks from the data
+            const tasks = [...new Set(throughputData.flatMap(d => d.results.map(r => r.task)))];
+
+            // Throughput summary (latest values)
+            const latestRun = throughputData[throughputData.length - 1];
+            if (latestRun) {{
+                let summaryHtml = `<div class="stat"><div class="stat-label">Total Runs</div><div class="stat-value">${{throughputData.length}}</div></div>`;
+                latestRun.results.forEach(r => {{
+                    const taskShort = r.task.replace('Mjlab-', '').replace('-Unitree-', '-');
+                    summaryHtml += `
+                        <div class="stat">
+                            <div class="stat-label">${{taskShort}} Env FPS</div>
+                            <div class="stat-value">${{(r.env_fps / 1000).toFixed(0)}}K</div>
+                        </div>`;
+                }});
+                throughputSummary.innerHTML = summaryHtml;
+            }}
+
+            // Create charts for each metric type
+            const throughputMetrics = [
+                ['physics_fps', 'Physics FPS', true],
+                ['env_fps', 'Env FPS', true],
+                ['overhead_pct', 'Overhead %', false]
+            ];
+
+            const taskColors = {{
+                'Mjlab-Velocity-Flat-Unitree-Go1': '#3fb950',
+                'Mjlab-Tracking-Flat-Unitree-G1': '#58a6ff',
+                'Mjlab-Lift-Cube-Yam': '#f0883e'
+            }};
+
+            throughputMetrics.forEach(([key, label, higherIsBetter]) => {{
+                const card = document.createElement('div');
+                card.className = 'chart-card';
+                const arrow = higherIsBetter ? '↑' : '↓';
+                const tooltip = higherIsBetter ? 'Higher is better' : 'Lower is better';
+                card.innerHTML = `
+                    <div class="chart-title">
+                        <span>${{label}} <span title="${{tooltip}}" style="cursor:help;opacity:0.6">${{arrow}}</span></span>
+                    </div>
+                    <div class="chart-container"><canvas></canvas></div>
+                `;
+                throughputChartsContainer.appendChild(card);
+
+                const datasets = tasks.map(task => {{
+                    const data = throughputData.map(run => {{
+                        const result = run.results.find(r => r.task === task);
+                        if (!result) return null;
+                        return {{
+                            x: new Date(run.created_at),
+                            y: key === 'physics_fps' || key === 'env_fps' ? result[key] / 1000 : result[key],
+                            commit: run.commit
+                        }};
+                    }}).filter(d => d !== null);
+
+                    const taskShort = task.replace('Mjlab-', '').replace('-Unitree-', '-');
+                    return {{
+                        label: taskShort,
+                        data: data,
+                        borderColor: taskColors[task] || '#58a6ff',
+                        backgroundColor: (taskColors[task] || '#58a6ff') + '20',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.1
+                    }};
+                }});
+
+                charts.push(new Chart(card.querySelector('canvas'), {{
+                    type: 'line',
+                    data: {{ datasets }},
+                    options: {{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {{
+                            legend: {{ display: true, position: 'bottom' }},
+                            tooltip: {{
+                                callbacks: {{
+                                    title: (items) => {{
+                                        const d = items[0]?.raw;
+                                        return d ? `Commit: ${{d.commit}}` : '';
+                                    }}
+                                }}
+                            }}
+                        }},
+                        scales: {{
+                            x: {{
+                                type: 'time',
+                                time: {{ unit: 'day' }},
+                                ticks: {{ maxTicksLimit: 5 }},
+                                title: {{ display: true, text: 'Date', font: {{ size: 11 }} }}
+                            }},
+                            y: {{
+                                ticks: {{ maxTicksLimit: 5 }},
+                                title: {{
+                                    display: true,
+                                    text: key.includes('fps') ? 'K steps/sec' : '%',
+                                    font: {{ size: 11 }}
+                                }}
+                            }}
+                        }}
+                    }}
+                }}));
+            }});
+
+            // Throughput table
+            [...throughputData].reverse().forEach(run => {{
+                run.results.forEach((r, i) => {{
+                    const taskShort = r.task.replace('Mjlab-', '').replace('-Unitree-', '-');
+                    throughputTbody.innerHTML += `
+                        <tr>
+                            <td>${{i === 0 ? new Date(run.created_at).toLocaleDateString() : ''}}</td>
+                            <td>${{i === 0 ? `<code>${{run.commit}}</code>` : ''}}</td>
+                            <td>${{taskShort}}</td>
+                            <td>${{(r.physics_fps / 1000).toFixed(0)}}K</td>
+                            <td>${{(r.env_fps / 1000).toFixed(0)}}K</td>
+                            <td>${{r.overhead_pct.toFixed(1)}}%</td>
+                        </tr>
+                    `;
+                }});
+            }});
+        }} else {{
+            throughputSummary.innerHTML = '<p style="color: var(--text-dim)">No throughput data available. Run measure_throughput.py to generate data.</p>';
+        }}
     </script>
 </body>
 </html>
