@@ -25,10 +25,11 @@ SKIP_TRAINING="${SKIP_TRAINING:-0}"
 # Training configuration
 TASK="Mjlab-Tracking-Flat-Unitree-G1"
 NUM_ENVS=4096
-MAX_ITERATIONS=6000
+MAX_ITERATIONS=3000
 REGISTRY_NAME="rll_humanoid/wandb-registry-Motions/side_kick_test"
 
 GH_PAGES_BRANCH="gh-pages"
+GH_PAGES_DIR="/tmp/mjlab-gh-pages-$$"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -39,14 +40,10 @@ error() {
     exit 1
 }
 
-# Use a worktree for training to avoid touching the main repo
-WORKTREE_DIR="/tmp/mjlab-nightly-$$"
-REPORT_DIR="${WORKTREE_DIR}/benchmark_results"
-
 cleanup() {
-    if [[ -d "$WORKTREE_DIR" ]]; then
-        log "Cleaning up worktree..."
-        git -C "$MJLAB_DIR" worktree remove --force "$WORKTREE_DIR" 2>/dev/null || rm -rf "$WORKTREE_DIR"
+    if [[ -d "$GH_PAGES_DIR" ]]; then
+        log "Cleaning up gh-pages clone..."
+        rm -rf "$GH_PAGES_DIR"
     fi
 }
 trap cleanup EXIT
@@ -56,14 +53,7 @@ cd "$MJLAB_DIR" || error "Failed to cd to $MJLAB_DIR"
 log "Starting nightly benchmark run"
 log "Task: $TASK"
 log "GPU: $CUDA_DEVICE"
-
-# Fetch latest and create worktree
-git fetch origin main || log "Warning: Failed to fetch origin/main"
-git worktree prune
-git worktree add "$WORKTREE_DIR" origin/main --detach || error "Failed to create worktree"
-cd "$WORKTREE_DIR"
-
-log "Running on commit: $(git rev-parse HEAD)"
+log "Commit: $(git rev-parse HEAD)"
 
 # Run training
 if [[ "$SKIP_TRAINING" != "1" ]]; then
@@ -80,52 +70,42 @@ else
     log "Skipping training (SKIP_TRAINING=1)"
 fi
 
-# Generate report
+# Clone gh-pages branch (shallow clone for speed)
+log "Cloning gh-pages branch..."
+if git ls-remote --exit-code --heads origin "$GH_PAGES_BRANCH" > /dev/null 2>&1; then
+    git clone --branch "$GH_PAGES_BRANCH" --depth 1 "$(git remote get-url origin)" "$GH_PAGES_DIR"
+else
+    # Create new gh-pages branch
+    mkdir -p "$GH_PAGES_DIR"
+    cd "$GH_PAGES_DIR"
+    git init
+    git remote add origin "$(git -C "$MJLAB_DIR" remote get-url origin)"
+    git checkout -b "$GH_PAGES_BRANCH"
+    cd "$MJLAB_DIR"
+fi
+
+# Copy cached data if exists
+REPORT_DIR="$GH_PAGES_DIR/nightly"
+mkdir -p "$REPORT_DIR"
+
+# Generate report (uses cached data.json if present, only evaluates new runs)
 log "Generating benchmark report..."
 uv run python scripts/benchmarks/generate_report.py \
     --entity gcbc_researchers \
     --tag nightly \
     --output-dir "$REPORT_DIR"
 
-log "Report generated at $REPORT_DIR"
-
-# Deploy to GitHub Pages using a separate worktree
-log "Deploying to GitHub Pages..."
-
-GH_PAGES_WORKTREE="/tmp/mjlab-gh-pages-$$"
-cleanup_gh_pages() {
-    if [[ -d "$GH_PAGES_WORKTREE" ]]; then
-        git -C "$MJLAB_DIR" worktree remove --force "$GH_PAGES_WORKTREE" 2>/dev/null || rm -rf "$GH_PAGES_WORKTREE"
-    fi
-}
-
-# Checkout gh-pages in separate worktree
-if git -C "$MJLAB_DIR" ls-remote --exit-code --heads origin "$GH_PAGES_BRANCH" > /dev/null 2>&1; then
-    git -C "$MJLAB_DIR" fetch origin "$GH_PAGES_BRANCH"
-    git -C "$MJLAB_DIR" worktree add "$GH_PAGES_WORKTREE" "origin/$GH_PAGES_BRANCH" || { log "Failed to create gh-pages worktree"; cleanup_gh_pages; exit 0; }
-    cd "$GH_PAGES_WORKTREE"
-    git checkout -B "$GH_PAGES_BRANCH"
-else
-    # Create new orphan gh-pages branch
-    git -C "$MJLAB_DIR" worktree add --detach "$GH_PAGES_WORKTREE" HEAD || { log "Failed to create gh-pages worktree"; cleanup_gh_pages; exit 0; }
-    cd "$GH_PAGES_WORKTREE"
-    git checkout --orphan "$GH_PAGES_BRANCH"
-    git reset --hard
-    git clean -fdx
-fi
-
-# Copy report files
-mkdir -p nightly
-cp -r "$REPORT_DIR"/* nightly/
+log "Report generated"
 
 # Commit and push
+cd "$GH_PAGES_DIR"
 git add -A
-git commit -m "Update nightly benchmarks $(date '+%Y-%m-%d')" || log "No changes to commit"
-git push origin "$GH_PAGES_BRANCH" || log "Failed to push"
-
-log "Deployed to GitHub Pages"
-
-cd "$MJLAB_DIR"
-cleanup_gh_pages
+if git diff --staged --quiet; then
+    log "No changes to commit"
+else
+    git commit -m "Update nightly tracking benchmark $(date '+%Y-%m-%d')"
+    git push origin "$GH_PAGES_BRANCH" || log "Failed to push"
+    log "Deployed to GitHub Pages"
+fi
 
 log "Nightly benchmark complete"
