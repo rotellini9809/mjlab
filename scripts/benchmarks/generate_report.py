@@ -80,6 +80,28 @@ def generate_dashboard_html(runs: list[dict]) -> str:
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         :root {{
+            --bg: #ffffff;
+            --bg-card: #f6f8fa;
+            --text: #1f2328;
+            --text-dim: #656d76;
+            --border: #d0d7de;
+            --accent: #0969da;
+            --green: #1a7f37;
+            --red: #cf222e;
+        }}
+        @media (prefers-color-scheme: dark) {{
+            :root:not([data-theme="light"]) {{
+                --bg: #0d1117;
+                --bg-card: #161b22;
+                --text: #c9d1d9;
+                --text-dim: #8b949e;
+                --border: #30363d;
+                --accent: #58a6ff;
+                --green: #3fb950;
+                --red: #f85149;
+            }}
+        }}
+        :root[data-theme="dark"] {{
             --bg: #0d1117;
             --bg-card: #161b22;
             --text: #c9d1d9;
@@ -165,12 +187,29 @@ def generate_dashboard_html(runs: list[dict]) -> str:
         }}
         a {{ color: var(--accent); text-decoration: none; }}
         a:hover {{ text-decoration: underline; }}
+        .theme-toggle {{
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 1rem;
+            line-height: 1;
+        }}
+        .theme-toggle:hover {{ border-color: var(--accent); }}
+        .header-right {{ display: flex; align-items: center; gap: 1rem; }}
     </style>
 </head>
 <body>
     <header>
         <h1>MJLab Nightly Tracking Benchmark</h1>
-        <span class="timestamp">Updated: {timestamp}</span>
+        <div class="header-right">
+            <span class="timestamp">Updated: {timestamp}</span>
+            <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+                <span id="theme-icon"></span>
+            </button>
+        </div>
     </header>
 
     <div class="summary" id="summary"></div>
@@ -191,6 +230,64 @@ def generate_dashboard_html(runs: list[dict]) -> str:
     </table>
 
     <script>
+        // Theme toggle logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const root = document.documentElement;
+
+        function getSystemTheme() {{
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }}
+
+        function getEffectiveTheme() {{
+            const stored = localStorage.getItem('theme');
+            if (stored === 'dark' || stored === 'light') return stored;
+            return getSystemTheme();
+        }}
+
+        function updateThemeIcon() {{
+            const stored = localStorage.getItem('theme');
+            if (!stored) {{
+                themeIcon.textContent = '\u2699\ufe0f'; // gear for auto
+                themeToggle.title = 'Theme: System (click to toggle)';
+            }} else if (stored === 'dark') {{
+                themeIcon.textContent = '\U0001f319'; // moon
+                themeToggle.title = 'Theme: Dark (click to toggle)';
+            }} else {{
+                themeIcon.textContent = '\u2600\ufe0f'; // sun
+                themeToggle.title = 'Theme: Light (click to toggle)';
+            }}
+        }}
+
+        function applyTheme() {{
+            const stored = localStorage.getItem('theme');
+            if (stored) {{
+                root.setAttribute('data-theme', stored);
+            }} else {{
+                root.removeAttribute('data-theme');
+            }}
+            updateThemeIcon();
+            updateChartColors();
+        }}
+
+        function cycleTheme() {{
+            const stored = localStorage.getItem('theme');
+            if (!stored) {{
+                // auto -> dark
+                localStorage.setItem('theme', 'dark');
+            }} else if (stored === 'dark') {{
+                // dark -> light
+                localStorage.setItem('theme', 'light');
+            }} else {{
+                // light -> auto
+                localStorage.removeItem('theme');
+            }}
+            applyTheme();
+        }}
+
+        themeToggle.addEventListener('click', cycleTheme);
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
         const runs = {runs_json};
         const METRICS = {metrics_json};
 
@@ -205,6 +302,17 @@ def generate_dashboard_html(runs: list[dict]) -> str:
             ee_ori_error: '#f85149',
             joint_vel_error: '#79c0ff'
         }};
+
+        let charts = [];
+
+        function updateChartColors() {{
+            const style = getComputedStyle(root);
+            const textDim = style.getPropertyValue('--text-dim').trim();
+            const border = style.getPropertyValue('--border').trim();
+            Chart.defaults.color = textDim;
+            Chart.defaults.borderColor = border;
+            charts.forEach(c => c.update());
+        }}
 
         // Summary cards
         const summary = document.getElementById('summary');
@@ -234,8 +342,6 @@ def generate_dashboard_html(runs: list[dict]) -> str:
 
         // Charts
         const chartsContainer = document.getElementById('charts');
-        Chart.defaults.color = '#8b949e';
-        Chart.defaults.borderColor = '#30363d';
 
         METRICS.forEach(([key, label, unit, scale, higherIsBetter]) => {{
             const data = runs.map(r => ({{
@@ -260,7 +366,7 @@ def generate_dashboard_html(runs: list[dict]) -> str:
             `;
             chartsContainer.appendChild(card);
 
-            new Chart(card.querySelector('canvas'), {{
+            charts.push(new Chart(card.querySelector('canvas'), {{
                 type: 'line',
                 data: {{
                     datasets: [{{
@@ -295,13 +401,28 @@ def generate_dashboard_html(runs: list[dict]) -> str:
                         x: {{
                             type: 'time',
                             time: {{ unit: 'day' }},
-                            ticks: {{ maxTicksLimit: 5 }}
+                            ticks: {{ maxTicksLimit: 5 }},
+                            title: {{
+                                display: true,
+                                text: 'Date',
+                                font: {{ size: 11 }}
+                            }}
                         }},
-                        y: {{ ticks: {{ maxTicksLimit: 5 }} }}
+                        y: {{
+                            ticks: {{ maxTicksLimit: 5 }},
+                            title: {{
+                                display: true,
+                                text: `${{unit}} (${{higherIsBetter ? 'higher is better' : 'lower is better'}})`,
+                                font: {{ size: 11 }}
+                            }}
+                        }}
                     }}
                 }}
-            }});
+            }}));
         }});
+
+        // Initialize theme
+        applyTheme();
 
         // Table
         const tbody = document.getElementById('table-body');
