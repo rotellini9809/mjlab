@@ -2,10 +2,6 @@
 
 This script measures physics and environment step throughput across canonical tasks
 to catch performance regressions in the manager-based API.
-
-Usage:
-  uv run python scripts/benchmarks/measure_throughput.py
-  uv run python scripts/benchmarks/measure_throughput.py --num-envs 4096 --num-steps 500
 """
 
 from __future__ import annotations
@@ -135,26 +131,22 @@ def benchmark_task(task: str, cfg: ThroughputConfig) -> BenchmarkResult:
   env = ManagerBasedRlEnv(cfg=env_cfg, device=cfg.device)
   env.reset()
 
-  # Warmup
+  # Warmup.
   action_dim = sum(env.action_manager.action_term_dim)
   action = torch.zeros(env.num_envs, action_dim, device=env.device)
   for _ in range(cfg.warmup_steps):
     env.step(action)
   torch.cuda.synchronize()
 
-  # Measure physics FPS (need to reset state after raw physics stepping)
   physics_fps = measure_physics_fps(env, cfg.num_steps)
 
-  # Reset env state before measuring env FPS
+  # Reset env state before measuring env FPS.
   env.reset()
   torch.cuda.synchronize()
 
-  # Measure env FPS
   env_fps = measure_env_fps(env, cfg.num_steps)
 
-  # Calculate overhead (env step includes physics, so overhead is the difference)
-  # Physics FPS is per-physics-step, env FPS is per-env-step
-  # To compare: env_fps * decimation gives physics steps per second via env.step()
+  # Calculate overhead (env step includes physics, so overhead is the difference).
   decimation = env.cfg.decimation
   physics_via_env = env_fps * decimation
   overhead_pct = 100 * (1 - physics_via_env / physics_fps)
