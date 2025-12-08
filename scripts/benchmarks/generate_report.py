@@ -249,6 +249,50 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
             margin: 1.5rem 0 1rem 0;
             color: var(--text-dim);
         }}
+        .runs-details {{
+            margin-top: 1.5rem;
+        }}
+        .runs-details summary {{
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-weight: 500;
+            color: var(--text-dim);
+        }}
+        .runs-details summary:hover {{
+            border-color: var(--accent);
+        }}
+        .runs-details[open] summary {{
+            border-radius: 8px 8px 0 0;
+            border-bottom: none;
+        }}
+        .runs-details table {{
+            border-radius: 0 0 8px 8px;
+        }}
+        .info-box {{
+            margin-bottom: 1.5rem;
+        }}
+        .info-box summary {{
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 500;
+        }}
+        .info-box summary:hover {{
+            text-decoration: underline;
+        }}
+        .info-box p {{
+            margin-top: 0.75rem;
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: var(--text-dim);
+        }}
     </style>
 </head>
 <body>
@@ -263,44 +307,71 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
     </header>
 
     <div class="tabs">
-        <button class="tab active" data-tab="training">Training Metrics</button>
+        <button class="tab active" data-tab="tracking">Tracking Eval</button>
         <button class="tab" data-tab="throughput">Throughput</button>
     </div>
 
-    <div id="training" class="tab-content active">
+    <div id="tracking" class="tab-content active">
+        <details class="info-box">
+            <summary>What is this?</summary>
+            <p>
+              Every night, we train a policy to imitate a reference motion on the Unitree G1 using the latest MJLab commit.
+              The trained policy is then evaluated across 1024 trials, with the results logged here to catch regressions over time.
+            </p>
+        </details>
         <div class="summary" id="summary"></div>
         <div class="charts" id="charts"></div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Commit</th>
-                    <th>Run</th>
-                    <th>Success Rate</th>
-                    <th>MPKPE (m)</th>
-                    <th>EE Pos Error (m)</th>
-                </tr>
-            </thead>
-            <tbody id="table-body"></tbody>
-        </table>
+        <details class="runs-details">
+            <summary>All Runs</summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Commit</th>
+                        <th>Run</th>
+                        <th>Success Rate</th>
+                        <th>MPKPE (m)</th>
+                        <th>EE Pos Error (m)</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </details>
     </div>
 
     <div id="throughput" class="tab-content">
+        <details class="info-box">
+            <summary>What is this?</summary>
+            <p>
+                Measures simulation throughput (steps per second) for different tasks.
+                <strong>Physics FPS</strong> is raw MuJoCo stepping speed (just <code>mj_step</code>).
+                <strong>Env FPS</strong> is the full environment step including observations, rewards,
+                terminations, and resets. <strong>Overhead</strong> is the percentage slowdown from
+                environment logic on top of physics.
+            </p>
+            <p>
+                Note: These benchmarks use zero actions, which causes frequent terminations and resets.
+                This represents a worst-case scenario for overhead since resets are expensive.
+            </p>
+        </details>
         <div class="summary" id="throughput-summary"></div>
         <div class="charts" id="throughput-charts"></div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Commit</th>
-                    <th>Task</th>
-                    <th>Physics FPS</th>
-                    <th>Env FPS</th>
-                    <th>Overhead</th>
-                </tr>
-            </thead>
-            <tbody id="throughput-table-body"></tbody>
-        </table>
+        <details class="runs-details">
+            <summary>All Runs</summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Commit</th>
+                        <th>Task</th>
+                        <th>Physics FPS</th>
+                        <th>Env FPS</th>
+                        <th>Overhead</th>
+                    </tr>
+                </thead>
+                <tbody id="throughput-table-body"></tbody>
+            </table>
+        </details>
     </div>
 
     <script>
