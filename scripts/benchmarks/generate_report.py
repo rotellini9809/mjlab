@@ -235,6 +235,14 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
         }}
         .tab-content {{ display: none; }}
         .tab-content.active {{ display: block; }}
+        @media (max-width: 600px) {{
+            body {{ padding: 1rem; }}
+            h1 {{ font-size: 1.25rem; }}
+            .charts {{ grid-template-columns: 1fr; }}
+            .summary {{ grid-template-columns: repeat(2, 1fr); }}
+            table {{ display: block; overflow-x: auto; }}
+            .tabs {{ flex-wrap: wrap; }}
+        }}
         .section-title {{
             font-size: 1.1rem;
             font-weight: 600;
