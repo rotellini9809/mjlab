@@ -82,6 +82,7 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
   metrics_json = json.dumps(METRICS)
   throughput_json = json.dumps(throughput_data, default=str)
   timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+  github_repo = "https://github.com/mujocolab/mjlab"
 
   return f"""<!DOCTYPE html>
 <html lang="en">
@@ -435,6 +436,7 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
 
         const runs = {runs_json};
         const METRICS = {metrics_json};
+        const GITHUB_REPO = '{github_repo}';
 
         // Sort by date ascending for charts.
         runs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -527,6 +529,14 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                 options: {{
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: (event, elements) => {{
+                        if (elements.length > 0) {{
+                            const d = data[elements[0].index];
+                            if (d?.commit && d.commit !== 'unknown') {{
+                                window.open(`${{GITHUB_REPO}}/commit/${{d.commit}}`, '_blank');
+                            }}
+                        }}
+                    }},
                     plugins: {{
                         legend: {{ display: false }},
                         tooltip: {{
@@ -538,6 +548,10 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                                 label: (item) => {{
                                     const d = item.raw;
                                     return `${{label}}: ${{d.y?.toFixed(4)}} ${{unit}}`;
+                                }},
+                                footer: (items) => {{
+                                    const d = items[0]?.raw;
+                                    return d?.commit && d.commit !== 'unknown' ? 'Click to view commit' : '';
                                 }}
                             }}
                         }}
@@ -572,10 +586,13 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
         // Table
         const tbody = document.getElementById('table-body');
         [...runs].reverse().forEach(run => {{
+            const commitLink = run.commit && run.commit !== 'unknown'
+                ? `<a href="${{GITHUB_REPO}}/commit/${{run.commit}}" target="_blank"><code>${{run.commit}}</code></a>`
+                : `<code>${{run.commit}}</code>`;
             tbody.innerHTML += `
                 <tr>
                     <td>${{new Date(run.created_at).toLocaleDateString()}}</td>
-                    <td><code>${{run.commit}}</code></td>
+                    <td>${{commitLink}}</td>
                     <td><a href="${{run.url}}" target="_blank">${{run.name}}</a></td>
                     <td>${{(run.metrics.success_rate * 100).toFixed(1)}}%</td>
                     <td>${{run.metrics.mpkpe.toFixed(4)}}</td>
@@ -682,6 +699,16 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                     options: {{
                         responsive: true,
                         maintainAspectRatio: false,
+                        onClick: (event, elements) => {{
+                            if (elements.length > 0) {{
+                                const datasetIndex = elements[0].datasetIndex;
+                                const index = elements[0].index;
+                                const d = datasets[datasetIndex].data[index];
+                                if (d?.commit && d.commit !== 'unknown') {{
+                                    window.open(`${{GITHUB_REPO}}/commit/${{d.commit}}`, '_blank');
+                                }}
+                            }}
+                        }},
                         plugins: {{
                             legend: {{ display: true, position: 'bottom' }},
                             tooltip: {{
@@ -689,6 +716,10 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                                     title: (items) => {{
                                         const d = items[0]?.raw;
                                         return d ? `Commit: ${{d.commit}}` : '';
+                                    }},
+                                    footer: (items) => {{
+                                        const d = items[0]?.raw;
+                                        return d?.commit && d.commit !== 'unknown' ? 'Click to view commit' : '';
                                     }}
                                 }}
                             }}
@@ -717,10 +748,13 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
             [...throughputData].reverse().forEach(run => {{
                 run.results.forEach((r, i) => {{
                     const taskShort = r.task.replace('Mjlab-', '').replace('-Unitree-', '-');
+                    const commitLink = run.commit && run.commit !== 'unknown'
+                        ? `<a href="${{GITHUB_REPO}}/commit/${{run.commit}}" target="_blank"><code>${{run.commit}}</code></a>`
+                        : `<code>${{run.commit}}</code>`;
                     throughputTbody.innerHTML += `
                         <tr>
                             <td>${{i === 0 ? new Date(run.created_at).toLocaleDateString() : ''}}</td>
-                            <td>${{i === 0 ? `<code>${{run.commit}}</code>` : ''}}</td>
+                            <td>${{i === 0 ? commitLink : ''}}</td>
                             <td>${{taskShort}}</td>
                             <td>${{(r.physics_fps / 1000).toFixed(0)}}K</td>
                             <td>${{(r.env_fps / 1000).toFixed(0)}}K</td>
