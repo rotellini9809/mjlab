@@ -348,6 +348,7 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                 <strong>Physics SPS</strong> is the theoretical max if only physics ran (no managers).
                 <strong>Env SPS</strong> is the actual throughput including observations, rewards, terminations, and resets.
                 <strong>Overhead</strong> is the percentage of time spent on non-physics work.
+                Benchmarks run on NVIDIA RTX 5090 with 4096 parallel environments.
             </p>
             <p>
                 Note: These benchmarks use zero actions, which causes frequent terminations and resets.
