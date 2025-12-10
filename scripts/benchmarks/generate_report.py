@@ -344,11 +344,10 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
         <details class="info-box">
             <summary>What is this?</summary>
             <p>
-                Measures simulation throughput (steps per second) for different tasks.
-                <strong>Physics FPS</strong> is raw MuJoCo stepping speed (just <code>mj_step</code>).
-                <strong>Env FPS</strong> is the full environment step including observations, rewards,
-                terminations, and resets. <strong>Overhead</strong> is the percentage slowdown from
-                environment logic on top of physics.
+                Measures simulation throughput in <strong>env steps per second</strong> for different tasks.
+                <strong>Physics SPS</strong> is the theoretical max if only physics ran (no managers).
+                <strong>Env SPS</strong> is the actual throughput including observations, rewards, terminations, and resets.
+                <strong>Overhead</strong> is the percentage of time spent on non-physics work.
             </p>
             <p>
                 Note: These benchmarks use zero actions, which causes frequent terminations and resets.
@@ -365,8 +364,8 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                         <th>Date</th>
                         <th>Commit</th>
                         <th>Task</th>
-                        <th>Physics FPS</th>
-                        <th>Env FPS</th>
+                        <th>Physics SPS</th>
+                        <th>Env SPS</th>
                         <th>Overhead</th>
                     </tr>
                 </thead>
@@ -635,19 +634,22 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                 let summaryHtml = `<div class="stat"><div class="stat-label">Total Runs</div><div class="stat-value">${{throughputData.length}}</div></div>`;
                 latestRun.results.forEach(r => {{
                     const taskShort = r.task.replace('Mjlab-', '').replace('-Unitree-', '-');
+                    // Support both old (env_fps) and new (env_sps) field names.
+                    const envSps = r.env_sps ?? r.env_fps;
                     summaryHtml += `
                         <div class="stat">
-                            <div class="stat-label">${{taskShort}} Env FPS</div>
-                            <div class="stat-value">${{(r.env_fps / 1000).toFixed(0)}}K</div>
+                            <div class="stat-label">${{taskShort}} Env SPS</div>
+                            <div class="stat-value">${{(envSps / 1000).toFixed(0)}}K</div>
                         </div>`;
                 }});
                 throughputSummary.innerHTML = summaryHtml;
             }}
 
             // Create charts for each metric type
+            // Support both old (fps) and new (sps) field names.
             const throughputMetrics = [
-                ['physics_fps', 'Physics FPS', true],
-                ['env_fps', 'Env FPS', true],
+                ['physics_sps', 'Physics SPS', true],
+                ['env_sps', 'Env SPS', true],
                 ['overhead_pct', 'Overhead %', false]
             ];
 
@@ -674,9 +676,15 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                     const data = throughputData.map(run => {{
                         const result = run.results.find(r => r.task === task);
                         if (!result) return null;
+                        // Support both old (fps) and new (sps) field names.
+                        let value = result[key];
+                        if (value === undefined) {{
+                            const oldKey = key.replace('_sps', '_fps');
+                            value = result[oldKey];
+                        }}
                         return {{
                             x: new Date(run.created_at),
-                            y: key === 'physics_fps' || key === 'env_fps' ? result[key] / 1000 : result[key],
+                            y: key.includes('_sps') ? value / 1000 : value,
                             commit: run.commit
                         }};
                     }}).filter(d => d !== null);
@@ -735,7 +743,7 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                                 ticks: {{ maxTicksLimit: 5 }},
                                 title: {{
                                     display: true,
-                                    text: key.includes('fps') ? 'K steps/sec' : '%',
+                                    text: key.includes('_sps') ? 'K env steps/sec' : '%',
                                     font: {{ size: 11 }}
                                 }}
                             }}
@@ -751,13 +759,16 @@ def generate_dashboard_html(runs: list[dict], throughput_data: list[dict]) -> st
                     const commitLink = run.commit && run.commit !== 'unknown'
                         ? `<a href="${{GITHUB_REPO}}/commit/${{run.commit}}" target="_blank"><code>${{run.commit}}</code></a>`
                         : `<code>${{run.commit}}</code>`;
+                    // Support both old (fps) and new (sps) field names.
+                    const physicsSps = r.physics_sps ?? r.physics_fps;
+                    const envSps = r.env_sps ?? r.env_fps;
                     throughputTbody.innerHTML += `
                         <tr>
                             <td>${{i === 0 ? new Date(run.created_at).toLocaleDateString() : ''}}</td>
                             <td>${{i === 0 ? commitLink : ''}}</td>
                             <td>${{taskShort}}</td>
-                            <td>${{(r.physics_fps / 1000).toFixed(0)}}K</td>
-                            <td>${{(r.env_fps / 1000).toFixed(0)}}K</td>
+                            <td>${{(physicsSps / 1000).toFixed(0)}}K</td>
+                            <td>${{(envSps / 1000).toFixed(0)}}K</td>
                             <td>${{r.overhead_pct.toFixed(1)}}%</td>
                         </tr>
                     `;
