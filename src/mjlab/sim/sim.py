@@ -3,10 +3,11 @@ from typing import TYPE_CHECKING, Literal, cast
 
 import mujoco
 import mujoco_warp as mjwarp
+import torch
 import warp as wp
 
 from mjlab.sim.randomization import expand_model_fields
-from mjlab.sim.sim_data import WarpBridge
+from mjlab.sim.sim_data import TorchArray, WarpBridge
 from mjlab.utils.nan_guard import NanGuard, NanGuardCfg
 
 # Type aliases for better IDE support while maintaining runtime compatibility
@@ -80,12 +81,12 @@ class MujocoCfg:
 class SimulationCfg:
   nconmax: int | None = None
   """Number of contacts to allocate per world.
-  
+
   Contacts exist in large heterogenous arrays: one world may have more than nconmax
   contacts. If None, a heuristic value is used."""
   njmax: int | None = None
   """Number of constraints to allocate per world.
-  
+
   Constraint arrays are batched by world: no world may have more than njmax
   constraints. If None, a heuristic value is used."""
   ls_parallel: bool = True  # Boosts perf quite noticeably.
@@ -125,6 +126,9 @@ class Simulation:
         njmax=self.cfg.njmax,
       )
 
+      self._reset_mask_wp = wp.zeros(num_envs, dtype=bool)
+      self._reset_mask = TorchArray(self._reset_mask_wp)
+
     self._model_bridge = WarpBridge(self._wp_model, nworld=self.num_envs)
     self._data_bridge = WarpBridge(self._wp_data)
 
@@ -138,6 +142,7 @@ class Simulation:
   def create_graph(self) -> None:
     self.step_graph = None
     self.forward_graph = None
+    self.reset_graph = None
     if self.use_cuda_graph:
       with wp.ScopedDevice(self.wp_device):
         with wp.ScopedCapture() as capture:
@@ -146,6 +151,9 @@ class Simulation:
         with wp.ScopedCapture() as capture:
           mjwarp.forward(self.wp_model, self.wp_data)
         self.forward_graph = capture.graph
+        with wp.ScopedCapture() as capture:
+          mjwarp.reset_data(self.wp_model, self.wp_data, reset=self._reset_mask_wp)
+        self.reset_graph = capture.graph
 
   # Properties.
 
@@ -198,3 +206,16 @@ class Simulation:
           wp.capture_launch(self.step_graph)
         else:
           mjwarp.step(self.wp_model, self.wp_data)
+
+  def reset(self, env_ids: torch.Tensor | None = None) -> None:
+    with wp.ScopedDevice(self.wp_device):
+      if env_ids is None:
+        self._reset_mask.fill_(True)
+      else:
+        self._reset_mask.fill_(False)
+        self._reset_mask[env_ids] = True
+
+      if self.use_cuda_graph and self.reset_graph is not None:
+        wp.capture_launch(self.reset_graph)
+      else:
+        mjwarp.reset_data(self.wp_model, self.wp_data, reset=self._reset_mask_wp)
