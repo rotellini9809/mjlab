@@ -381,7 +381,7 @@ class ManagerBasedRlEnv:
 
   def _reset_idx(self, env_ids: torch.Tensor | None = None) -> None:
     self.curriculum_manager.compute(env_ids=env_ids)
-    # Reset the internal buffers of the scene elements.
+    self.sim.reset(env_ids)
     self.scene.reset(env_ids)
 
     if "reset" in self.event_manager.available_modes:
