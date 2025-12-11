@@ -190,9 +190,13 @@ class EntityData:
 
   def clear_state(self, env_ids: torch.Tensor | slice | None = None) -> None:
     env_ids = self._resolve_env_ids(env_ids)
-    v_slice = self.indexing.free_joint_v_adr
-    self.data.qfrc_applied[env_ids, v_slice] = 0.0
+    free_v_adr = self.indexing.free_joint_v_adr
+    joint_v_adr = self.indexing.joint_v_adr
+    self.data.qfrc_applied[env_ids, free_v_adr] = 0.0
     self.data.xfrc_applied[env_ids, self.indexing.body_ids] = 0.0
+    # Clear solver warmstart to prevent NaN from corrupted physics propagating.
+    self.data.qacc_warmstart[env_ids, free_v_adr] = 0.0
+    self.data.qacc_warmstart[env_ids, joint_v_adr] = 0.0
 
     if self.is_actuated:
       self.joint_pos_target[env_ids] = 0.0
