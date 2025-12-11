@@ -611,3 +611,41 @@ def test_custom_entity_subclass(device):
   assert isinstance(custom_entity, CustomEntity)
   assert custom_entity.cfg.custom_threshold == 0.9
   assert custom_entity.custom_value == 1.8
+
+
+def test_clear_state_clears_qacc_warmstart(device):
+  """Test that clear_state clears qacc_warmstart to prevent NaN propagation."""
+  entity_cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(FIXED_BASE_ARTICULATED_XML),
+    articulation=EntityArticulationInfoCfg(
+      actuators=(
+        BuiltinPositionActuatorCfg(
+          joint_names_expr=("joint1", "joint2"),
+          effort_limit=10.0,
+          stiffness=100.0,
+          damping=10.0,
+        ),
+      )
+    ),
+  )
+  entity = Entity(entity_cfg)
+  model = entity.compile()
+
+  sim = Simulation(num_envs=4, cfg=SimulationCfg(), model=model, device=device)
+  entity.initialize(model, sim.model, sim.data, device)
+
+  for _ in range(3):
+    sim.step()
+
+  assert not torch.isnan(sim.data.qacc_warmstart).any()
+
+  # Inject NaN into qacc_warmstart for env 1.
+  sim.data.qacc_warmstart[1, 0] = float("nan")
+  assert torch.isnan(sim.data.qacc_warmstart[1, 0])
+
+  entity.clear_state(torch.tensor([1], device=device))
+
+  # qacc_warmstart should now be cleared for env 1.
+  assert not torch.isnan(sim.data.qacc_warmstart[1]).any()
+  # Other envs should be unaffected.
+  assert not torch.isnan(sim.data.qacc_warmstart[0]).any()
