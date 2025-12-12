@@ -1189,7 +1189,7 @@ requires-dist = [
     { name = "torchrunx", specifier = ">=0.3.4" },
     { name = "tqdm" },
     { name = "trimesh", specifier = ">=4.8.3" },
-    { name = "tyro", specifier = ">=0.10.0a6" },
+    { name = "tyro", specifier = ">=1.0.1" },
     { name = "viser", specifier = ">=1.0.16" },
     { name = "wandb", specifier = ">=0.22.3" },
     { name = "warp-lang", marker = "sys_platform != 'darwin'", specifier = ">=1.11.0.dev20251211", index = "https://pypi.nvidia.com/" },
@@ -3224,16 +3224,16 @@ wheels = [
 
 [[package]]
 name = "tyro"
-version = "0.10.0a6"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
     { name = "typeguard" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/bd/c58407e6122ef8c8786f87525d7de79d9f133852c939c10a1a617ae95b44/tyro-0.10.0a6.tar.gz", hash = "sha256:dcf54d1f81d733991f7ae834059292b0e1d3336f34c800345078aa2f8db3611b", size = 411424, upload-time = "2025-11-17T08:13:30.636Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/b5/6fbb72a695975f5bc2e2ca00b847d5af1e85e6a473427f9f5f2c3a8d4601/tyro-1.0.1.tar.gz", hash = "sha256:45f5ed511c75c7ce9b7c311861ae259fda4cd0f971fae494c7161108e2f9e0db", size = 442689, upload-time = "2025-12-12T01:10:27.442Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/78/67ab458dc61a8d29ad233a74c3dcf9f8124d3a3f660414371310e70a1bdf/tyro-0.10.0a6-py3-none-any.whl", hash = "sha256:e3285bf58443f2ba89b7391da05043e0e530764cbcbbc02ecc0451bb457fb545", size = 172474, upload-time = "2025-11-17T08:13:29.172Z" },
+    { url = "https://files.pythonhosted.org/packages/27/28/d938acc053b55f61e1be85ee6c9d88ceac5fea5d386bbf44684b645d9898/tyro-1.0.1-py3-none-any.whl", hash = "sha256:86c178c1ae39cc8be9d03d3149de70374c0c5c8682c5f48758cd299145719bf7", size = 179598, upload-time = "2025-12-12T01:10:26.016Z" },
 ]
 
 [[package]]
