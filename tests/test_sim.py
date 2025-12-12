@@ -54,6 +54,7 @@ def test_simulation_config_is_piped(robot_xml, device):
       solver="cg",
       iterations=7,
       ls_iterations=14,
+      ccd_iterations=20,
       gravity=(0, 0, 7.5),
     ),
   )
@@ -65,6 +66,8 @@ def test_simulation_config_is_piped(robot_xml, device):
   assert sim.mj_model.opt.integrator == mujoco.mjtIntegrator.mjINT_EULER
   assert sim.mj_model.opt.solver == mujoco.mjtSolver.mjSOL_CG
   assert sim.mj_model.opt.iterations == cfg.mujoco.iterations
+  assert sim.mj_model.opt.ls_iterations == cfg.mujoco.ls_iterations
+  assert sim.mj_model.opt.ccd_iterations == cfg.mujoco.ccd_iterations
   assert tuple(sim.mj_model.opt.gravity) == cfg.mujoco.gravity
 
   # MujocoCfg should be inherited by wp_model via put_model.

@@ -58,6 +58,7 @@ class MujocoCfg:
   tolerance: float = 1e-8
   ls_iterations: int = 50
   ls_tolerance: float = 0.01
+  ccd_iterations: int = 50
 
   # Other.
   gravity: tuple[float, float, float] = (0, 0, -9.81)
@@ -75,6 +76,7 @@ class MujocoCfg:
     model.opt.tolerance = self.tolerance
     model.opt.ls_iterations = self.ls_iterations
     model.opt.ls_tolerance = self.ls_tolerance
+    model.opt.ccd_iterations = self.ccd_iterations
 
 
 @dataclass(kw_only=True)
