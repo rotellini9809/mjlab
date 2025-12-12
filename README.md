@@ -184,10 +184,8 @@ Some portions of mjlab are forked from external projects:
 - **`src/mjlab/utils/lab_api/`** — Utilities forked from [NVIDIA Isaac
   Lab](https://github.com/isaac-sim/IsaacLab) (BSD-3-Clause license, see file
   headers)
-- **`src/mjlab/asset_zoo/robots/unitree_go1/assets/walk_these_ways/`** — Actuator network from [walk-these-ways](https://github.com/Improbable-AI/walk-these-ways) (MIT license, see asset README)
 
-Forked components retain their original licenses (BSD-3-Clause for lab_api, MIT
-for walk-these-ways). See file headers and asset READMEs for details.
+Forked components retain their original licenses. See file headers for details.
 
 ---
 
