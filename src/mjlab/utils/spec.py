@@ -28,11 +28,24 @@ def auto_wrap_fixed_base_mocap(
     if root_body and root_body.mocap:
       return original_spec  # Already mocap, no wrapping needed.
 
+    # Extract and delete keyframes before attach (they transfer but we need
+    # them on the wrapper spec, not nested in the attached spec).
+    keyframes = [
+      (np.array(k.qpos), np.array(k.ctrl), k.name) for k in original_spec.keys
+    ]
+    for k in list(original_spec.keys):
+      original_spec.delete(k)
+
     # Wrap in mocap body.
     wrapper_spec = mujoco.MjSpec()
     mocap_body = wrapper_spec.worldbody.add_body(name="mocap_base", mocap=True)
     frame = mocap_body.add_frame()
     wrapper_spec.attach(child=original_spec, prefix="", frame=frame)
+
+    # Re-add keyframes to wrapper spec.
+    for qpos, ctrl, name in keyframes:
+      wrapper_spec.add_key(name=name, qpos=qpos, ctrl=ctrl)
+
     return wrapper_spec
 
   return wrapper

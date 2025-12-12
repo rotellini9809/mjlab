@@ -611,3 +611,93 @@ def test_custom_entity_subclass(device):
   assert isinstance(custom_entity, CustomEntity)
   assert custom_entity.cfg.custom_threshold == 0.9
   assert custom_entity.custom_value == 1.8
+
+
+# ============================================================================
+# Keyframe Fallback Tests
+# ============================================================================
+
+XML_WITH_KEYFRAME = """
+<mujoco>
+  <worldbody>
+    <body name="robot">
+      <freejoint name="root"/>
+      <geom type="box" size="0.1 0.1 0.1"/>
+      <body name="link" pos="0.2 0 0">
+        <joint name="joint1" type="hinge" axis="0 1 0"/>
+        <geom type="box" size="0.05 0.05 0.05"/>
+      </body>
+    </body>
+  </worldbody>
+  <keyframe>
+    <key name="home" qpos="0 0 1 1 0 0 0 0.5"/>
+  </keyframe>
+</mujoco>
+"""
+
+XML_WITHOUT_KEYFRAME = """
+<mujoco>
+  <worldbody>
+    <body name="robot">
+      <freejoint name="root"/>
+      <geom type="box" size="0.1 0.1 0.1"/>
+      <body name="link" pos="0.2 0 0">
+        <joint name="joint1" type="hinge" axis="0 1 0"/>
+        <geom type="box" size="0.05 0.05 0.05"/>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+
+def test_joint_pos_none_uses_model_keyframe():
+  """Test that joint_pos=None uses the model's existing keyframe."""
+  cfg = EntityCfg(
+    init_state=EntityCfg.InitialStateCfg(joint_pos=None),
+    spec_fn=lambda: mujoco.MjSpec.from_string(XML_WITH_KEYFRAME),
+  )
+  entity = Entity(cfg)
+  model = entity.spec.compile()
+
+  assert model.nkey == 1
+  # Keyframe: qpos="0 0 1 1 0 0 0 0.5" (root pos/quat + joint1)
+  assert model.key(0).qpos[7] == 0.5  # joint1 position
+
+
+def test_joint_pos_none_errors_without_keyframe():
+  """Test that joint_pos=None raises error if model has no keyframe."""
+  cfg = EntityCfg(
+    init_state=EntityCfg.InitialStateCfg(joint_pos=None),
+    spec_fn=lambda: mujoco.MjSpec.from_string(XML_WITHOUT_KEYFRAME),
+  )
+  with pytest.raises(ValueError, match="requires the model to have a keyframe"):
+    Entity(cfg)
+
+
+XML_FIXED_BASE_WITH_KEYFRAME = """
+<mujoco>
+  <worldbody>
+    <body name="arm">
+      <joint name="joint1" type="hinge" axis="0 0 1"/>
+      <geom type="box" size="0.1 0.1 0.1"/>
+    </body>
+  </worldbody>
+  <keyframe>
+    <key name="home" qpos="0.5"/>
+  </keyframe>
+</mujoco>
+"""
+
+
+def test_joint_pos_none_fixed_base_uses_keyframe():
+  """Test that joint_pos=None works for fixed-base entities with keyframes."""
+  cfg = EntityCfg(
+    init_state=EntityCfg.InitialStateCfg(joint_pos=None),
+    spec_fn=lambda: mujoco.MjSpec.from_string(XML_FIXED_BASE_WITH_KEYFRAME),
+  )
+  entity = Entity(cfg)
+  model = entity.spec.compile()
+
+  assert model.nkey == 1
+  assert model.key(0).qpos[0] == 0.5
