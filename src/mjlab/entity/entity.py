@@ -60,7 +60,8 @@ class EntityCfg:
     lin_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
     ang_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
     # Articulation (only for articulated entities).
-    joint_pos: dict[str, float] = field(default_factory=lambda: {".*": 0.0})
+    # Set to None to use the model's existing keyframe (errors if none exists).
+    joint_pos: dict[str, float] | None = field(default_factory=lambda: {".*": 0.0})
     joint_vel: dict[str, float] = field(default_factory=lambda: {".*": 0.0})
 
   init_state: InitialStateCfg = field(default_factory=InitialStateCfg)
@@ -167,6 +168,19 @@ class Entity:
       self._actuators.append(actuator_instance)
 
   def _add_initial_state_keyframe(self) -> None:
+    # If joint_pos is None, use existing keyframe from the model.
+    if self.cfg.init_state.joint_pos is None:
+      if not self._spec.keys:
+        raise ValueError(
+          "joint_pos=None requires the model to have a keyframe, but none exists."
+        )
+      # Keep the existing keyframe, just rename it.
+      self._spec.keys[0].name = "init_state"
+      if self.is_fixed_base:
+        self.root_body.pos[:] = self.cfg.init_state.pos
+        self.root_body.quat[:] = self.cfg.init_state.rot
+      return
+
     qpos_components = []
 
     if self._free_joint is not None:
@@ -406,10 +420,18 @@ class Entity:
 
     # Joint state.
     if self.is_articulated:
-      default_joint_pos = torch.tensor(
-        resolve_expr(self.cfg.init_state.joint_pos, self.joint_names, 0.0),
-        device=device,
-      )[None].repeat(nworld, 1)
+      if self.cfg.init_state.joint_pos is None:
+        # Use keyframe joint positions.
+        key_qpos = mj_model.key("init_state").qpos
+        nq_root = 7 if not self.is_fixed_base else 0
+        default_joint_pos = torch.tensor(key_qpos[nq_root:], device=device)[
+          None
+        ].repeat(nworld, 1)
+      else:
+        default_joint_pos = torch.tensor(
+          resolve_expr(self.cfg.init_state.joint_pos, self.joint_names, 0.0),
+          device=device,
+        )[None].repeat(nworld, 1)
       default_joint_vel = torch.tensor(
         resolve_expr(self.cfg.init_state.joint_vel, self.joint_names, 0.0),
         device=device,
