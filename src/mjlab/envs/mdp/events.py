@@ -23,6 +23,20 @@ if TYPE_CHECKING:
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
 
+def randomize_terrain(env: ManagerBasedRlEnv, env_ids: torch.Tensor | None) -> None:
+  """Randomize the sub-terrain for each environment on reset.
+
+  This picks a random terrain type (column) and difficulty level (row) for each
+  environment. Useful for play/evaluation mode to test on varied terrains.
+  """
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.int)
+
+  terrain = env.scene.terrain
+  if terrain is not None:
+    terrain.randomize_env_origins(env_ids)
+
+
 def reset_scene_to_default(
   env: ManagerBasedRlEnv, env_ids: torch.Tensor | None
 ) -> None:
