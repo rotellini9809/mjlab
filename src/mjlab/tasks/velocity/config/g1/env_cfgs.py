@@ -8,7 +8,12 @@ from mjlab.asset_zoo.robots import (
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg
-from mjlab.managers.manager_term_config import EventTermCfg, RewardTermCfg
+from mjlab.envs.mdp.terminations import nan_detection
+from mjlab.managers.manager_term_config import (
+  EventTermCfg,
+  RewardTermCfg,
+  TerminationTermCfg,
+)
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.velocity import mdp
 from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
@@ -218,5 +223,9 @@ def unitree_g1_extreme_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg
   assert cfg.scene.terrain is not None
   cfg.scene.terrain.terrain_generator = extreme_terrains_cfg
   cfg.sim.njmax = 400
+  cfg.sim.mujoco.ccd_iterations = 500
   cfg.events["reset_base"].params["pose_range"]["z"] = (0.01, 0.05)
+  cfg.terminations["nan_detection"] = TerminationTermCfg(
+    func=nan_detection, time_out=False
+  )
   return cfg
