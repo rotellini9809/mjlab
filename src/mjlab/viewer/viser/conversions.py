@@ -328,8 +328,9 @@ def create_primitive_mesh(mj_model: mujoco.MjModel, geom_id: int) -> trimesh.Tri
         i1 = i0 + 1
         i2 = i0 + ncol
         i3 = i2 + 1
-        faces.append([i0, i2, i1])
-        faces.append([i1, i2, i3])
+        # Use counter-clockwise winding when viewed from above for correct normals
+        faces.append([i0, i1, i2])
+        faces.append([i1, i3, i2])
     faces = np.array(faces, dtype=np.int64)
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
   else:
