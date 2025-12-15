@@ -142,3 +142,38 @@ def test_randomize_field(device, field, ranges, operation, asset_names, axes, se
     )
 
   assert_has_diversity(new_values)
+
+
+@pytest.mark.skipif(
+  not torch.cuda.is_available(), reason="CUDA required for graph capture"
+)
+def test_expand_model_fields_recreates_cuda_graph(device):
+  """Verify that CUDA graph is recreated after expand_model_fields.
+
+  Regression test for a bug where expand_model_fields replaced arrays with new
+  allocations, but the CUDA graph still held pointers to the old addresses.
+  The simulation ran fine but silently ignored domain randomization. The graph
+  kept reading from the old arrays containing the original non-randomized values.
+  """
+  entity_cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML))
+  scene_cfg = SceneCfg(num_envs=NUM_ENVS, entities={"robot": entity_cfg})
+  scene = Scene(scene_cfg, device)
+  model = scene.compile()
+
+  sim_cfg = SimulationCfg()
+  sim = Simulation(num_envs=NUM_ENVS, cfg=sim_cfg, model=model, device=device)
+  scene.initialize(model, sim.model, sim.data)
+
+  if not sim.use_cuda_graph:
+    pytest.skip("CUDA graph capture not enabled on this device")
+
+  original_step_graph = sim.step_graph
+
+  sim.expand_model_fields(("geom_friction",))
+
+  # Graph should have been recreated (different object identity).
+  # If the graph isn't recreated, domain randomization silently doesn't apply because
+  # the graph reads from the old arrays.
+  assert sim.step_graph is not original_step_graph, (
+    "CUDA graph was not recreated after expand_model_fields"
+  )
