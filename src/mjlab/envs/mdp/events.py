@@ -517,6 +517,8 @@ def randomize_pd_gains(
 
   if isinstance(asset_cfg.actuator_ids, list):
     actuators = [asset.actuators[i] for i in asset_cfg.actuator_ids]
+  elif isinstance(asset_cfg.actuator_ids, slice):
+    actuators = asset.actuators[asset_cfg.actuator_ids]
   else:
     actuators = [asset.actuators[asset_cfg.actuator_ids]]
 
