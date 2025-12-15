@@ -98,7 +98,26 @@ class SimulationCfg:
 
 
 class Simulation:
-  """GPU-accelerated MuJoCo simulation powered by MJWarp."""
+  """GPU-accelerated MuJoCo simulation powered by MJWarp.
+
+  CUDA Graph Capture
+  ------------------
+  On CUDA devices with memory pools enabled, the simulation captures CUDA graphs
+  for ``step()``, ``forward()``, and ``reset()`` operations. Graph capture records
+  a sequence of GPU kernels and their memory addresses, then replays the entire
+  sequence with a single kernel launch, eliminating CPU overhead from repeated
+  kernel dispatches.
+
+  **Important:** A captured graph holds pointers to the GPU arrays that existed
+  at capture time. If those arrays are later replaced (e.g., via
+  ``expand_model_fields()``), the graph will still read from the old arrays,
+  silently ignoring any new values. The ``expand_model_fields()`` method handles
+  this automatically by calling ``create_graph()`` after replacing arrays.
+
+  If you write code that replaces model or data arrays after simulation
+  initialization, you **must** call ``create_graph()`` afterward to re-capture
+  the graphs with the new memory addresses.
+  """
 
   def __init__(
     self, num_envs: int, cfg: SimulationCfg, model: mujoco.MjModel, device: str
@@ -142,6 +161,19 @@ class Simulation:
     self.nan_guard = NanGuard(cfg.nan_guard, self.num_envs, self._mj_model)
 
   def create_graph(self) -> None:
+    """Capture CUDA graphs for step, forward, and reset operations.
+
+    This method must be called whenever GPU arrays in the model or data are
+    replaced after initialization. The captured graphs hold pointers to the
+    arrays that existed at capture time. If those arrays are replaced, the
+    graphs will silently read from the old arrays, ignoring any new values.
+
+    Called automatically by:
+    - ``__init__()`` during simulation initialization
+    - ``expand_model_fields()`` after replacing model arrays
+
+    On CPU devices or when memory pools are disabled, this is a no-op.
+    """
     self.step_graph = None
     self.forward_graph = None
     self.reset_graph = None
@@ -187,12 +219,18 @@ class Simulation:
 
   def expand_model_fields(self, fields: tuple[str, ...]) -> None:
     """Expand model fields to support per-environment parameters."""
+    if not fields:
+      return
+
     invalid_fields = [f for f in fields if not hasattr(self._mj_model, f)]
     if invalid_fields:
       raise ValueError(f"Fields not found in model: {invalid_fields}")
 
     expand_model_fields(self._wp_model, self.num_envs, list(fields))
     self._model_bridge.clear_cache()
+    # Field expansion allocates new arrays and replaces them via setattr. The
+    # CUDA graph captured the old memory addresses, so we must recreate it.
+    self.create_graph()
 
   def forward(self) -> None:
     with wp.ScopedDevice(self.wp_device):

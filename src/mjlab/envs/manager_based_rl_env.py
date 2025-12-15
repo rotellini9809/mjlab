@@ -250,7 +250,6 @@ class ManagerBasedRlEnv:
     # Initialize startup events if defined.
     if "startup" in self.event_manager.available_modes:
       self.event_manager.apply(mode="startup")
-      self.sim.create_graph()
 
   def reset(
     self,
