@@ -506,6 +506,7 @@ def randomize_pd_gains(
     IdealPdActuator,
     XmlPositionActuator,
   )
+  from mjlab.actuator.delayed_actuator import DelayedActuator
 
   asset: Entity = env.scene[asset_cfg.name]
 
@@ -517,7 +518,12 @@ def randomize_pd_gains(
   if isinstance(asset_cfg.actuator_ids, list):
     actuators = [asset.actuators[i] for i in asset_cfg.actuator_ids]
   else:
-    actuators = asset.actuators[asset_cfg.actuator_ids]
+    actuators = [asset.actuators[asset_cfg.actuator_ids]]
+
+  # Unwrap DelayedActuators to access base actuators.
+  actuators = [
+    a.base_actuator if isinstance(a, DelayedActuator) else a for a in actuators
+  ]
 
   for actuator in actuators:
     ctrl_ids = actuator.ctrl_ids
@@ -562,7 +568,8 @@ def randomize_pd_gains(
     else:
       raise TypeError(
         f"randomize_pd_gains only supports BuiltinPositionActuator, XmlPositionActuator, "
-        f"and IdealPdActuator, got {type(actuator).__name__}"
+        f"and IdealPdActuator (optionally wrapped with DelayedActuator), "
+        f"got {type(actuator).__name__}"
       )
 
 
