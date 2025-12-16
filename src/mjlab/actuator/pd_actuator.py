@@ -50,6 +50,9 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     self.stiffness: torch.Tensor | None = None
     self.damping: torch.Tensor | None = None
     self.force_limit: torch.Tensor | None = None
+    self.default_stiffness: torch.Tensor | None = None
+    self.default_damping: torch.Tensor | None = None
+    self.default_force_limit: torch.Tensor | None = None
 
   def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
     # Add <motor> actuator to spec, one per joint.
@@ -83,6 +86,10 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     self.force_limit = torch.full(
       (num_envs, num_joints), self.cfg.effort_limit, dtype=torch.float, device=device
     )
+
+    self.default_stiffness = self.stiffness.clone()
+    self.default_damping = self.damping.clone()
+    self.default_force_limit = self.force_limit.clone()
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
     assert self.stiffness is not None

@@ -177,3 +177,28 @@ def test_expand_model_fields_recreates_cuda_graph(device):
   assert sim.step_graph is not original_step_graph, (
     "CUDA graph was not recreated after expand_model_fields"
   )
+
+
+def test_randomize_field_scale_uses_defaults(device):
+  """Verify scale/add operations use defaults to prevent accumulation."""
+  env = create_test_env(device, num_envs=2)
+  robot = env.scene["robot"]
+  env.sim.expand_model_fields(("body_mass",))
+
+  body_idx = robot.indexing.body_ids[0]
+  default_mass = env.sim.default_model_fields["body_mass"][body_idx].item()
+
+  # Randomize 3 times with scale operation.
+  for _ in range(3):
+    randomize_field(
+      env,  # type: ignore[arg-type]
+      env_ids=None,
+      field="body_mass",
+      ranges=(2.0, 2.0),
+      operation="scale",
+      asset_cfg=SceneEntityCfg("robot", body_ids=[0]),
+    )
+
+  # Values should NOT accumulate.
+  final_mass = env.sim.model.body_mass[0, body_idx].item()
+  assert abs(final_mass - default_mass * 2.0) < 1e-5
