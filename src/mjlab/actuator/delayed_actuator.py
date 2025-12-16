@@ -83,6 +83,11 @@ class DelayedActuator(Actuator):
     self._base_actuator = base_actuator
     self._delay_buffers: dict[str, DelayBuffer] = {}
 
+  @property
+  def base_actuator(self) -> Actuator:
+    """The underlying actuator being wrapped."""
+    return self._base_actuator
+
   def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
     self._base_actuator.edit_spec(spec, joint_names)
     self._mjs_actuators = self._base_actuator._mjs_actuators
