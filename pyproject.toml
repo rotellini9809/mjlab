@@ -103,7 +103,7 @@ url = "https://py.mujoco.org"
 explicit = true
 
 [tool.uv.sources]
-mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "75391d0a259f9f480cfb7354acefdb4ff684e61b"}
+mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "f2f795796fc433adf8e235f01fae3747585ae5db"}
 warp-lang = { index = "nvidia", marker = "sys_platform != 'darwin'" }
 mujoco = { index = "mujoco" }
 torch = { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform != 'darwin'" }
