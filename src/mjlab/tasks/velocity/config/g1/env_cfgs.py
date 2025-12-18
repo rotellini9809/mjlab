@@ -138,6 +138,11 @@ def unitree_g1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
     cfg.observations["policy"].enable_corruption = False
     cfg.events.pop("push_robot", None)
+    cfg.events["randomize_terrain"] = EventTermCfg(
+      func=envs_mdp.randomize_terrain,
+      mode="reset",
+      params={},
+    )
 
     if cfg.scene.terrain is not None:
       if cfg.scene.terrain.terrain_generator is not None:
@@ -176,13 +181,6 @@ def unitree_g1_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
 def unitree_g1_extreme_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   cfg = unitree_g1_rough_env_cfg(play=play)
-
-  if play:
-    cfg.events["randomize_terrain"] = EventTermCfg(
-      func=envs_mdp.randomize_terrain,
-      mode="reset",
-      params={},
-    )
 
   extreme_terrains_cfg = TerrainGeneratorCfg(
     size=(8.0, 8.0),
@@ -223,7 +221,7 @@ def unitree_g1_extreme_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg
   assert cfg.scene.terrain is not None
   cfg.scene.terrain.terrain_generator = extreme_terrains_cfg
   cfg.sim.njmax = 400
-  cfg.sim.mujoco.ccd_iterations = 500
+  # cfg.sim.mujoco.ccd_iterations = 500
   cfg.events["reset_base"].params["pose_range"]["z"] = (0.01, 0.05)
   cfg.terminations["nan_detection"] = TerminationTermCfg(
     func=nan_detection, time_out=False
