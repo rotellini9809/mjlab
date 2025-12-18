@@ -53,6 +53,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
+export GIT_SSH_COMMAND="ssh -i \"$HOME/.ssh/mjlab_nightly_ed25519\" \
+    -o IdentitiesOnly=yes \
+    -o StrictHostKeyChecking=accept-new"
+
 # Clone fresh copy of mjlab
 log "Cloning mjlab..."
 git clone "$REPO_URL" "$WORK_DIR"
