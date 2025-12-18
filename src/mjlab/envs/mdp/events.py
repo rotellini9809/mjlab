@@ -342,8 +342,8 @@ def randomize_field(
   if operation in ("scale", "add"):
     if field not in env.sim.default_model_fields:
       raise ValueError(
-        f"Field '{field}' has no stored defaults. "
-        f"Call sim.expand_model_fields(('{field}',)) before using operation='{operation}'."
+        f"Field '{field}' has no stored defaults. Call "
+        f"sim.expand_model_fields(('{field}',)) before using operation='{operation}'."
       )
     default_field = env.sim.default_model_fields[field]
     base_values = default_field[entity_indices].unsqueeze(0).expand_as(indexed_data)
@@ -351,7 +351,7 @@ def randomize_field(
     base_values = indexed_data
 
   random_values = _generate_random_values(
-    distribution, axis_ranges, base_values, target_axes, env.device
+    distribution, axis_ranges, base_values, target_axes, env.device, operation
   )
 
   _apply_operation(
@@ -446,9 +446,21 @@ def _generate_random_values(
   indexed_data: torch.Tensor,
   target_axes: list[int],
   device,
+  operation: str,
 ) -> torch.Tensor:
-  """Generate random values for the specified axes."""
-  result = indexed_data.clone()
+  """Generate random values for the specified axes.
+
+  For scale/add operations, non-randomized axes use identity values (1.0 for
+  scale, 0.0 for add) to prevent modification. For abs operations, non-randomized
+  axes preserve their current values.
+  """
+  if operation == "scale":
+    result = torch.ones_like(indexed_data)
+  elif operation == "add":
+    result = torch.zeros_like(indexed_data)
+  else:
+    assert operation == "abs"
+    result = indexed_data.clone()
 
   for axis in target_axes:
     lower, upper = axis_ranges[axis]
