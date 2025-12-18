@@ -1,6 +1,5 @@
 """Unitree G1 velocity environment configurations."""
 
-import mjlab.terrains as terrain_gen
 from mjlab.asset_zoo.robots import (
   G1_ACTION_SCALE,
   get_g1_robot_cfg,
@@ -8,17 +7,14 @@ from mjlab.asset_zoo.robots import (
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg
-from mjlab.envs.mdp.terminations import nan_detection
 from mjlab.managers.manager_term_config import (
   EventTermCfg,
   RewardTermCfg,
-  TerminationTermCfg,
 )
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.velocity import mdp
 from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
 from mjlab.tasks.velocity.velocity_env_cfg import make_velocity_env_cfg
-from mjlab.terrains.terrain_generator import TerrainGeneratorCfg
 
 
 def unitree_g1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
@@ -176,54 +172,4 @@ def unitree_g1_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     twist_cmd.ranges.lin_vel_x = (-1.5, 2.0)
     twist_cmd.ranges.ang_vel_z = (-0.7, 0.7)
 
-  return cfg
-
-
-def unitree_g1_extreme_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
-  cfg = unitree_g1_rough_env_cfg(play=play)
-
-  extreme_terrains_cfg = TerrainGeneratorCfg(
-    size=(8.0, 8.0),
-    border_width=20.0,
-    num_rows=10,
-    num_cols=20,
-    sub_terrains={
-      "flat": terrain_gen.BoxFlatTerrainCfg(proportion=0.2),
-      "pyramid_stairs": terrain_gen.BoxPyramidStairsTerrainCfg(
-        proportion=0.2,
-        step_height_range=(0.0, 0.1),
-        step_width=0.3,
-        platform_width=3.0,
-        border_width=1.0,
-      ),
-      "pyramid_stairs_inv": terrain_gen.BoxInvertedPyramidStairsTerrainCfg(
-        proportion=0.2,
-        step_height_range=(0.0, 0.1),
-        step_width=0.3,
-        platform_width=3.0,
-        border_width=1.0,
-      ),
-      "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
-        proportion=0.2,
-        slope_range=(0.0, 0.4),  # Gentle to moderate slopes
-        platform_width=2.0,
-        border_width=0.25,
-      ),
-      "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-        proportion=0.2,
-        noise_range=(0.02, 0.10),
-        noise_step=0.02,
-        border_width=0.25,
-      ),
-    },
-    add_lights=False,
-  )
-  assert cfg.scene.terrain is not None
-  cfg.scene.terrain.terrain_generator = extreme_terrains_cfg
-  cfg.sim.njmax = 400
-  # cfg.sim.mujoco.ccd_iterations = 500
-  cfg.events["reset_base"].params["pose_range"]["z"] = (0.01, 0.05)
-  cfg.terminations["nan_detection"] = TerminationTermCfg(
-    func=nan_detection, time_out=False
-  )
   return cfg
