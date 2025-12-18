@@ -154,5 +154,19 @@ class DelayedActuator(Actuator):
       buffer.reset(env_ids)
     self._base_actuator.reset(env_ids)
 
+  def set_lags(
+    self,
+    lags: torch.Tensor,
+    env_ids: torch.Tensor | slice | None = None,
+  ) -> None:
+    """Set delay lag values for specified environments.
+
+    Args:
+      lags: Lag values in physics timesteps. Shape: (num_env_ids,) or scalar.
+      env_ids: Environment indices to set. If None, sets all environments.
+    """
+    for buffer in self._delay_buffers.values():
+      buffer.set_lags(lags, env_ids)
+
   def update(self, dt: float) -> None:
     self._base_actuator.update(dt)

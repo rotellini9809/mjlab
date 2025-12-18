@@ -292,6 +292,28 @@ Delays are quantized to physics timesteps. For example, with 500Hz physics
 > schedule. This provides maximum flexibility for modeling different latency
 > characteristics for position, velocity, and effort commands.
 
+**Synchronizing delays across actuator groups:**
+
+You can synchronize delays across actuator groups using the
+`sync_actuator_delays` event:
+
+```python
+from mjlab.envs.mdp import events
+from mjlab.managers.manager_term_config import EventTermCfg
+
+EventTermCfg(
+  func=events.sync_actuator_delays,
+  mode="reset",
+  params={
+    "lag_range": (2, 5),
+  },
+)
+```
+
+> **Important**: Set `delay_hold_prob=1.0` on your actuator configs to prevent
+> automatic lag resampling. Otherwise the synchronized lag will be overwritten
+> on the next simulation step.
+
 ---
 
 ## PD Control and Integrator Choice
