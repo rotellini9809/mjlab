@@ -669,3 +669,57 @@ def randomize_effort_limits(
         f"randomize_effort_limits only supports BuiltinPositionActuator, XmlPositionActuator, "
         f"and IdealPdActuator, got {type(actuator).__name__}"
       )
+
+
+def sync_actuator_delays(
+  env: ManagerBasedRlEnv,
+  env_ids: torch.Tensor | None,
+  lag_range: Tuple[int, int],
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> None:
+  """Synchronize delay lags across all delayed actuators.
+
+  Samples a single lag value per environment and applies it to all delayed
+  actuators. Useful for simulating the same delay across actuator groups.
+
+  Args:
+    env: The environment.
+    env_ids: Environment IDs to set. If None, sets all environments.
+    lag_range: (min_lag, max_lag) range for sampling lag values in physics
+      timesteps.
+    asset_cfg: Asset configuration specifying which entity and actuators.
+  """
+  from mjlab.actuator.delayed_actuator import DelayedActuator
+
+  asset: Entity = env.scene[asset_cfg.name]
+
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.long)
+  else:
+    env_ids = env_ids.to(env.device, dtype=torch.long)
+
+  if isinstance(asset_cfg.actuator_ids, list):
+    actuators = [asset.actuators[i] for i in asset_cfg.actuator_ids]
+  elif isinstance(asset_cfg.actuator_ids, slice):
+    actuators = asset.actuators[asset_cfg.actuator_ids]
+  else:
+    actuators = [asset.actuators[asset_cfg.actuator_ids]]
+
+  # Filter to only delayed actuators.
+  delayed_actuators = [a for a in actuators if isinstance(a, DelayedActuator)]
+
+  if not delayed_actuators:
+    return
+
+  # Sample one lag per environment (shared across all actuators).
+  lags = torch.randint(
+    lag_range[0],
+    lag_range[1] + 1,
+    (len(env_ids),),
+    device=env.device,
+    dtype=torch.long,
+  )
+
+  # Apply the same lag to all delayed actuators.
+  for actuator in delayed_actuators:
+    actuator.set_lags(lags, env_ids)
