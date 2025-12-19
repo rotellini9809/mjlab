@@ -224,11 +224,7 @@ class Simulation:
   # Methods.
 
   def expand_model_fields(self, fields: tuple[str, ...]) -> None:
-    """Expand model fields to support per-environment parameters.
-
-    Also stores default values from the original MuJoCo model for use in
-    randomization with from_default=True.
-    """
+    """Expand model fields to support per-environment parameters."""
     if not fields:
       return
 
@@ -239,17 +235,27 @@ class Simulation:
     expand_model_fields(self._wp_model, self.num_envs, list(fields))
     self._model_bridge.clear_cache()
 
-    # Store default values after expansion to ensure dtype matches.
-    for field_name in fields:
-      expanded_field = getattr(self.model, field_name)
-      default_value = getattr(self._mj_model, field_name)
-      self._default_model_fields[field_name] = torch.as_tensor(
-        default_value, dtype=expanded_field.dtype, device=self.device
-      ).clone()
-
     # Field expansion allocates new arrays and replaces them via setattr. The
     # CUDA graph captured the old memory addresses, so we must recreate it.
     self.create_graph()
+
+  def get_default_field(self, field: str) -> torch.Tensor:
+    """Get the default value for a model field, caching for reuse.
+
+    Returns the original values from the C MuJoCo model (mj_model), obtained
+    from the final compiled scene spec before any randomization is applied.
+    Not to be confused with the GPU Warp model (wp_model) which may have
+    randomized values.
+    """
+    if field not in self._default_model_fields:
+      if not hasattr(self._mj_model, field):
+        raise ValueError(f"Field '{field}' not found in model")
+      model_field = getattr(self.model, field)
+      default_value = getattr(self._mj_model, field)
+      self._default_model_fields[field] = torch.as_tensor(
+        default_value, dtype=model_field.dtype, device=self.device
+      ).clone()
+    return self._default_model_fields[field]
 
   def forward(self) -> None:
     with wp.ScopedDevice(self.wp_device):

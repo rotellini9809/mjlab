@@ -153,13 +153,14 @@ def test_randomize_pd_gains(device):
   env.sim.model.actuator_biasprm[:, :, 1] = -50.0  # -Kp
   env.sim.model.actuator_biasprm[:, :, 2] = -5.0  # -Kd
 
-  # Mock default_model_fields for scale operation.
-  env.sim.default_model_fields = {
+  # Mock get_default_field for scale operation.
+  default_fields = {
     "actuator_gainprm": torch.ones((6, 10), device=device) * 50.0,
     "actuator_biasprm": torch.zeros((6, 10), device=device),
   }
-  env.sim.default_model_fields["actuator_biasprm"][:, 1] = -50.0
-  env.sim.default_model_fields["actuator_biasprm"][:, 2] = -5.0
+  default_fields["actuator_biasprm"][:, 1] = -50.0
+  default_fields["actuator_biasprm"][:, 2] = -5.0
+  env.sim.get_default_field = lambda field: default_fields[field]
 
   # Mock default gains for IdealPdActuator.
   ideal_actuator.default_stiffness = torch.tensor(
