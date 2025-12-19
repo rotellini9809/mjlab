@@ -126,6 +126,7 @@ class Simulation:
     self.device = device
     self.wp_device = wp.get_device(self.device)
     self.num_envs = num_envs
+    self._default_model_fields: dict[str, torch.Tensor] = {}
 
     # MuJoCo model and data.
     self._mj_model = model
@@ -215,10 +216,19 @@ class Simulation:
   def model(self) -> "ModelBridge":
     return cast("ModelBridge", self._model_bridge)
 
+  @property
+  def default_model_fields(self) -> dict[str, torch.Tensor]:
+    """Default values for expanded model fields, used in domain randomization."""
+    return self._default_model_fields
+
   # Methods.
 
   def expand_model_fields(self, fields: tuple[str, ...]) -> None:
-    """Expand model fields to support per-environment parameters."""
+    """Expand model fields to support per-environment parameters.
+
+    Also stores default values from the original MuJoCo model for use in
+    randomization with from_default=True.
+    """
     if not fields:
       return
 
@@ -228,6 +238,15 @@ class Simulation:
 
     expand_model_fields(self._wp_model, self.num_envs, list(fields))
     self._model_bridge.clear_cache()
+
+    # Store default values after expansion to ensure dtype matches.
+    for field_name in fields:
+      expanded_field = getattr(self.model, field_name)
+      default_value = getattr(self._mj_model, field_name)
+      self._default_model_fields[field_name] = torch.as_tensor(
+        default_value, dtype=expanded_field.dtype, device=self.device
+      ).clone()
+
     # Field expansion allocates new arrays and replaces them via setattr. The
     # CUDA graph captured the old memory addresses, so we must recreate it.
     self.create_graph()

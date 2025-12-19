@@ -290,7 +290,7 @@ FIELD_SPECS = {
 
 
 def randomize_field(
-  env: "ManagerBasedRlEnv",
+  env: ManagerBasedRlEnv,
   env_ids: torch.Tensor | None,
   field: str,
   ranges: Union[Tuple[float, float], Dict[int, Tuple[float, float]]],
@@ -307,7 +307,9 @@ def randomize_field(
     field: Field name (e.g., "geom_friction", "body_mass").
     ranges: Either (min, max) for all axes, or {axis: (min, max)} for specific axes.
     distribution: Distribution type.
-    operation: How to apply randomization.
+    operation: How to apply randomization. For "scale" and "add" operations,
+      values are computed from stored defaults (not current values) to prevent
+      accumulation when randomizing on reset.
     asset_cfg: Asset configuration.
     axes: Specific axes to randomize (overrides default_axes from field spec).
   """
@@ -336,12 +338,24 @@ def randomize_field(
   env_grid, entity_grid = torch.meshgrid(env_ids, entity_indices, indexing="ij")
   indexed_data = model_field[env_grid, entity_grid]
 
+  # For scale/add operations, use stored default values to prevent accumulation.
+  if operation in ("scale", "add"):
+    if field not in env.sim.default_model_fields:
+      raise ValueError(
+        f"Field '{field}' has no stored defaults. Call "
+        f"sim.expand_model_fields(('{field}',)) before using operation='{operation}'."
+      )
+    default_field = env.sim.default_model_fields[field]
+    base_values = default_field[entity_indices].unsqueeze(0).expand_as(indexed_data)
+  else:
+    base_values = indexed_data
+
   random_values = _generate_random_values(
-    distribution, axis_ranges, indexed_data, target_axes, env.device
+    distribution, axis_ranges, base_values, target_axes, env.device, operation
   )
 
   _apply_operation(
-    model_field, env_grid, entity_grid, indexed_data, random_values, operation
+    model_field, env_grid, entity_grid, base_values, random_values, operation
   )
 
 
@@ -432,9 +446,21 @@ def _generate_random_values(
   indexed_data: torch.Tensor,
   target_axes: list[int],
   device,
+  operation: str,
 ) -> torch.Tensor:
-  """Generate random values for the specified axes."""
-  result = indexed_data.clone()
+  """Generate random values for the specified axes.
+
+  For scale/add operations, non-randomized axes use identity values (1.0 for
+  scale, 0.0 for add) to prevent modification. For abs operations, non-randomized
+  axes preserve their current values.
+  """
+  if operation == "scale":
+    result = torch.ones_like(indexed_data)
+  elif operation == "add":
+    result = torch.zeros_like(indexed_data)
+  else:
+    assert operation == "abs"
+    result = indexed_data.clone()
 
   for axis in target_axes:
     lower, upper = axis_ranges[axis]
@@ -513,7 +539,9 @@ def randomize_pd_gains(
     kd_range: (min, max) for derivative gain randomization.
     asset_cfg: Asset configuration specifying which entity and actuators.
     distribution: Distribution type ("uniform" or "log_uniform").
-    operation: "scale" multiplies existing gains, "abs" sets absolute values.
+    operation: "scale" multiplies default gains by sampled values, "abs" sets absolute
+      values. For "scale" operations, values are computed from stored defaults to
+      prevent accumulation when randomizing on reset.
   """
   from mjlab.actuator import (
     BuiltinPositionActuator,
@@ -561,9 +589,24 @@ def randomize_pd_gains(
 
     if isinstance(actuator, (BuiltinPositionActuator, XmlPositionActuator)):
       if operation == "scale":
-        env.sim.model.actuator_gainprm[env_ids[:, None], ctrl_ids, 0] *= kp_samples
-        env.sim.model.actuator_biasprm[env_ids[:, None], ctrl_ids, 1] *= kp_samples
-        env.sim.model.actuator_biasprm[env_ids[:, None], ctrl_ids, 2] *= kd_samples
+        # Use stored default values for scaling to prevent accumulation.
+        if "actuator_gainprm" not in env.sim.default_model_fields:
+          raise ValueError(
+            "actuator_gainprm has no stored defaults. "
+            "Call sim.expand_model_fields(('actuator_gainprm', 'actuator_biasprm')) "
+            "before using operation='scale'."
+          )
+        default_gainprm = env.sim.default_model_fields["actuator_gainprm"]
+        default_biasprm = env.sim.default_model_fields["actuator_biasprm"]
+        env.sim.model.actuator_gainprm[env_ids[:, None], ctrl_ids, 0] = (
+          default_gainprm[ctrl_ids, 0] * kp_samples
+        )
+        env.sim.model.actuator_biasprm[env_ids[:, None], ctrl_ids, 1] = (
+          default_biasprm[ctrl_ids, 1] * kp_samples
+        )
+        env.sim.model.actuator_biasprm[env_ids[:, None], ctrl_ids, 2] = (
+          default_biasprm[ctrl_ids, 2] * kd_samples
+        )
       elif operation == "abs":
         env.sim.model.actuator_gainprm[env_ids[:, None], ctrl_ids, 0] = kp_samples
         env.sim.model.actuator_biasprm[env_ids[:, None], ctrl_ids, 1] = -kp_samples
@@ -573,10 +616,13 @@ def randomize_pd_gains(
       assert actuator.stiffness is not None
       assert actuator.damping is not None
       if operation == "scale":
-        current_kp = actuator.stiffness[env_ids].clone()
-        current_kd = actuator.damping[env_ids].clone()
+        # Use default gains for scaling to prevent accumulation.
+        assert actuator.default_stiffness is not None
+        assert actuator.default_damping is not None
         actuator.set_gains(
-          env_ids, kp=current_kp * kp_samples, kd=current_kd * kd_samples
+          env_ids,
+          kp=actuator.default_stiffness[env_ids] * kp_samples,
+          kd=actuator.default_damping[env_ids] * kd_samples,
         )
       elif operation == "abs":
         actuator.set_gains(env_ids, kp=kp_samples, kd=kd_samples)
