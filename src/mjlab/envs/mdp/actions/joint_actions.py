@@ -99,9 +99,9 @@ class JointPositionAction(JointAction):
       self._offset = self._asset.data.default_joint_pos[:, self._joint_ids].clone()
 
   def apply_actions(self) -> None:
-    self._asset.set_joint_position_target(
-      self._processed_actions, joint_ids=self._joint_ids
-    )
+    encoder_bias = self._asset.data.encoder_bias[:, self._joint_ids]
+    target = self._processed_actions - encoder_bias
+    self._asset.set_joint_position_target(target, joint_ids=self._joint_ids)
 
 
 class JointVelocityAction(JointAction):

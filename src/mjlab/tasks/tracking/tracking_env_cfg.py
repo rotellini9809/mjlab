@@ -71,7 +71,9 @@ def make_tracking_env_cfg() -> ManagerBasedRlEnvCfg:
       noise=Unoise(n_min=-0.2, n_max=0.2),
     ),
     "joint_pos": ObservationTermCfg(
-      func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01)
+      func=mdp.joint_pos_rel,
+      noise=Unoise(n_min=-0.01, n_max=0.01),
+      params={"biased": True},
     ),
     "joint_vel": ObservationTermCfg(
       func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.5, n_max=0.5)
@@ -184,15 +186,12 @@ def make_tracking_env_cfg() -> ManagerBasedRlEnvCfg:
         },
       },
     ),
-    "add_joint_default_pos": EventTermCfg(
+    "encoder_bias": EventTermCfg(
       mode="startup",
-      func=mdp.randomize_field,
-      domain_randomization=True,
+      func=mdp.randomize_encoder_bias,
       params={
         "asset_cfg": SceneEntityCfg("robot"),
-        "operation": "add",
-        "field": "qpos0",
-        "ranges": (-0.01, 0.01),
+        "bias_range": (-0.01, 0.01),
       },
     ),
     "foot_friction": EventTermCfg(
