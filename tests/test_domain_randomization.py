@@ -186,7 +186,7 @@ def test_randomize_field_scale_uses_defaults(device):
   env.sim.expand_model_fields(("body_mass",))
 
   body_idx = robot.indexing.body_ids[0]
-  default_mass = env.sim.default_model_fields["body_mass"][body_idx].item()
+  default_mass = env.sim.get_default_field("body_mass")[body_idx].item()
 
   # Randomize 3 times with scale operation.
   for _ in range(3):
@@ -211,7 +211,7 @@ def test_randomize_field_scale_partial_axes(device):
   env.sim.expand_model_fields(("geom_friction",))
 
   geom_idx = robot.indexing.geom_ids[0]
-  default_friction = env.sim.default_model_fields["geom_friction"][geom_idx].clone()
+  default_friction = env.sim.get_default_field("geom_friction")[geom_idx].clone()
 
   # Randomize only axis 0 (sliding friction) with scale operation.
   randomize_field(
@@ -237,4 +237,65 @@ def test_randomize_field_scale_partial_axes(device):
   )
   assert abs(final_friction[2] - default_friction[2]) < 1e-5, (
     f"Expected axis 2 to remain {default_friction[2]}, got {final_friction[2]}"
+  )
+
+
+def test_randomize_field_single_env_without_expand(device):
+  """Verify randomization works with num_envs=1 without calling expand_model_fields.
+
+  For single-env simulations, expand_model_fields is not required because
+  all worlds share the same memory. The default values should be lazily
+  stored when first needed for scale/add operations.
+  """
+  entity_cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML))
+  scene_cfg = SceneCfg(num_envs=1, entities={"robot": entity_cfg})
+  scene = Scene(scene_cfg, device)
+  model = scene.compile()
+
+  sim_cfg = SimulationCfg()
+  sim = Simulation(num_envs=1, cfg=sim_cfg, model=model, device=device)
+  scene.initialize(model, sim.model, sim.data)
+  # Intentionally NOT calling sim.expand_model_fields().
+
+  class Env:
+    def __init__(self, scene, sim):
+      self.scene = scene
+      self.sim = sim
+      self.num_envs = scene.num_envs
+      self.device = device
+
+  env = Env(scene, sim)
+  robot = env.scene["robot"]
+
+  body_idx = robot.indexing.body_ids[0]
+  original_mass = sim.model.body_mass[0, body_idx].item()
+
+  # Randomize with scale operation should work without expand_model_fields.
+  randomize_field(
+    env,  # type: ignore[arg-type]
+    env_ids=None,
+    field="body_mass",
+    ranges=(2.0, 2.0),
+    operation="scale",
+    asset_cfg=SceneEntityCfg("robot", body_ids=[0]),
+  )
+
+  final_mass = sim.model.body_mass[0, body_idx].item()
+  assert abs(final_mass - original_mass * 2.0) < 1e-5, (
+    f"Expected mass {original_mass * 2.0}, got {final_mass}"
+  )
+
+  # Randomize again should still be original * 2.0 (no accumulation).
+  randomize_field(
+    env,  # type: ignore[arg-type]
+    env_ids=None,
+    field="body_mass",
+    ranges=(2.0, 2.0),
+    operation="scale",
+    asset_cfg=SceneEntityCfg("robot", body_ids=[0]),
+  )
+
+  final_mass_2 = sim.model.body_mass[0, body_idx].item()
+  assert abs(final_mass_2 - original_mass * 2.0) < 1e-5, (
+    f"Expected mass {original_mass * 2.0} (no accumulation), got {final_mass_2}"
   )

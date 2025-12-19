@@ -9,44 +9,44 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
-    {name = "The MjLab Developers"},
+  {name = "The MjLab Developers"},
 ]
-keywords = ["mujoco",  "mujoco-warp", "simulation", "reinforcement-learning", "robotics"]
+keywords = ["mujoco", "mujoco-warp", "simulation", "reinforcement-learning", "robotics"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3 :: Only",
-    "Typing :: Typed",
-    "Environment :: GPU :: NVIDIA CUDA",
-    "Topic :: Scientific/Engineering",
-    "Natural Language :: English",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed",
+  "Environment :: GPU :: NVIDIA CUDA",
+  "Topic :: Scientific/Engineering",
+  "Natural Language :: English",
 ]
 description = "Isaac Lab API, powered by MuJoCo-Warp, for RL and robotics research."
 requires-python = ">=3.10,<3.14"
 dependencies = [
-    "prettytable",
-    "tqdm",
-    "tyro>=1.0.1",
-    "torch>=2.7.0",
-    "torchrunx>=0.3.4",
-    "warp-lang>=1.11.0.dev20251211",
-    "mujoco-warp",
-    "mujoco>=3.4.0",
-    "trimesh>=4.8.3",
-    "viser>=1.0.16",
-    "moviepy",
-    "tensordict",
-    "rsl-rl-lib==3.1.0",
-    "tensorboard>=2.20.0",
-    "onnxscript>=0.5.4",
-    "wandb>=0.22.3",
+  "prettytable",
+  "tqdm",
+  "tyro>=1.0.1",
+  "torch>=2.7.0",
+  "torchrunx>=0.3.4",
+  "warp-lang>=1.11.0.dev20251211",
+  "mujoco-warp",
+  "mujoco>=3.4.0",
+  "trimesh>=4.8.3",
+  "viser>=1.0.16",
+  "moviepy",
+  "tensordict",
+  "rsl-rl-lib==3.1.0",
+  "tensorboard>=2.20.0",
+  "onnxscript>=0.5.4",
+  "wandb>=0.22.3",
 ]
 
 [project.urls]

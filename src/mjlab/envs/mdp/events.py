@@ -340,12 +340,7 @@ def randomize_field(
 
   # For scale/add operations, use stored default values to prevent accumulation.
   if operation in ("scale", "add"):
-    if field not in env.sim.default_model_fields:
-      raise ValueError(
-        f"Field '{field}' has no stored defaults. Call "
-        f"sim.expand_model_fields(('{field}',)) before using operation='{operation}'."
-      )
-    default_field = env.sim.default_model_fields[field]
+    default_field = env.sim.get_default_field(field)
     base_values = default_field[entity_indices].unsqueeze(0).expand_as(indexed_data)
   else:
     base_values = indexed_data
@@ -590,14 +585,8 @@ def randomize_pd_gains(
     if isinstance(actuator, (BuiltinPositionActuator, XmlPositionActuator)):
       if operation == "scale":
         # Use stored default values for scaling to prevent accumulation.
-        if "actuator_gainprm" not in env.sim.default_model_fields:
-          raise ValueError(
-            "actuator_gainprm has no stored defaults. "
-            "Call sim.expand_model_fields(('actuator_gainprm', 'actuator_biasprm')) "
-            "before using operation='scale'."
-          )
-        default_gainprm = env.sim.default_model_fields["actuator_gainprm"]
-        default_biasprm = env.sim.default_model_fields["actuator_biasprm"]
+        default_gainprm = env.sim.get_default_field("actuator_gainprm")
+        default_biasprm = env.sim.get_default_field("actuator_biasprm")
         env.sim.model.actuator_gainprm[env_ids[:, None], ctrl_ids, 0] = (
           default_gainprm[ctrl_ids, 0] * kp_samples
         )
