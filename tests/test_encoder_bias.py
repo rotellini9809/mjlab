@@ -1,36 +1,46 @@
-"""Tests for encoder offset (joint bias) modeling via qpos0.
+"""Tests for encoder bias simulation.
 
-Encoder bias: encoder_reading = true_physical_position + bias
+We simulate this by storing `encoder_bias` per joint in EntityData:
+  - Observations: policy sees (true_position + bias)
+  - Actions: position commands are converted via (command - bias) before simulation
 
-Setting qpos0 = bias works because:
-- Kinematics use (qpos - qpos0) for body positions (physical frame)
-- Sensors/actuators use qpos directly (biased encoder frame)
-
-Both sensor and actuator operate in the same biased frame, so control loops work
-correctly while the physical simulation remains accurate.
+This ensures joint limits apply to the true physical position, not biased readings.
 """
 
+from collections.abc import Callable
+from functools import partial
+
 import mujoco
-import mujoco_warp as mjwarp
-import numpy as np
 import pytest
 import torch
 from conftest import get_test_device
 
-from mjlab.sim import Simulation, SimulationCfg
+from mjlab.actuator import BuiltinPositionActuatorCfg
+from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
+from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg, mdp
+from mjlab.managers.manager_term_config import (
+  EventTermCfg,
+  ObservationGroupCfg,
+  ObservationTermCfg,
+)
+from mjlab.managers.scene_entity_config import SceneEntityCfg
+from mjlab.scene import SceneCfg
+from mjlab.sim import MujocoCfg, SimulationCfg
+from mjlab.terrains import TerrainImporterCfg
+
+# =============================================================================
+# Test fixtures and helpers
+# =============================================================================
 
 SLIDING_MASS_XML = """
 <mujoco>
   <option timestep="0.002"/>
   <worldbody>
     <body name="mass" pos="0 0 0">
-      <joint name="slide" type="slide" axis="1 0 0"/>
+      <joint name="slide" type="slide" axis="1 0 0" range="-1 1" limited="true"/>
       <geom name="mass_geom" type="sphere" size="0.1" mass="1.0"/>
     </body>
   </worldbody>
-  <actuator>
-    <position name="pos_act" joint="slide" kp="100" kv="20"/>
-  </actuator>
   <sensor>
     <jointpos name="slide_pos" joint="slide"/>
   </sensor>
@@ -38,151 +48,260 @@ SLIDING_MASS_XML = """
 """
 
 
+def _make_robot_cfg():
+  return EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(SLIDING_MASS_XML),
+    articulation=EntityArticulationInfoCfg(
+      actuators=(
+        BuiltinPositionActuatorCfg(
+          joint_names_expr=(".*",), stiffness=1000.0, damping=100.0
+        ),
+      )
+    ),
+  )
+
+
+def _make_env_cfg(
+  obs_func: Callable | None = None,
+  num_envs: int = 2,
+  events: dict | None = None,
+) -> ManagerBasedRlEnvCfg:
+  if obs_func is None:
+    obs_func = partial(mdp.joint_pos_rel, biased=True)
+  return ManagerBasedRlEnvCfg(
+    scene=SceneCfg(
+      terrain=TerrainImporterCfg(terrain_type="plane"),
+      num_envs=num_envs,
+      extent=1.0,
+      entities={"robot": _make_robot_cfg()},
+    ),
+    observations={
+      "policy": ObservationGroupCfg(
+        terms={"obs": ObservationTermCfg(func=obs_func)},
+      ),
+    },
+    actions={
+      "joint_pos": mdp.JointPositionActionCfg(
+        asset_name="robot", actuator_names=(".*",), scale=1.0
+      )
+    },
+    events=events or {},
+    sim=SimulationCfg(mujoco=MujocoCfg(timestep=0.002, iterations=1)),
+    decimation=1,
+    episode_length_s=10.0,
+  )
+
+
 @pytest.fixture(scope="module")
 def device():
   return get_test_device()
 
 
-def test_reset_uses_qpos0(device):
-  """Verify reset_data initializes qpos to qpos0 values."""
-  model = mujoco.MjModel.from_xml_string(SLIDING_MASS_XML)
-  sim = Simulation(num_envs=2, cfg=SimulationCfg(), model=model, device=device)
-  sim.expand_model_fields(("qpos0",))
-
-  offset = 0.5
-  sim.model.qpos0[0, 0] = 0.0
-  sim.model.qpos0[1, 0] = offset
-  mjwarp.reset_data(sim.wp_model, sim.wp_data)
-
-  assert torch.allclose(
-    sim.data.qpos[0, 0], torch.tensor(0.0, device=device), atol=1e-6
-  ), f"Expected qpos[0]=0.0, got {sim.data.qpos[0, 0]}"
-  assert torch.allclose(
-    sim.data.qpos[1, 0], torch.tensor(offset, device=device), atol=1e-6
-  ), f"Expected qpos[1]={offset}, got {sim.data.qpos[1, 0]}"
+# =============================================================================
+# EntityData.encoder_bias field tests
+# =============================================================================
 
 
-def test_qpos_and_sensor_return_biased_values(device):
-  """Verify jointpos sensor returns qpos (biased), not (qpos - qpos0)."""
-  model = mujoco.MjModel.from_xml_string(SLIDING_MASS_XML)
-  sim = Simulation(num_envs=2, cfg=SimulationCfg(), model=model, device=device)
-  sim.expand_model_fields(("qpos0",))
+def test_encoder_bias_initialized_to_zero(device):
+  """encoder_bias should be zeros with shape (num_envs, num_joints)."""
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(num_envs=4), device=device)
+  env.reset()
 
-  offset = 0.5
-  sim.model.qpos0[0, 0] = 0.0
-  sim.model.qpos0[1, 0] = offset
-  mjwarp.reset_data(sim.wp_model, sim.wp_data)
+  robot = env.scene["robot"]
+  assert robot.data.encoder_bias.shape == (4, 1)
+  assert (robot.data.encoder_bias == 0).all()
 
-  assert torch.allclose(
-    sim.data.qpos[0, 0], torch.tensor(0.0, device=device), atol=1e-5
-  ), f"qpos[0] expected 0.0, got {sim.data.qpos[0, 0]}"
-  assert torch.allclose(
-    sim.data.qpos[1, 0], torch.tensor(offset, device=device), atol=1e-5
-  ), f"qpos[1] expected {offset}, got {sim.data.qpos[1, 0]}"
+  env.close()
 
-  sim.data.ctrl[0, 0] = 0.0
-  sim.data.ctrl[1, 0] = offset
-  sim.step()
 
-  assert torch.allclose(
-    sim.data.qpos[0, 0], torch.tensor(0.0, device=device), atol=1e-3
-  ), f"qpos[0] expected ~0.0, got {sim.data.qpos[0, 0]}"
-  assert torch.allclose(
-    sim.data.qpos[1, 0], torch.tensor(offset, device=device), atol=1e-3
-  ), f"qpos[1] expected ~{offset}, got {sim.data.qpos[1, 0]}"
+def test_encoder_bias_can_be_set_per_env(device):
+  """encoder_bias can be set differently per environment."""
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(), device=device)
+  env.reset()
 
-  sensor_data = sim.data.sensordata
-  assert torch.allclose(sim.data.qpos[:, 0], sensor_data[:, 0], atol=1e-6), (
-    f"Sensor should match data.qpos: qpos={sim.data.qpos[:, 0]}, sensor={sensor_data[:, 0]}"
+  robot = env.scene["robot"]
+  robot.data.encoder_bias[0, 0] = 0.1
+  robot.data.encoder_bias[1, 0] = -0.2
+
+  assert robot.data.encoder_bias[0, 0].item() == pytest.approx(0.1)
+  assert robot.data.encoder_bias[1, 0].item() == pytest.approx(-0.2)
+
+  env.close()
+
+
+def test_joint_pos_biased_equals_joint_pos_plus_bias(device):
+  """joint_pos_biased property should return joint_pos + encoder_bias."""
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(), device=device)
+  env.reset()
+
+  robot = env.scene["robot"]
+  robot.data.encoder_bias[:, 0] = 0.25
+
+  torch.testing.assert_close(
+    robot.data.joint_pos_biased, robot.data.joint_pos + robot.data.encoder_bias
   )
 
+  env.close()
 
-def test_position_actuator_uses_biased_qpos(device):
-  """Verify position actuator computes error as (ctrl - qpos), ignoring qpos0."""
-  model = mujoco.MjModel.from_xml_string(SLIDING_MASS_XML)
-  sim = Simulation(num_envs=2, cfg=SimulationCfg(), model=model, device=device)
-  sim.expand_model_fields(("qpos0",))
 
-  offset = 0.5
-  sim.model.qpos0[0, 0] = 0.0
-  sim.model.qpos0[1, 0] = offset
-  mjwarp.reset_data(sim.wp_model, sim.wp_data)
+# =============================================================================
+# Observation tests
+# =============================================================================
 
-  assert torch.allclose(
-    sim.data.qpos[0, 0], torch.tensor(0.0, device=device), atol=1e-6
+
+def test_joint_pos_rel_includes_encoder_bias(device):
+  """joint_pos_rel observation should include encoder_bias."""
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(), device=device)
+  env.reset()
+
+  robot = env.scene["robot"]
+  bias = 0.5
+
+  obs_before = env.observation_manager.compute()["policy"]
+  assert isinstance(obs_before, torch.Tensor)
+  obs_before = obs_before.clone()
+  robot.data.encoder_bias[:, 0] = bias
+  env.observation_manager._obs_buffer = None  # Invalidate cache.
+  obs_after = env.observation_manager.compute()["policy"]
+
+  # Observation should increase by bias amount.
+  torch.testing.assert_close(obs_after, obs_before + bias, atol=1e-5, rtol=0)
+
+  env.close()
+
+
+def test_joint_vel_rel_ignores_encoder_bias(device):
+  """joint_vel_rel should NOT include encoder_bias (bias is constant, d/dt = 0)."""
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(obs_func=mdp.joint_vel_rel), device=device)
+  env.reset()
+
+  robot = env.scene["robot"]
+
+  obs_before = env.observation_manager.compute()["policy"]
+  assert isinstance(obs_before, torch.Tensor)
+  obs_before = obs_before.clone()
+  robot.data.encoder_bias[:, 0] = 0.5
+  env.observation_manager._obs_buffer = None
+  obs_after = env.observation_manager.compute()["policy"]
+
+  torch.testing.assert_close(obs_before, obs_after, atol=1e-6, rtol=0)
+
+  env.close()
+
+
+# =============================================================================
+# Action tests
+# =============================================================================
+
+
+def test_position_action_subtracts_encoder_bias(device):
+  """JointPositionAction should subtract encoder_bias from commands."""
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(), device=device)
+  env.reset()
+
+  robot = env.scene["robot"]
+  robot.data.encoder_bias[0, 0] = 0.0
+  robot.data.encoder_bias[1, 0] = 0.3
+
+  # Same command to both envs.
+  env.step(torch.tensor([[0.5], [0.5]], device=device))
+
+  # Actual targets should differ by bias.
+  assert robot.data.joint_pos_target[0, 0].item() == pytest.approx(0.5, abs=1e-5)
+  assert robot.data.joint_pos_target[1, 0].item() == pytest.approx(0.2, abs=1e-5)
+
+  env.close()
+
+
+# =============================================================================
+# End-to-end consistency test
+# =============================================================================
+
+
+def test_bias_compensation_produces_identical_physical_behavior(device):
+  """Envs with different biases should have identical physics when compensated.
+
+  If env0 has bias=0 and env1 has bias=0.3, and we want both to reach physical
+  position 0.4, we command:
+    - env0: 0.4 (in encoder frame)
+    - env1: 0.7 (in encoder frame, which becomes 0.4 after bias subtraction)
+
+  Both should reach the same physical position. Their observations should differ
+  by the bias amount.
+  """
+  env = ManagerBasedRlEnv(cfg=_make_env_cfg(), device=device)
+  env.reset()
+
+  robot = env.scene["robot"]
+  bias_env0, bias_env1 = 0.0, 0.3
+  robot.data.encoder_bias[0, 0] = bias_env0
+  robot.data.encoder_bias[1, 0] = bias_env1
+
+  # Command same physical target via encoder frame.
+  target_physical = 0.4
+  action = torch.tensor(
+    [[target_physical + bias_env0], [target_physical + bias_env1]], device=device
   )
-  assert torch.allclose(
-    sim.data.qpos[1, 0], torch.tensor(offset, device=device), atol=1e-6
-  )
 
-  sim.data.ctrl[:, 0] = 0.0
-  sim.step()
-
-  qfrc_actuator = sim.data.qfrc_actuator
-  # Env 0: qpos=0, ctrl=0 -> no error -> no force.
-  # Env 1: qpos=0.5, ctrl=0 -> error=-0.5 -> force toward 0.
-  assert torch.abs(qfrc_actuator[0, 0]) < 1.0, (
-    f"Env 0 should have near-zero force, got {qfrc_actuator[0, 0]}"
-  )
-  assert qfrc_actuator[1, 0] < -10.0, (
-    f"Env 1 should have negative force, got {qfrc_actuator[1, 0]}"
-  )
-
-
-def test_body_position_uses_qpos_minus_qpos0(device):
-  """Verify kinematics use (qpos - qpos0) so both envs are at same physical position."""
-  model = mujoco.MjModel.from_xml_string(SLIDING_MASS_XML)
-  sim = Simulation(num_envs=2, cfg=SimulationCfg(), model=model, device=device)
-  sim.expand_model_fields(("qpos0",))
-  sim.create_graph()
-
-  offset = 0.5
-  sim.model.qpos0[0, 0] = 0.0
-  sim.model.qpos0[1, 0] = offset
-  mjwarp.reset_data(sim.wp_model, sim.wp_data)
-  sim.step()
-
-  xpos_env0 = sim.data.xpos[0, 1].cpu().numpy()
-  xpos_env1 = sim.data.xpos[1, 1].cpu().numpy()
-  # Both at x=0: env0 has (0-0)=0, env1 has (0.5-0.5)=0.
-  np.testing.assert_allclose(xpos_env0, xpos_env1, atol=1e-5)
-  np.testing.assert_allclose(xpos_env0[0], 0.0, atol=1e-5)
-
-
-def test_qpos0_correctly_models_encoder_offset(device):
-  """End-to-end test: same physical position, different sensor readings, consistent control."""
-  model = mujoco.MjModel.from_xml_string(SLIDING_MASS_XML)
-  sim = Simulation(num_envs=2, cfg=SimulationCfg(), model=model, device=device)
-  sim.expand_model_fields(("qpos0",))
-  sim.create_graph()
-
-  encoder_offset = 0.2
-  sim.model.qpos0[0, 0] = 0.0
-  sim.model.qpos0[1, 0] = encoder_offset
-  mjwarp.reset_data(sim.wp_model, sim.wp_data)
-  sim.step()
-
-  # Both at same physical position.
-  xpos_env0 = sim.data.xpos[0, 1].cpu().numpy()
-  xpos_env1 = sim.data.xpos[1, 1].cpu().numpy()
-  np.testing.assert_allclose(xpos_env0, xpos_env1, atol=1e-5)
-
-  # But sensors read different values (encoder bias).
-  sensor_env0 = sim.data.sensordata[0, 0].item()
-  sensor_env1 = sim.data.sensordata[1, 0].item()
-  assert abs(sensor_env0 - 0.0) < 1e-5, f"Env0 sensor should read 0, got {sensor_env0}"
-  assert abs(sensor_env1 - encoder_offset) < 1e-5, (
-    f"Env1 sensor should read {encoder_offset}, got {sensor_env1}"
-  )
-
-  # Command in sensor frame to hold position.
-  sim.data.ctrl[0, 0] = 0.0
-  sim.data.ctrl[1, 0] = encoder_offset
   for _ in range(100):
-    sim.step()
+    env.step(action)
 
-  # Both stay at physical x=0.
-  xpos_env0_after = sim.data.xpos[0, 1].cpu().numpy()
-  xpos_env1_after = sim.data.xpos[1, 1].cpu().numpy()
-  np.testing.assert_allclose(xpos_env0_after[0], 0.0, atol=0.01)
-  np.testing.assert_allclose(xpos_env1_after[0], 0.0, atol=0.01)
+  # Physical positions should match.
+  pos_env0 = robot.data.joint_pos[0, 0].item()
+  pos_env1 = robot.data.joint_pos[1, 0].item()
+  assert pos_env0 == pytest.approx(pos_env1, abs=1e-4)
+
+  # Observations should differ by bias.
+  env.observation_manager._obs_buffer = None
+  obs = env.observation_manager.compute()["policy"]
+  assert isinstance(obs, torch.Tensor)
+  obs_diff = obs[1, 0].item() - obs[0, 0].item()
+  assert obs_diff == pytest.approx(bias_env1 - bias_env0, abs=1e-4)
+
+  env.close()
+
+
+# =============================================================================
+# Event randomization test
+# =============================================================================
+
+
+def test_randomize_encoder_bias_event(device):
+  """randomize_encoder_bias should sample values within specified range."""
+  env_cfg = ManagerBasedRlEnvCfg(
+    scene=SceneCfg(
+      terrain=TerrainImporterCfg(terrain_type="plane"),
+      num_envs=100,
+      extent=10.0,
+      entities={"robot": _make_robot_cfg()},
+    ),
+    observations={
+      "policy": ObservationGroupCfg(
+        terms={"obs": ObservationTermCfg(func=partial(mdp.joint_pos_rel, biased=True))},
+      ),
+    },
+    actions={
+      "joint_pos": mdp.JointPositionActionCfg(
+        asset_name="robot", actuator_names=(".*",), scale=1.0
+      )
+    },
+    events={
+      "randomize_bias": EventTermCfg(
+        func=mdp.randomize_encoder_bias,
+        mode="startup",
+        params={"bias_range": (-0.1, 0.1), "asset_cfg": SceneEntityCfg("robot")},
+      )
+    },
+    sim=SimulationCfg(mujoco=MujocoCfg(timestep=0.002, iterations=1)),
+    decimation=1,
+    episode_length_s=10.0,
+  )
+
+  env = ManagerBasedRlEnv(cfg=env_cfg, device=device)
+  env.reset()
+
+  biases = env.scene["robot"].data.encoder_bias[:, 0]
+  assert (biases >= -0.1).all() and (biases <= 0.1).all()
+  assert biases.std() > 0.01  # Not all identical.
+
+  env.close()

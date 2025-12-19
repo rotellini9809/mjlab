@@ -65,6 +65,8 @@ class EntityData:
   joint_vel_target: torch.Tensor
   joint_effort_target: torch.Tensor
 
+  encoder_bias: torch.Tensor
+
   # State dimensions.
   POS_DIM = 3
   QUAT_DIM = 4
@@ -328,8 +330,13 @@ class EntityData:
 
   @property
   def joint_pos(self) -> torch.Tensor:
-    """Joint positions. Shape (num_envs, nv)"""
+    """Joint positions. Shape (num_envs, num_joints)."""
     return self.data.qpos[:, self.indexing.joint_q_adr]
+
+  @property
+  def joint_pos_biased(self) -> torch.Tensor:
+    """Joint positions with encoder bias applied. Shape (num_envs, num_joints)."""
+    return self.joint_pos + self.encoder_bias
 
   @property
   def joint_vel(self) -> torch.Tensor:

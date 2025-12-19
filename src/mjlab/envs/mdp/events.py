@@ -671,6 +671,44 @@ def randomize_effort_limits(
       )
 
 
+def randomize_encoder_bias(
+  env: ManagerBasedRlEnv,
+  env_ids: torch.Tensor | None,
+  bias_range: Tuple[float, float],
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> None:
+  """Randomize encoder bias to simulate joint encoder calibration errors.
+
+  See docs/api/domain_randomization.md for details on how encoder bias works.
+  """
+  asset: Entity = env.scene[asset_cfg.name]
+
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.int)
+  else:
+    env_ids = env_ids.to(env.device, dtype=torch.int)
+
+  joint_ids = asset_cfg.joint_ids
+  if isinstance(joint_ids, slice):
+    num_joints = asset.num_joints
+    joint_ids_tensor = torch.arange(num_joints, device=env.device)
+  else:
+    joint_ids_tensor = torch.tensor(joint_ids, device=env.device)
+
+  num_joints = len(joint_ids_tensor)
+  bias_samples = sample_uniform(
+    torch.tensor(bias_range[0], device=env.device),
+    torch.tensor(bias_range[1], device=env.device),
+    (len(env_ids), num_joints),
+    env.device,
+  )
+
+  if isinstance(joint_ids, slice):
+    asset.data.encoder_bias[env_ids] = bias_samples
+  else:
+    asset.data.encoder_bias[env_ids[:, None], joint_ids_tensor] = bias_samples
+
+
 def sync_actuator_delays(
   env: ManagerBasedRlEnv,
   env_ids: torch.Tensor | None,

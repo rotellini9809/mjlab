@@ -487,6 +487,15 @@ class Entity:
       joint_vel_target = torch.empty(nworld, 0, dtype=torch.float, device=device)
       joint_effort_target = torch.empty(nworld, 0, dtype=torch.float, device=device)
 
+    # Encoder bias for simulating encoder calibration errors.
+    # Shape: (num_envs, num_joints). Defaults to zero (no bias).
+    if self.is_articulated:
+      encoder_bias = torch.zeros(
+        (nworld, self.num_joints), dtype=torch.float, device=device
+      )
+    else:
+      encoder_bias = torch.empty(nworld, 0, dtype=torch.float, device=device)
+
     self._data = EntityData(
       indexing=indexing,
       data=data,
@@ -506,6 +515,7 @@ class Entity:
       joint_pos_target=joint_pos_target,
       joint_vel_target=joint_vel_target,
       joint_effort_target=joint_effort_target,
+      encoder_bias=encoder_bias,
     )
 
   def update(self, dt: float) -> None:
