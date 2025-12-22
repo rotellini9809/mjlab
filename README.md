@@ -119,7 +119,8 @@ Train a Unitree G1 to mimic reference motions. mjlab uses
      --render  # Optional: generates preview video
    ```
 
-> **Note**: For detailed motion preprocessing instructions, see the
+> [!NOTE]
+> For detailed motion preprocessing instructions, see the
 > [BeyondMimic documentation](https://github.com/HybridRobotics/whole_body_tracking/blob/main/README.md#motion-preprocessing--registry-setup).
 
 #### Train and Play
@@ -141,7 +142,8 @@ uv run play Mjlab-Your-Task-Id --agent zero  # Sends zero actions.
 uv run play Mjlab-Your-Task-Id --agent random  # Sends uniform random actions.
 ```
 
-> [!NOTE] When running motion-tracking tasks, add
+> [!NOTE]
+> When running motion-tracking tasks, add
 > `--registry-name your-org/motions/motion-name` to the command.
 
 ---
