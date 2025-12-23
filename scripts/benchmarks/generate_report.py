@@ -790,7 +790,7 @@ def main(
   entity: str = "gcbc_researchers",
   project: str = "mjlab",
   tag: str = "nightly",
-  limit: int = 30,
+  eval_limit: int = 10,
   num_envs: int = 1024,
   output_dir: Path = Path("benchmark_results"),
 ) -> None:
@@ -801,7 +801,7 @@ def main(
     entity: WandB entity.
     project: WandB project name.
     tag: Filter runs by tag.
-    limit: Maximum number of runs to evaluate.
+    eval_limit: Maximum number of NEW runs to evaluate per invocation (0 = no limit).
     num_envs: Number of envs for evaluation.
     output_dir: Output directory for generated report.
   """
@@ -809,37 +809,41 @@ def main(
   cached = load_cached_results(output_dir)
   print(f"Loaded {len(cached)} cached evaluation results")
 
-  eval_results = []
+  # Start with all cached results (preserves historical data).
+  eval_results_by_id: dict[str, dict] = dict(cached)
+  new_evals = 0
 
   if run_paths:
     for run_path in run_paths:
       run_id = run_path.split("/")[-1]
-      if run_id in cached:
+      if run_id in eval_results_by_id:
         print(f"Using cached result for {run_id}")
-        eval_results.append(cached[run_id])
       else:
         result = evaluate_run(run_path, num_envs)
-        eval_results.append(result)
+        eval_results_by_id[run_id] = result
+        new_evals += 1
   else:
     api = wandb.Api()
     print(f"Fetching runs from {entity}/{project} with tag '{tag}'...")
     runs = api.runs(f"{entity}/{project}", filters={"tags": tag}, order="-created_at")
 
-    for i, run in enumerate(runs):
-      if i >= limit:
-        break
+    for run in runs:
       if run.state != "finished":
         continue
 
-      if run.id in cached:
+      if run.id in eval_results_by_id:
         print(f"Using cached result for {run.name} ({run.id})")
-        eval_results.append(cached[run.id])
       else:
+        if eval_limit > 0 and new_evals >= eval_limit:
+          print(f"Reached eval limit ({eval_limit}), skipping remaining new runs")
+          break
         run_path = f"{entity}/{project}/{run.id}"
         result = evaluate_run(run_path, num_envs)
-        eval_results.append(result)
+        eval_results_by_id[run.id] = result
+        new_evals += 1
 
-  print(f"Total runs: {len(eval_results)}")
+  eval_results = list(eval_results_by_id.values())
+  print(f"Total runs: {len(eval_results)} ({new_evals} newly evaluated)")
   generate_html_report(eval_results, output_dir)
 
 
