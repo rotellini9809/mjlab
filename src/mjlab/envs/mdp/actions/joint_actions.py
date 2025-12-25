@@ -1,18 +1,63 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import torch
 
 from mjlab.entity import Entity
 from mjlab.managers.action_manager import ActionTerm
+from mjlab.managers.manager_term_config import ActionTermCfg
 from mjlab.utils.lab_api.string import (
   resolve_matching_names_values,
 )
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
-  from mjlab.envs.mdp.actions import actions_config
+
+
+##
+# Configuration classes.
+##
+
+
+@dataclass(kw_only=True)
+class JointActionCfg(ActionTermCfg):
+  actuator_names: tuple[str, ...]
+  """Actuator names or regex expressions to map action to."""
+  scale: float | dict[str, float] = 1.0
+  """Scale factor (float or dict of regex expressions)."""
+  offset: float | dict[str, float] = 0.0
+  """Offset factor (float or dict of regex expressions)."""
+  preserve_order: bool = False
+  """Whether to preserve joint name order in action output."""
+
+
+@dataclass(kw_only=True)
+class JointPositionActionCfg(JointActionCfg):
+  use_default_offset: bool = True
+
+  def build(self, env: ManagerBasedRlEnv) -> JointPositionAction:
+    return JointPositionAction(self, env)
+
+
+@dataclass(kw_only=True)
+class JointVelocityActionCfg(JointActionCfg):
+  use_default_offset: bool = True
+
+  def build(self, env: ManagerBasedRlEnv) -> JointVelocityAction:
+    return JointVelocityAction(self, env)
+
+
+@dataclass(kw_only=True)
+class JointEffortActionCfg(JointActionCfg):
+  def build(self, env: ManagerBasedRlEnv) -> JointEffortAction:
+    return JointEffortAction(self, env)
+
+
+##
+# Action term implementations.
+##
 
 
 class JointAction(ActionTerm):
@@ -20,7 +65,7 @@ class JointAction(ActionTerm):
 
   _asset: Entity
 
-  def __init__(self, cfg: actions_config.JointActionCfg, env: ManagerBasedRlEnv):
+  def __init__(self, cfg: JointActionCfg, env: ManagerBasedRlEnv):
     super().__init__(cfg=cfg, env=env)
 
     joint_ids, joint_names = self._asset.find_joints_by_actuator_names(
@@ -90,9 +135,7 @@ class JointAction(ActionTerm):
 
 
 class JointPositionAction(JointAction):
-  def __init__(
-    self, cfg: actions_config.JointPositionActionCfg, env: ManagerBasedRlEnv
-  ):
+  def __init__(self, cfg: JointPositionActionCfg, env: ManagerBasedRlEnv):
     super().__init__(cfg=cfg, env=env)
 
     if cfg.use_default_offset:
@@ -105,9 +148,7 @@ class JointPositionAction(JointAction):
 
 
 class JointVelocityAction(JointAction):
-  def __init__(
-    self, cfg: actions_config.JointVelocityActionCfg, env: ManagerBasedRlEnv
-  ):
+  def __init__(self, cfg: JointVelocityActionCfg, env: ManagerBasedRlEnv):
     super().__init__(cfg=cfg, env=env)
 
     if cfg.use_default_offset:
@@ -120,7 +161,7 @@ class JointVelocityAction(JointAction):
 
 
 class JointEffortAction(JointAction):
-  def __init__(self, cfg: actions_config.JointEffortActionCfg, env: ManagerBasedRlEnv):
+  def __init__(self, cfg: JointEffortActionCfg, env: ManagerBasedRlEnv):
     super().__init__(cfg=cfg, env=env)
 
   def apply_actions(self) -> None:

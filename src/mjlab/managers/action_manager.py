@@ -149,6 +149,6 @@ class ActionManager(ManagerBase):
       if term_cfg is None:
         print(f"term: {term_name} set to None, skipping...")
         continue
-      term = term_cfg.class_type(term_cfg, self._env)
+      term = term_cfg.build(self._env)
       self._term_names.append(term_name)
       self._terms[term_name] = term
