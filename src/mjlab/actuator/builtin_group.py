@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import torch
 
@@ -16,7 +16,22 @@ if TYPE_CHECKING:
   from mjlab.actuator.actuator import Actuator
   from mjlab.entity.data import EntityData
 
+BuiltinActuatorType = Union[
+  BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator
+]
+
 BUILTIN_TYPES = {BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator}
+
+# Maps (actuator_type, transmission_type) to EntityData target tensor attribute name.
+_TARGET_TENSOR_MAP: dict[tuple[type[BuiltinActuatorType], TransmissionType], str] = {
+  (BuiltinPositionActuator, TransmissionType.JOINT): "joint_pos_target",
+  (BuiltinVelocityActuator, TransmissionType.JOINT): "joint_vel_target",
+  (BuiltinMotorActuator, TransmissionType.JOINT): "joint_effort_target",
+  (BuiltinPositionActuator, TransmissionType.TENDON): "tendon_len_target",
+  (BuiltinVelocityActuator, TransmissionType.TENDON): "tendon_vel_target",
+  (BuiltinMotorActuator, TransmissionType.TENDON): "tendon_effort_target",
+  (BuiltinMotorActuator, TransmissionType.SITE): "site_effort_target",
+}
 
 
 @dataclass(frozen=True)
@@ -53,10 +68,10 @@ class BuiltinActuatorGroup:
     for act in actuators:
       if type(act) in BUILTIN_TYPES:
         # All builtin actuators have a cfg attribute with transmission_type.
-        builtin_act = act  # type: ignore[assignment]
+        builtin_act: BuiltinActuatorType = act  # type: ignore[assignment]
         key: tuple[type, TransmissionType] = (
           type(act),
-          builtin_act.cfg.transmission_type,  # type: ignore[attr-defined]
+          builtin_act.cfg.transmission_type,
         )
         builtin_groups.setdefault(key, []).append(act)
       else:
@@ -66,11 +81,11 @@ class BuiltinActuatorGroup:
     index_groups: dict[
       tuple[type, TransmissionType], tuple[torch.Tensor, torch.Tensor]
     ] = {
-      k: (
-        torch.cat([act.joint_ids for act in v], dim=0),
-        torch.cat([act.ctrl_ids for act in v], dim=0),
+      key: (
+        torch.cat([act.joint_ids for act in acts], dim=0),
+        torch.cat([act.ctrl_ids for act in acts], dim=0),
       )
-      for k, v in builtin_groups.items()
+      for key, acts in builtin_groups.items()
     }
     return BuiltinActuatorGroup(index_groups), tuple(custom_actuators)
 
@@ -80,38 +95,22 @@ class BuiltinActuatorGroup:
     Args:
       data: Entity data containing targets and control arrays.
     """
-    for (actuator_type, transmission_type), index_group in self._index_groups.items():
-      target_ids, ctrl_ids = index_group
+    for (actuator_type, transmission_type), (
+      target_ids,
+      ctrl_ids,
+    ) in self._index_groups.items():
+      # Look up the target tensor attribute name.
+      attr_name = _TARGET_TENSOR_MAP.get((actuator_type, transmission_type))
 
-      # Select target tensor based on actuator type and transmission type.
-      if transmission_type == TransmissionType.JOINT:
-        if actuator_type == BuiltinPositionActuator:
-          target_tensor = data.joint_pos_target
-        elif actuator_type == BuiltinVelocityActuator:
-          target_tensor = data.joint_vel_target
-        elif actuator_type == BuiltinMotorActuator:
-          target_tensor = data.joint_effort_target
-        else:
-          raise ValueError(f"Unknown actuator type: {actuator_type}")
-      elif transmission_type == TransmissionType.TENDON:
-        if actuator_type == BuiltinPositionActuator:
-          target_tensor = data.tendon_len_target
-        elif actuator_type == BuiltinVelocityActuator:
-          target_tensor = data.tendon_vel_target
-        elif actuator_type == BuiltinMotorActuator:
-          target_tensor = data.tendon_effort_target
-        else:
-          raise ValueError(f"Unknown actuator type: {actuator_type}")
-      elif transmission_type == TransmissionType.SITE:
-        # Sites only support effort control.
-        if actuator_type == BuiltinMotorActuator:
-          target_tensor = data.site_effort_target
-        else:
+      if attr_name is None:
+        if transmission_type == TransmissionType.SITE:
           raise ValueError(
             f"Site transmission only supports motor (effort) actuators, "
             f"not {actuator_type.__name__}"
           )
-      else:
-        raise ValueError(f"Unknown transmission type: {transmission_type}")
+        raise ValueError(
+          f"Unsupported combination: {actuator_type.__name__} with {transmission_type}"
+        )
 
+      target_tensor = getattr(data, attr_name)
       data.write_ctrl(target_tensor[:, target_ids], ctrl_ids)

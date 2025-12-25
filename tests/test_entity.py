@@ -701,3 +701,70 @@ def test_joint_pos_none_fixed_base_uses_keyframe():
 
   assert model.nkey == 1
   assert model.key(0).qpos[0] == 0.5
+
+
+XML_WITH_SITES_AND_TENDONS = """
+<mujoco>
+  <worldbody>
+    <body name="base">
+      <joint name="joint1" type="hinge" axis="0 0 1" range="-3.14 3.14"/>
+      <geom type="box" size="0.1 0.1 0.1" mass="1.0"/>
+      <site name="site1" pos="0.1 0 0"/>
+      <site name="site2" pos="0 0.1 0"/>
+      <body name="link1" pos="0 0 0.2">
+        <joint name="joint2" type="hinge" axis="0 1 0" range="-1.57 1.57"/>
+        <geom type="box" size="0.05 0.05 0.1" mass="0.5"/>
+        <site name="site3" pos="0 0 0.1"/>
+      </body>
+    </body>
+  </worldbody>
+  <tendon>
+    <fixed name="tendon1">
+      <joint joint="joint1" coef="1.0"/>
+    </fixed>
+    <fixed name="tendon2">
+      <joint joint="joint2" coef="1.0"/>
+    </fixed>
+  </tendon>
+</mujoco>
+"""
+
+
+def test_tendon_and_site_targets_only_allocated_when_needed(device):
+  """Test that tendon/site targets are only allocated when actuators use them."""
+  from mjlab.actuator import BuiltinMotorActuatorCfg
+  from mjlab.actuator.actuator import TransmissionType
+
+  # Entity with sites and tendons but NO site/tendon actuators.
+  # Should allocate empty tensors for site and tendon targets.
+  cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(XML_WITH_SITES_AND_TENDONS),
+    articulation=EntityArticulationInfoCfg(
+      actuators=(
+        # Only joint actuators, no tendon or site actuators.
+        BuiltinMotorActuatorCfg(
+          target_names_expr=("joint1",),
+          effort_limit=10.0,
+          transmission_type=TransmissionType.JOINT,
+        ),
+      )
+    ),
+  )
+
+  entity = Entity(cfg)
+  model = entity.compile()
+  sim = Simulation(num_envs=4, cfg=SimulationCfg(), model=model, device=device)
+  entity.initialize(model, sim.model, sim.data, device)
+
+  # Verify the entity has sites and tendons.
+  assert len(entity.site_names) == 3
+  assert len(entity.tendon_names) == 2
+
+  # Verify tendon and site targets are empty (not allocated).
+  assert entity.data.site_effort_target.shape == (4, 0)
+  assert entity.data.tendon_len_target.shape == (4, 0)
+  assert entity.data.tendon_vel_target.shape == (4, 0)
+  assert entity.data.tendon_effort_target.shape == (4, 0)
+
+  # Joint targets should still be allocated (2 joints).
+  assert entity.data.joint_pos_target.shape == (4, 2)

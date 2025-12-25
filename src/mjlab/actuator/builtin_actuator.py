@@ -181,13 +181,8 @@ class BuiltinVelocityActuator(Actuator):
 
 
 @dataclass(kw_only=True)
-@dataclass(kw_only=True)
 class BuiltinMuscleActuatorCfg(ActuatorCfg):
-  """Configuration for MuJoCo built-in muscle actuator.
-
-  Muscle actuators use special activation dynamics and force-length-velocity curves.
-  They typically actuate tendons but can also actuate joints directly.
-  """
+  """Configuration for MuJoCo built-in muscle actuator."""
 
   length_range: tuple[float, float] = (0.0, 0.0)
   """Length range for muscle actuator."""
@@ -256,5 +251,4 @@ class BuiltinMuscleActuator(Actuator):
       self._mjs_actuators.append(actuator)
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
-    # Muscles use effort_target as activation (0-1).
     return cmd.effort_target

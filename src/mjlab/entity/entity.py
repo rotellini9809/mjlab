@@ -237,6 +237,26 @@ class Entity:
     return len(self._actuators) > 0
 
   @property
+  def has_tendon_actuators(self) -> bool:
+    """Entity has actuators using tendon transmission."""
+    if self.cfg.articulation is None:
+      return False
+    return any(
+      act.transmission_type == TransmissionType.TENDON
+      for act in self.cfg.articulation.actuators
+    )
+
+  @property
+  def has_site_actuators(self) -> bool:
+    """Entity has actuators using site transmission."""
+    if self.cfg.articulation is None:
+      return False
+    return any(
+      act.transmission_type == TransmissionType.SITE
+      for act in self.cfg.articulation.actuators
+    )
+
+  @property
   def is_mocap(self) -> bool:
     """Entity root body is a mocap body (only for fixed-base entities)."""
     return bool(self.root_body.mocap) if self.is_fixed_base else False
@@ -500,8 +520,8 @@ class Entity:
       joint_vel_target = torch.empty(nworld, 0, dtype=torch.float, device=device)
       joint_effort_target = torch.empty(nworld, 0, dtype=torch.float, device=device)
 
-    # Tendon targets (allocate only if entity is actuated)
-    if self.is_actuated:
+    # Only allocate tendon targets if there are actuators using tendon transmission.
+    if self.has_tendon_actuators:
       num_tendons = len(self.tendon_names)
       tendon_len_target = torch.zeros(
         (nworld, num_tendons), dtype=torch.float, device=device
@@ -517,9 +537,8 @@ class Entity:
       tendon_vel_target = torch.empty(nworld, 0, dtype=torch.float, device=device)
       tendon_effort_target = torch.empty(nworld, 0, dtype=torch.float, device=device)
 
-    # Site targets (allocate only if entity is actuated)
-    # Sites only support effort control (force at site location)
-    if self.is_actuated:
+    # Only allocate site targets if there are actuators using site transmission.
+    if self.has_site_actuators:
       num_sites = len(self.site_names)
       site_effort_target = torch.zeros(
         (nworld, num_sites), dtype=torch.float, device=device
