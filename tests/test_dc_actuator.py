@@ -1,28 +1,15 @@
 """Tests for DC motor actuator torque-speed curve."""
 
-import mujoco
 import pytest
 import torch
-from conftest import get_test_device
+from conftest import (
+  create_entity_with_actuator,
+  get_test_device,
+  initialize_entity,
+  load_fixture_xml,
+)
 
 from mjlab.actuator import DcMotorActuatorCfg
-from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
-from mjlab.sim.sim import Simulation, SimulationCfg
-
-ROBOT_XML = """
-<mujoco>
-  <worldbody>
-    <body name="base" pos="0 0 1">
-      <freejoint name="free_joint"/>
-      <geom name="base_geom" type="box" size="0.2 0.2 0.1" mass="1.0"/>
-      <body name="link1" pos="0 0 0">
-        <joint name="joint1" type="hinge" axis="0 0 1" range="-3.14 3.14"/>
-        <geom name="link1_geom" type="box" size="0.1 0.1 0.1" mass="0.1"/>
-      </body>
-    </body>
-  </worldbody>
-</mujoco>
-"""
 
 
 @pytest.fixture(scope="module")
@@ -30,23 +17,12 @@ def device():
   return get_test_device()
 
 
-def create_entity_with_actuator(actuator_cfg):
-  cfg = EntityCfg(
-    spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML),
-    articulation=EntityArticulationInfoCfg(actuators=(actuator_cfg,)),
-  )
-  return Entity(cfg)
+@pytest.fixture(scope="module")
+def robot_xml():
+  return load_fixture_xml("floating_base_2joint")
 
 
-def initialize_entity(entity, device, num_envs=1):
-  model = entity.compile()
-  sim_cfg = SimulationCfg()
-  sim = Simulation(num_envs=num_envs, cfg=sim_cfg, model=model, device=device)
-  entity.initialize(model, sim.model, sim.data, device)
-  return entity, sim
-
-
-def test_dc_motor_stall_torque(device):
+def test_dc_motor_stall_torque(device, robot_xml):
   """DC motor produces full saturation_effort at zero velocity."""
   kp = 100.0
   kd = 10.0
@@ -54,6 +30,7 @@ def test_dc_motor_stall_torque(device):
   velocity_limit = 30.0
 
   entity = create_entity_with_actuator(
+    robot_xml,
     DcMotorActuatorCfg(
       target_names_expr=("joint.*",),
       effort_limit=saturation_effort,  # Set to saturation to not constrain.
@@ -61,7 +38,7 @@ def test_dc_motor_stall_torque(device):
       damping=kd,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
-    )
+    ),
   )
 
   entity, sim = initialize_entity(entity, device)
@@ -82,7 +59,7 @@ def test_dc_motor_stall_torque(device):
   assert torch.allclose(ctrl, torch.tensor([saturation_effort], device=device))
 
 
-def test_dc_motor_zero_torque_at_max_velocity(device):
+def test_dc_motor_zero_torque_at_max_velocity(device, robot_xml):
   """DC motor produces zero torque at maximum velocity."""
   kp = 100.0
   kd = 0.0
@@ -90,6 +67,7 @@ def test_dc_motor_zero_torque_at_max_velocity(device):
   velocity_limit = 30.0
 
   entity = create_entity_with_actuator(
+    robot_xml,
     DcMotorActuatorCfg(
       target_names_expr=("joint.*",),
       effort_limit=saturation_effort,  # Set to saturation to not constrain.
@@ -97,7 +75,7 @@ def test_dc_motor_zero_torque_at_max_velocity(device):
       damping=kd,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
-    )
+    ),
   )
 
   entity, sim = initialize_entity(entity, device)
@@ -118,7 +96,7 @@ def test_dc_motor_zero_torque_at_max_velocity(device):
   assert torch.allclose(ctrl, torch.tensor([0.0], device=device), atol=1e-5)
 
 
-def test_dc_motor_linear_torque_speed_curve(device):
+def test_dc_motor_linear_torque_speed_curve(device, robot_xml):
   """DC motor torque varies linearly between zero and max velocity."""
   kp = 100.0
   kd = 0.0
@@ -126,6 +104,7 @@ def test_dc_motor_linear_torque_speed_curve(device):
   velocity_limit = 30.0
 
   entity = create_entity_with_actuator(
+    robot_xml,
     DcMotorActuatorCfg(
       target_names_expr=("joint.*",),
       effort_limit=saturation_effort,  # Set to saturation to not constrain.
@@ -133,7 +112,7 @@ def test_dc_motor_linear_torque_speed_curve(device):
       damping=kd,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
-    )
+    ),
   )
 
   entity, sim = initialize_entity(entity, device)
@@ -155,7 +134,7 @@ def test_dc_motor_linear_torque_speed_curve(device):
   assert torch.allclose(ctrl, torch.tensor([expected], device=device), rtol=1e-4)
 
 
-def test_dc_motor_effort_limit_constrains_output(device):
+def test_dc_motor_effort_limit_constrains_output(device, robot_xml):
   """Continuous effort_limit constrains output below saturation_effort."""
   kp = 100.0
   kd = 0.0
@@ -164,6 +143,7 @@ def test_dc_motor_effort_limit_constrains_output(device):
   velocity_limit = 30.0
 
   entity = create_entity_with_actuator(
+    robot_xml,
     DcMotorActuatorCfg(
       target_names_expr=("joint.*",),
       effort_limit=effort_limit,
@@ -171,7 +151,7 @@ def test_dc_motor_effort_limit_constrains_output(device):
       damping=kd,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
-    )
+    ),
   )
 
   entity, sim = initialize_entity(entity, device)
@@ -192,7 +172,7 @@ def test_dc_motor_effort_limit_constrains_output(device):
   assert torch.allclose(ctrl, torch.tensor([effort_limit], device=device))
 
 
-def test_dc_motor_negative_velocity_behavior(device):
+def test_dc_motor_negative_velocity_behavior(device, robot_xml):
   """DC motor handles negative velocities symmetrically."""
   kp = 100.0
   kd = 0.0
@@ -200,6 +180,7 @@ def test_dc_motor_negative_velocity_behavior(device):
   velocity_limit = 30.0
 
   entity = create_entity_with_actuator(
+    robot_xml,
     DcMotorActuatorCfg(
       target_names_expr=("joint.*",),
       effort_limit=saturation_effort,  # Set to saturation to not constrain
@@ -207,7 +188,7 @@ def test_dc_motor_negative_velocity_behavior(device):
       damping=kd,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
-    )
+    ),
   )
 
   entity, sim = initialize_entity(entity, device)
@@ -229,7 +210,7 @@ def test_dc_motor_negative_velocity_behavior(device):
   assert torch.allclose(ctrl, torch.tensor([expected], device=device), rtol=1e-4)
 
 
-def test_dc_motor_corner_velocity_transition(device):
+def test_dc_motor_corner_velocity_transition(device, robot_xml):
   """DC motor transitions correctly at corner velocity where curves intersect."""
   kp = 100.0
   kd = 0.0
@@ -238,6 +219,7 @@ def test_dc_motor_corner_velocity_transition(device):
   velocity_limit = 30.0
 
   entity = create_entity_with_actuator(
+    robot_xml,
     DcMotorActuatorCfg(
       target_names_expr=("joint.*",),
       effort_limit=effort_limit,
@@ -245,7 +227,7 @@ def test_dc_motor_corner_velocity_transition(device):
       damping=kd,
       saturation_effort=saturation_effort,
       velocity_limit=velocity_limit,
-    )
+    ),
   )
 
   entity, sim = initialize_entity(entity, device)
