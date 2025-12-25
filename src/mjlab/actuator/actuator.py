@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import mujoco
@@ -14,13 +15,25 @@ if TYPE_CHECKING:
   from mjlab.entity import Entity
 
 
+class TransmissionType(str, Enum):
+  """Transmission types for actuators."""
+
+  JOINT = "joint"
+  TENDON = "tendon"
+  SITE = "site"
+
+
 @dataclass(kw_only=True)
 class ActuatorCfg(ABC):
-  joint_names_expr: tuple[str, ...]
-  """Joints that are part of this actuator group.
+  target_names_expr: tuple[str, ...]
+  """Targets that are part of this actuator group.
 
-  Can be a tuple of joint names or tuple of regex expressions.
+  Can be a tuple of names or tuple of regex expressions.
+  Interpreted based on transmission_type (joint/tendon/site).
   """
+
+  transmission_type: TransmissionType = TransmissionType.JOINT
+  """Transmission type. Defaults to JOINT."""
 
   armature: float = 0.0
   """Reflected rotor inertia."""
@@ -32,16 +45,26 @@ class ActuatorCfg(ABC):
   Also known as dry friction or load-independent friction.
   """
 
+  def __post_init__(self) -> None:
+    assert self.armature >= 0.0, "armature must be non-negative."
+    assert self.frictionloss >= 0.0, "frictionloss must be non-negative."
+    if self.transmission_type == TransmissionType.SITE:
+      if self.armature > 0.0 or self.frictionloss > 0.0:
+        raise ValueError(
+          f"{self.__class__.__name__}: armature and frictionloss are not supported for "
+          "SITE transmission type."
+        )
+
   @abstractmethod
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> Actuator:
     """Build actuator instance.
 
     Args:
       entity: Entity this actuator belongs to.
-      joint_ids: Local joint indices (for indexing entity joint arrays).
-      joint_names: Joint names corresponding to joint_ids.
+      target_ids: Local target indices (for indexing entity arrays).
+      target_names: Target names corresponding to target_ids.
 
     Returns:
       Actuator instance.
@@ -75,12 +98,12 @@ class Actuator(ABC):
   def __init__(
     self,
     entity: Entity,
-    joint_ids: list[int],
-    joint_names: list[str],
+    target_ids: list[int],
+    target_names: list[str],
   ) -> None:
     self.entity = entity
-    self._joint_ids_list = joint_ids
-    self._joint_names = joint_names
+    self._joint_ids_list = target_ids
+    self._joint_names = target_names
     self._joint_ids: torch.Tensor | None = None
     self._ctrl_ids: torch.Tensor | None = None
     self._mjs_actuators: list[mujoco.MjsActuator] = []

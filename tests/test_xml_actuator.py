@@ -49,7 +49,7 @@ def test_xml_actuator_underactuated_with_wildcard():
   cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML_UNDERACTUATED),
     articulation=EntityArticulationInfoCfg(
-      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+      actuators=(XmlMotorActuatorCfg(target_names_expr=(".*",)),)
     ),
   )
   entity = Entity(cfg)
@@ -69,7 +69,7 @@ def test_xml_actuator_no_matching_actuators_raises_error():
     cfg = EntityCfg(
       spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML_UNDERACTUATED),
       articulation=EntityArticulationInfoCfg(
-        actuators=(XmlMotorActuatorCfg(joint_names_expr=("joint1",)),)
+        actuators=(XmlMotorActuatorCfg(target_names_expr=("joint1",)),)
       ),
     )
     entity = Entity(cfg)
@@ -81,7 +81,7 @@ def test_joint_action_underactuated_with_wildcard(device):
   robot_cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML_UNDERACTUATED),
     articulation=EntityArticulationInfoCfg(
-      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+      actuators=(XmlMotorActuatorCfg(target_names_expr=(".*",)),)
     ),
   )
 

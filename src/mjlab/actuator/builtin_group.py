@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from mjlab.actuator.actuator import TransmissionType
 from mjlab.actuator.builtin_actuator import (
   BuiltinMotorActuator,
   BuiltinPositionActuator,
@@ -27,8 +28,8 @@ class BuiltinActuatorGroup:
   enables direct writes without per-actuator overhead.
   """
 
-  # Map from BuiltinActuator type to (joint_ids, ctrl_ids).
-  _index_groups: dict[type, tuple[torch.Tensor, torch.Tensor]]
+  # Map from (BuiltinActuator type, transmission_type) to (target_ids, ctrl_ids).
+  _index_groups: dict[tuple[type, TransmissionType], tuple[torch.Tensor, torch.Tensor]]
 
   @staticmethod
   def process(
@@ -45,18 +46,26 @@ class BuiltinActuatorGroup:
         - List of custom (non-builtin) actuators.
     """
 
-    builtin_groups: dict[type, list[Actuator]] = {}
+    builtin_groups: dict[tuple[type, TransmissionType], list[Actuator]] = {}
     custom_actuators: list[Actuator] = []
 
-    # Group actuators by type.
+    # Group actuators by (type, transmission_type).
     for act in actuators:
       if type(act) in BUILTIN_TYPES:
-        builtin_groups.setdefault(type(act), []).append(act)
+        # All builtin actuators have a cfg attribute with transmission_type.
+        builtin_act = act  # type: ignore[assignment]
+        key: tuple[type, TransmissionType] = (
+          type(act),
+          builtin_act.cfg.transmission_type,  # type: ignore[attr-defined]
+        )
+        builtin_groups.setdefault(key, []).append(act)
       else:
         custom_actuators.append(act)
 
-    # Return stacked indices for each builtin actuator type.
-    index_groups = {
+    # Return stacked indices for each (actuator_type, transmission_type) group.
+    index_groups: dict[
+      tuple[type, TransmissionType], tuple[torch.Tensor, torch.Tensor]
+    ] = {
       k: (
         torch.cat([act.joint_ids for act in v], dim=0),
         torch.cat([act.ctrl_ids for act in v], dim=0),
@@ -71,11 +80,38 @@ class BuiltinActuatorGroup:
     Args:
       data: Entity data containing targets and control arrays.
     """
-    target_tensor_map = {
-      BuiltinPositionActuator: data.joint_pos_target,
-      BuiltinVelocityActuator: data.joint_vel_target,
-      BuiltinMotorActuator: data.joint_effort_target,
-    }
-    for actuator_type, index_group in self._index_groups.items():
-      joint_ids, ctrl_ids = index_group
-      data.write_ctrl(target_tensor_map[actuator_type][:, joint_ids], ctrl_ids)
+    for (actuator_type, transmission_type), index_group in self._index_groups.items():
+      target_ids, ctrl_ids = index_group
+
+      # Select target tensor based on actuator type and transmission type.
+      if transmission_type == TransmissionType.JOINT:
+        if actuator_type == BuiltinPositionActuator:
+          target_tensor = data.joint_pos_target
+        elif actuator_type == BuiltinVelocityActuator:
+          target_tensor = data.joint_vel_target
+        elif actuator_type == BuiltinMotorActuator:
+          target_tensor = data.joint_effort_target
+        else:
+          raise ValueError(f"Unknown actuator type: {actuator_type}")
+      elif transmission_type == TransmissionType.TENDON:
+        if actuator_type == BuiltinPositionActuator:
+          target_tensor = data.tendon_len_target
+        elif actuator_type == BuiltinVelocityActuator:
+          target_tensor = data.tendon_vel_target
+        elif actuator_type == BuiltinMotorActuator:
+          target_tensor = data.tendon_effort_target
+        else:
+          raise ValueError(f"Unknown actuator type: {actuator_type}")
+      elif transmission_type == TransmissionType.SITE:
+        # Sites only support effort control.
+        if actuator_type == BuiltinMotorActuator:
+          target_tensor = data.site_effort_target
+        else:
+          raise ValueError(
+            f"Site transmission only supports motor (effort) actuators, "
+            f"not {actuator_type.__name__}"
+          )
+      else:
+        raise ValueError(f"Unknown transmission type: {transmission_type}")
+
+      data.write_ctrl(target_tensor[:, target_ids], ctrl_ids)

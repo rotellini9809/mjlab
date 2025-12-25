@@ -30,9 +30,9 @@ class IdealPdActuatorCfg(ActuatorCfg):
   """Maximum force/torque limit."""
 
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> IdealPdActuator:
-    return IdealPdActuator(self, entity, joint_ids, joint_names)
+    return IdealPdActuator(self, entity, target_ids, target_names)
 
 
 class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
@@ -42,10 +42,10 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     self,
     cfg: IdealPdCfgT,
     entity: Entity,
-    joint_ids: list[int],
-    joint_names: list[str],
+    target_ids: list[int],
+    target_names: list[str],
   ) -> None:
-    super().__init__(entity, joint_ids, joint_names)
+    super().__init__(entity, target_ids, target_names)
     self.cfg = cfg
     self.stiffness: torch.Tensor | None = None
     self.damping: torch.Tensor | None = None
@@ -63,6 +63,7 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
         effort_limit=self.cfg.effort_limit,
         armature=self.cfg.armature,
         frictionloss=self.cfg.frictionloss,
+        transmission_type=self.cfg.transmission_type,
       )
       self._mjs_actuators.append(actuator)
 

@@ -62,9 +62,9 @@ class LearnedMlpActuatorCfg(DcMotorActuatorCfg):
   damping: float = 0.0
 
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> LearnedMlpActuator:
-    return LearnedMlpActuator(self, entity, joint_ids, joint_names)
+    return LearnedMlpActuator(self, entity, target_ids, target_names)
 
 
 class LearnedMlpActuator(DcMotorActuator[LearnedMlpActuatorCfg]):
@@ -83,10 +83,10 @@ class LearnedMlpActuator(DcMotorActuator[LearnedMlpActuatorCfg]):
     self,
     cfg: LearnedMlpActuatorCfg,
     entity: Entity,
-    joint_ids: list[int],
-    joint_names: list[str],
+    target_ids: list[int],
+    target_names: list[str],
   ) -> None:
-    super().__init__(cfg, entity, joint_ids, joint_names)
+    super().__init__(cfg, entity, target_ids, target_names)
     self.network: torch.jit.ScriptModule | None = None
     self._pos_error_history: CircularBuffer | None = None
     self._vel_history: CircularBuffer | None = None

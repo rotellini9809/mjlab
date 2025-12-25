@@ -54,7 +54,7 @@ def _make_robot_cfg():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=(".*",), stiffness=1000.0, damping=100.0
+          target_names_expr=(".*",), stiffness=1000.0, damping=100.0
         ),
       )
     ),

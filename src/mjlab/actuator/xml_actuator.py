@@ -57,9 +57,9 @@ class XmlPositionActuatorCfg(ActuatorCfg):
   """Wrap existing XML-defined <position> actuators."""
 
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlPositionActuator:
-    return XmlPositionActuator(entity, joint_ids, joint_names)
+    return XmlPositionActuator(entity, target_ids, target_names)
 
 
 class XmlPositionActuator(XmlActuator):
@@ -74,9 +74,9 @@ class XmlMotorActuatorCfg(ActuatorCfg):
   """Wrap existing XML-defined <motor> actuators."""
 
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlMotorActuator:
-    return XmlMotorActuator(entity, joint_ids, joint_names)
+    return XmlMotorActuator(entity, target_ids, target_names)
 
 
 class XmlMotorActuator(XmlActuator):
@@ -91,9 +91,9 @@ class XmlVelocityActuatorCfg(ActuatorCfg):
   """Wrap existing XML-defined <velocity> actuators."""
 
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlVelocityActuator:
-    return XmlVelocityActuator(entity, joint_ids, joint_names)
+    return XmlVelocityActuator(entity, target_ids, target_names)
 
 
 class XmlVelocityActuator(XmlActuator):
@@ -101,3 +101,20 @@ class XmlVelocityActuator(XmlActuator):
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
     return cmd.velocity_target
+
+
+@dataclass(kw_only=True)
+class XmlMuscleActuatorCfg(ActuatorCfg):
+  """Wrap existing XML-defined <muscle> actuators."""
+
+  def build(
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
+  ) -> XmlMuscleActuator:
+    return XmlMuscleActuator(entity, target_ids, target_names)
+
+
+class XmlMuscleActuator(XmlActuator):
+  """Wrapper for XML-defined <muscle> actuators."""
+
+  def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
+    return cmd.effort_target

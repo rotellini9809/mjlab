@@ -153,7 +153,7 @@ def create_fixed_articulated_entity():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=("joint1", "joint2"),
+          target_names_expr=("joint1", "joint2"),
           effort_limit=1.0,
           stiffness=1.0,
           damping=1.0,
@@ -171,7 +171,7 @@ def create_floating_articulated_entity():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=("joint1", "joint2"),
+          target_names_expr=("joint1", "joint2"),
           effort_limit=1.0,
           stiffness=1.0,
           damping=1.0,
@@ -403,7 +403,7 @@ def test_keyframe_ctrl_maps_joint_pos_to_actuators():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=(
+          target_names_expr=(
             "joint1",
             "joint2",
           ),
@@ -429,7 +429,7 @@ def test_keyframe_ctrl_underactuated():
     articulation=EntityArticulationInfoCfg(
       actuators=(
         BuiltinPositionActuatorCfg(
-          joint_names_expr=("joint1",),  # Only one actuator.
+          target_names_expr=("joint1",),  # Only one actuator.
           effort_limit=1.0,
           stiffness=1.0,
           damping=1.0,
@@ -483,7 +483,7 @@ def test_find_joints_by_actuator_names_preserves_natural_order(device):
   robot_cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(ACTUATOR_ORDER_TEST_XML),
     articulation=EntityArticulationInfoCfg(
-      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+      actuators=(XmlMotorActuatorCfg(target_names_expr=(".*",)),)
     ),
   )
 
@@ -514,7 +514,7 @@ def test_ctrl_ids_follow_natural_joint_order(device):
   robot_cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(ACTUATOR_ORDER_TEST_XML),
     articulation=EntityArticulationInfoCfg(
-      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+      actuators=(XmlMotorActuatorCfg(target_names_expr=(".*",)),)
     ),
   )
 
@@ -554,7 +554,7 @@ def test_find_joints_by_actuator_names_returns_entity_local_indices():
   robot_cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(UNDERACTUATED_XML),
     articulation=EntityArticulationInfoCfg(
-      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+      actuators=(XmlMotorActuatorCfg(target_names_expr=(".*",)),)
     ),
   )
 

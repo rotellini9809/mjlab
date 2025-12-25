@@ -133,7 +133,7 @@ def test_get_base_metadata_skips_non_actuated_joints(device):
   robot_cfg = EntityCfg(
     spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML_UNDERACTUATED),
     articulation=EntityArticulationInfoCfg(
-      actuators=(XmlMotorActuatorCfg(joint_names_expr=(".*",)),)
+      actuators=(XmlMotorActuatorCfg(target_names_expr=(".*",)),)
     ),
   )
 

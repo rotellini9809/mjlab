@@ -65,6 +65,12 @@ class EntityData:
   joint_vel_target: torch.Tensor
   joint_effort_target: torch.Tensor
 
+  tendon_len_target: torch.Tensor
+  tendon_vel_target: torch.Tensor
+  tendon_effort_target: torch.Tensor
+
+  site_effort_target: torch.Tensor
+
   encoder_bias: torch.Tensor
 
   # State dimensions.
@@ -196,6 +202,10 @@ class EntityData:
       self.joint_pos_target[env_ids] = 0.0
       self.joint_vel_target[env_ids] = 0.0
       self.joint_effort_target[env_ids] = 0.0
+      self.tendon_len_target[env_ids] = 0.0
+      self.tendon_vel_target[env_ids] = 0.0
+      self.tendon_effort_target[env_ids] = 0.0
+      self.site_effort_target[env_ids] = 0.0
 
   def _resolve_env_ids(
     self, env_ids: torch.Tensor | slice | None

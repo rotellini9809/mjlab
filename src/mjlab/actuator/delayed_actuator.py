@@ -26,13 +26,13 @@ class DelayedActuatorCfg(ActuatorCfg):
   steps).
   """
 
-  joint_names_expr: tuple[str, ...] = field(init=False, default=())
+  target_names_expr: tuple[str, ...] = field(init=False, default=())
 
   base_cfg: ActuatorCfg
   """Configuration for the underlying actuator."""
 
   def __post_init__(self):
-    object.__setattr__(self, "joint_names_expr", self.base_cfg.joint_names_expr)
+    object.__setattr__(self, "target_names_expr", self.base_cfg.target_names_expr)
 
   delay_target: (
     Literal["position", "velocity", "effort"]
@@ -60,9 +60,9 @@ class DelayedActuatorCfg(ActuatorCfg):
   """Whether each environment has a different phase offset."""
 
   def build(
-    self, entity: Entity, joint_ids: list[int], joint_names: list[str]
+    self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> DelayedActuator:
-    base_actuator = self.base_cfg.build(entity, joint_ids, joint_names)
+    base_actuator = self.base_cfg.build(entity, target_ids, target_names)
     return DelayedActuator(self, base_actuator)
 
 
