@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 
+from mjlab.managers.command_manager import CommandTerm
 from mjlab.utils.noise.noise_cfg import NoiseCfg, NoiseModelCfg
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
   from mjlab.managers.action_manager import ActionTerm
-  from mjlab.managers.command_manager import CommandTerm
 
 
 @dataclass
