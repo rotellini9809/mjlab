@@ -80,9 +80,6 @@ class EntityCfg:
   materials: tuple[spec_cfg.MaterialCfg, ...] = field(default_factory=tuple)
   collisions: tuple[spec_cfg.CollisionCfg, ...] = field(default_factory=tuple)
 
-  # Misc.
-  debug_vis: bool = False
-
   def build(self) -> Entity:
     """Build entity instance from this config.
 
