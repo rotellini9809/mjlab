@@ -146,7 +146,7 @@ SCENE_CFG = SceneCfg(
 
 VIEWER_CONFIG = ViewerConfig(
   origin_type=ViewerConfig.OriginType.ASSET_BODY,
-  asset_name="robot",
+  entity_name="robot",
   body_name="pole",
   distance=3.0,
   elevation=10.0,
@@ -170,7 +170,7 @@ def create_cartpole_actions() -> dict[str, JointPositionActionCfg]:
   """Create CartPole actions."""
   return {
     "joint_pos": JointPositionActionCfg(
-      asset_name="robot",
+      entity_name="robot",
       actuator_names=(".*",),
       scale=20.0,
       use_default_offset=False,

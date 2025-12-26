@@ -16,12 +16,16 @@ if TYPE_CHECKING:
 
 
 class ActionTerm(ManagerTermBase):
-  """Base class for action terms."""
+  """Base class for action terms.
+
+  The action term is responsible for processing the raw actions sent to the environment
+  and applying them to the entity managed by the term.
+  """
 
   def __init__(self, cfg: ActionTermCfg, env: ManagerBasedRlEnv):
     self.cfg = cfg
     super().__init__(env)
-    self._asset = self._env.scene[self.cfg.asset_name]
+    self._entity = self._env.scene[self.cfg.entity_name]
 
   @property
   @abc.abstractmethod

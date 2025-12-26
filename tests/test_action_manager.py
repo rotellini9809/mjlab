@@ -44,7 +44,7 @@ def action_term_cfg():
   """Create a simple action term config."""
   cfg = Mock()
   cfg.build = _make_mock_action_term(action_dim=3)
-  cfg.asset_name = "robot"
+  cfg.entity_name = "robot"
   return cfg
 
 

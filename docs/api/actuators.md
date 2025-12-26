@@ -512,7 +512,7 @@ Actuators are typically controlled via action terms in the action manager:
 from mjlab.envs.mdp.actions import JointPositionActionCfg
 
 JointPositionActionCfg(
-  asset_name="robot",
+  entity_name="robot",
   actuator_names=(".*",),  # Regex patterns for joint selection
   scale=1.0,
   use_default_offset=True,  # Use robot's default joint positions as offset

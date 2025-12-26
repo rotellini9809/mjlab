@@ -103,7 +103,7 @@ def test_joint_action_underactuated_with_wildcard(device):
     },
     actions={
       "joint_effort": mdp.JointEffortActionCfg(
-        asset_name="robot", actuator_names=(".*",), scale=1.0
+        entity_name="robot", actuator_names=(".*",), scale=1.0
       )
     },
     sim=SimulationCfg(mujoco=MujocoCfg(timestep=0.01, iterations=1)),
@@ -117,7 +117,7 @@ def test_joint_action_underactuated_with_wildcard(device):
 
   # Wildcard should resolve to only actuated joint (joint2), not all joints.
   assert action_term.action_dim == 1
-  assert action_term._joint_names == ["joint2"]
-  assert action_term._joint_ids.tolist() == [1]
+  assert action_term.target_names == ["joint2"]
+  assert action_term.target_ids.tolist() == [1]
 
   env.close()

@@ -29,7 +29,7 @@ class ManagerTermBaseCfg:
 class ActionTermCfg(abc.ABC):
   """Configuration for an action term."""
 
-  asset_name: str
+  entity_name: str
   clip: dict[str, tuple] | None = None
 
   @abc.abstractmethod

@@ -82,7 +82,7 @@ def _make_env_cfg(
     },
     actions={
       "joint_pos": mdp.JointPositionActionCfg(
-        asset_name="robot", actuator_names=(".*",), scale=1.0
+        entity_name="robot", actuator_names=(".*",), scale=1.0
       )
     },
     events=events or {},
@@ -282,7 +282,7 @@ def test_randomize_encoder_bias_event(device):
     },
     actions={
       "joint_pos": mdp.JointPositionActionCfg(
-        asset_name="robot", actuator_names=(".*",), scale=1.0
+        entity_name="robot", actuator_names=(".*",), scale=1.0
       )
     },
     events={

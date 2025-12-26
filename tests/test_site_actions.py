@@ -69,7 +69,7 @@ def mock_env(quadcopter_entity, device):
 def test_site_effort_action_initialization(mock_env):
   """Test that SiteEffortAction initializes correctly."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_.*",),
   )
 
@@ -82,29 +82,29 @@ def test_site_effort_action_initialization(mock_env):
 def test_site_action_finds_sites_by_name(mock_env):
   """Test that site actions can find sites by exact name."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_fl", "rotor_fr"),
   )
 
   action = cfg.build(mock_env)
 
-  assert len(action._site_names) == 2
-  assert "rotor_fl" in action._site_names
-  assert "rotor_fr" in action._site_names
+  assert len(action.target_names) == 2
+  assert "rotor_fl" in action.target_names
+  assert "rotor_fr" in action.target_names
 
 
 def test_site_action_finds_sites_by_regex(mock_env):
   """Test that site actions can find sites by regex pattern."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_.*",),
   )
 
   action = cfg.build(mock_env)
 
-  assert len(action._site_names) == 4
+  assert len(action.target_names) == 4
   assert all(
-    name in action._site_names
+    name in action.target_names
     for name in ["rotor_fl", "rotor_fr", "rotor_rl", "rotor_rr"]
   )
 
@@ -112,21 +112,21 @@ def test_site_action_finds_sites_by_regex(mock_env):
 def test_site_action_preserve_order(mock_env):
   """Test that preserve_order flag respects site name order."""
   cfg_sorted = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_rr", "rotor_fl", "rotor_rl", "rotor_fr"),
     preserve_order=False,
   )
   action_sorted = cfg_sorted.build(mock_env)
 
   cfg_preserved = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_rr", "rotor_fl", "rotor_rl", "rotor_fr"),
     preserve_order=True,
   )
   action_preserved = cfg_preserved.build(mock_env)
 
-  assert action_sorted._site_names != action_preserved._site_names
-  assert action_preserved._site_names == [
+  assert action_sorted.target_names != action_preserved.target_names
+  assert action_preserved.target_names == [
     "rotor_rr",
     "rotor_fl",
     "rotor_rl",
@@ -137,7 +137,7 @@ def test_site_action_preserve_order(mock_env):
 def test_site_action_with_scalar_scale_and_offset(mock_env, device):
   """Test site action processing with scalar scale and offset."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_.*",),
     scale=2.0,
     offset=1.0,
@@ -156,7 +156,7 @@ def test_site_action_with_scalar_scale_and_offset(mock_env, device):
 def test_site_action_with_dict_scale_and_offset(mock_env, device):
   """Test site action processing with dict-based scale and offset."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_.*",),
     scale={"rotor_fl": 2.0, "rotor_fr": 3.0},  # Different scales for different rotors
     offset={"rotor_rl": 0.5},  # Offset for rear-left rotor
@@ -170,9 +170,9 @@ def test_site_action_with_dict_scale_and_offset(mock_env, device):
   # rotor_fl should have scale 2.0, rotor_fr scale 3.0, rotor_rl offset 0.5.
   processed = action._processed_actions
 
-  fl_idx = action._site_names.index("rotor_fl")
-  fr_idx = action._site_names.index("rotor_fr")
-  rl_idx = action._site_names.index("rotor_rl")
+  fl_idx = action.target_names.index("rotor_fl")
+  fr_idx = action.target_names.index("rotor_fr")
+  rl_idx = action.target_names.index("rotor_rl")
 
   assert torch.allclose(processed[:, fl_idx], torch.tensor(2.0, device=device))
   assert torch.allclose(processed[:, fr_idx], torch.tensor(3.0, device=device))
@@ -182,7 +182,7 @@ def test_site_action_with_dict_scale_and_offset(mock_env, device):
 def test_site_effort_action_sets_target(mock_env, quadcopter_entity, device):
   """Test that SiteEffortAction sets the correct target on entity."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_.*",),
   )
 
@@ -206,7 +206,7 @@ def test_site_effort_action_sets_target(mock_env, quadcopter_entity, device):
 def test_site_action_reset(mock_env, device):
   """Test that site action reset clears raw actions."""
   cfg = SiteEffortActionCfg(
-    asset_name="drone",
+    entity_name="drone",
     actuator_names=("rotor_.*",),
   )
 
@@ -227,7 +227,7 @@ def test_site_action_in_action_manager(mock_env, device):
 
   action_cfg: dict[str, ActionTermCfg] = {
     "thrust_control": SiteEffortActionCfg(
-      asset_name="drone",
+      entity_name="drone",
       actuator_names=("rotor_.*",),
     )
   }

@@ -73,7 +73,7 @@ def mock_env(finger_entity, device):
 def test_tendon_length_action_initialization(mock_env):
   """Test that TendonLengthAction initializes correctly."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -86,7 +86,7 @@ def test_tendon_length_action_initialization(mock_env):
 def test_tendon_velocity_action_initialization(mock_env):
   """Test that TendonVelocityAction initializes correctly."""
   cfg = TendonVelocityActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -99,7 +99,7 @@ def test_tendon_velocity_action_initialization(mock_env):
 def test_tendon_effort_action_initialization(mock_env):
   """Test that TendonEffortAction initializes correctly."""
   cfg = TendonEffortActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -112,33 +112,33 @@ def test_tendon_effort_action_initialization(mock_env):
 def test_tendon_action_finds_tendons_by_name(mock_env):
   """Test that tendon actions can find tendons by name."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
   action = cfg.build(mock_env)
 
-  assert len(action._tendon_names) == 1
-  assert "finger_tendon" in action._tendon_names
+  assert len(action.target_names) == 1
+  assert "finger_tendon" in action.target_names
 
 
 def test_tendon_action_finds_tendons_by_regex(mock_env):
   """Test that tendon actions can find tendons by regex."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=(".*tendon",),
   )
 
   action = cfg.build(mock_env)
 
-  assert len(action._tendon_names) == 1
-  assert "finger_tendon" in action._tendon_names
+  assert len(action.target_names) == 1
+  assert "finger_tendon" in action.target_names
 
 
 def test_tendon_action_with_scalar_scale_and_offset(mock_env, device):
   """Test tendon action processing with scalar scale and offset."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
     scale=2.0,
     offset=0.5,
@@ -157,7 +157,7 @@ def test_tendon_action_with_scalar_scale_and_offset(mock_env, device):
 def test_tendon_action_with_dict_scale_and_offset(mock_env, device):
   """Test tendon action processing with dict-based scale and offset."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
     scale={"finger_tendon": 3.0},
     offset={"finger_tendon": 1.0},
@@ -175,7 +175,7 @@ def test_tendon_action_with_dict_scale_and_offset(mock_env, device):
 def test_tendon_length_action_sets_target(mock_env, finger_entity, device):
   """Test that TendonLengthAction sets the correct target on entity."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -191,7 +191,7 @@ def test_tendon_length_action_sets_target(mock_env, finger_entity, device):
 def test_tendon_velocity_action_sets_target(mock_env, finger_entity, device):
   """Test that TendonVelocityAction sets the correct target on entity."""
   cfg = TendonVelocityActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -207,7 +207,7 @@ def test_tendon_velocity_action_sets_target(mock_env, finger_entity, device):
 def test_tendon_effort_action_sets_target(mock_env, finger_entity, device):
   """Test that TendonEffortAction sets the correct target on entity."""
   cfg = TendonEffortActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -223,7 +223,7 @@ def test_tendon_effort_action_sets_target(mock_env, finger_entity, device):
 def test_tendon_action_reset(mock_env, device):
   """Test that tendon action reset clears raw actions."""
   cfg = TendonLengthActionCfg(
-    asset_name="finger",
+    entity_name="finger",
     actuator_names=("finger_tendon",),
   )
 
@@ -244,7 +244,7 @@ def test_tendon_action_in_action_manager(mock_env, device):
 
   action_cfg: dict[str, ActionTermCfg] = {
     "tendon_control": TendonLengthActionCfg(
-      asset_name="finger",
+      entity_name="finger",
       actuator_names=("finger_tendon",),
     )
   }

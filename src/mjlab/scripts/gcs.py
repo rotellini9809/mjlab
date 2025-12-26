@@ -64,19 +64,19 @@ def verify_file_hash(path: Path, expected_hash: str) -> bool:
   return sha256_hash.hexdigest() == expected_hash
 
 
-def ensure_asset_downloaded(asset_name: str, force_download: bool = False) -> Path:
+def ensure_asset_downloaded(entity_name: str, force_download: bool = False) -> Path:
   """Download and verify an asset if needed."""
-  if asset_name not in ASSETS:
-    raise ValueError(f"Unknown asset: {asset_name}")
+  if entity_name not in ASSETS:
+    raise ValueError(f"Unknown asset: {entity_name}")
 
-  asset_info = ASSETS[asset_name]
+  asset_info = ASSETS[entity_name]
   local_path = Path(asset_info["path"])
 
   if not force_download and verify_file_hash(local_path, asset_info["sha256"]):
-    print(f"✓ {asset_name} already cached at {local_path}")
+    print(f"✓ {entity_name} already cached at {local_path}")
     return local_path
 
-  print(f"📥 Downloading {asset_name}...")
+  print(f"📥 Downloading {entity_name}...")
   local_path.parent.mkdir(parents=True, exist_ok=True)
 
   try:
@@ -84,15 +84,15 @@ def ensure_asset_downloaded(asset_name: str, force_download: bool = False) -> Pa
 
     if not verify_file_hash(local_path, asset_info["sha256"]):
       local_path.unlink()  # Delete corrupted file
-      raise RuntimeError(f"Downloaded {asset_name} failed hash verification")
+      raise RuntimeError(f"Downloaded {entity_name} failed hash verification")
 
-    print(f"✅ {asset_name} cached at {local_path}")
+    print(f"✅ {entity_name} cached at {local_path}")
     return local_path
 
   except Exception as e:
     if local_path.exists():
       local_path.unlink()
-    raise RuntimeError(f"Failed to download {asset_name}: {e}") from e
+    raise RuntimeError(f"Failed to download {entity_name}: {e}") from e
 
 
 def ensure_default_checkpoint() -> str:
