@@ -19,7 +19,7 @@ def device():
 
 @pytest.fixture(scope="module")
 def robot_xml():
-  return load_fixture_xml("floating_base_2joint")
+  return load_fixture_xml("floating_base_articulated")
 
 
 def test_dc_motor_stall_torque(device, robot_xml):

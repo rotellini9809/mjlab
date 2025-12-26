@@ -101,3 +101,38 @@ def initialize_entity(entity: Entity, device: str, num_envs: int = 1):
   sim = Simulation(num_envs=num_envs, cfg=sim_cfg, model=model, device=device)
   entity.initialize(model, sim.model, sim.data, device)
   return entity, sim
+
+
+# =============================================================================
+# XML Fixture Loaders
+# =============================================================================
+
+
+@pytest.fixture
+def fixed_base_box_xml() -> str:
+  """Load fixed base box XML fixture."""
+  return load_fixture_xml("fixed_base_box")
+
+
+@pytest.fixture
+def floating_base_box_xml() -> str:
+  """Load floating base box XML fixture."""
+  return load_fixture_xml("floating_base_box")
+
+
+@pytest.fixture
+def fixed_base_articulated_xml() -> str:
+  """Load fixed base articulated robot XML fixture."""
+  return load_fixture_xml("fixed_base_articulated")
+
+
+@pytest.fixture
+def floating_base_articulated_xml() -> str:
+  """Load floating base articulated robot XML fixture."""
+  return load_fixture_xml("floating_base_articulated")
+
+
+@pytest.fixture
+def biped_xml() -> str:
+  """Load biped robot XML fixture with ground plane."""
+  return load_fixture_xml("biped")

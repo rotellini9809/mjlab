@@ -19,7 +19,7 @@ def device():
 
 @pytest.fixture(scope="module")
 def robot_xml():
-  return load_fixture_xml("floating_base_2joint")
+  return load_fixture_xml("floating_base_articulated")
 
 
 def test_ideal_pd_matches_builtin_at_rest(device, robot_xml):

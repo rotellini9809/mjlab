@@ -3,7 +3,7 @@
 import mujoco
 import pytest
 import torch
-from conftest import get_test_device
+from conftest import get_test_device, load_fixture_xml
 
 from mjlab.actuator import (
   BuiltinMotorActuatorCfg,
@@ -13,24 +13,7 @@ from mjlab.actuator import (
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
 
-ROBOT_XML = """
-<mujoco>
-  <worldbody>
-    <body name="base" pos="0 0 1">
-      <freejoint name="free_joint"/>
-      <geom name="base_geom" type="box" size="0.2 0.2 0.1" mass="1.0"/>
-      <body name="link1" pos="0 0 0">
-        <joint name="joint1" type="hinge" axis="0 0 1" range="-1.57 1.57"/>
-        <geom name="link1_geom" type="box" size="0.1 0.1 0.1" mass="0.1"/>
-      </body>
-      <body name="link2" pos="0 0 0">
-        <joint name="joint2" type="hinge" axis="0 0 1" range="-1.57 1.57"/>
-        <geom name="link2_geom" type="box" size="0.1 0.1 0.1" mass="0.1"/>
-      </body>
-    </body>
-  </worldbody>
-</mujoco>
-"""
+ROBOT_XML = load_fixture_xml("floating_base_articulated")
 
 ROBOT_XML_3JOINT = """
 <mujoco>
