@@ -20,8 +20,6 @@ BuiltinActuatorType = (
   BuiltinMotorActuator | BuiltinPositionActuator | BuiltinVelocityActuator
 )
 
-BUILTIN_TYPES = {BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator}
-
 # Maps (actuator_type, transmission_type) to EntityData target tensor attribute name.
 _TARGET_TENSOR_MAP: dict[tuple[type[BuiltinActuatorType], TransmissionType], str] = {
   (BuiltinPositionActuator, TransmissionType.JOINT): "joint_pos_target",
@@ -66,13 +64,10 @@ class BuiltinActuatorGroup:
 
     # Group actuators by (type, transmission_type).
     for act in actuators:
-      if type(act) in BUILTIN_TYPES:
-        # All builtin actuators have a cfg attribute with transmission_type.
-        builtin_act: BuiltinActuatorType = act  # type: ignore[assignment]
-        key: tuple[type, TransmissionType] = (
-          type(act),
-          builtin_act.cfg.transmission_type,
-        )
+      if isinstance(
+        act, (BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator)
+      ):
+        key: tuple[type, TransmissionType] = (type(act), act.cfg.transmission_type)
         builtin_groups.setdefault(key, []).append(act)
       else:
         custom_actuators.append(act)
@@ -99,18 +94,6 @@ class BuiltinActuatorGroup:
       target_ids,
       ctrl_ids,
     ) in self._index_groups.items():
-      # Look up the target tensor attribute name.
-      attr_name = _TARGET_TENSOR_MAP.get((actuator_type, transmission_type))
-
-      if attr_name is None:
-        if transmission_type == TransmissionType.SITE:
-          raise ValueError(
-            f"Site transmission only supports motor (effort) actuators, "
-            f"not {actuator_type.__name__}"
-          )
-        raise ValueError(
-          f"Unsupported combination: {actuator_type.__name__} with {transmission_type}"
-        )
-
+      attr_name = _TARGET_TENSOR_MAP[(actuator_type, transmission_type)]
       target_tensor = getattr(data, attr_name)
       data.write_ctrl(target_tensor[:, target_ids], ctrl_ids)

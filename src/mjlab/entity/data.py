@@ -358,6 +358,18 @@ class EntityData:
     """Joint accelerations. Shape (num_envs, nv)."""
     return self.data.qacc[:, self.indexing.joint_v_adr]
 
+  # Tendon properties
+
+  @property
+  def tendon_len(self) -> torch.Tensor:
+    """Tendon lengths. Shape (num_envs, num_tendons)."""
+    return self.data.ten_length[:, self.indexing.tendon_ids]
+
+  @property
+  def tendon_vel(self) -> torch.Tensor:
+    """Tendon velocities. Shape (num_envs, num_tendons)."""
+    return self.data.ten_velocity[:, self.indexing.tendon_ids]
+
   @property
   def joint_torques(self) -> torch.Tensor:
     """Joint torques. Shape (num_envs, nv)."""

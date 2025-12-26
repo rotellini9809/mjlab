@@ -130,7 +130,7 @@ class DcMotorActuator(IdealPdActuator[DcMotorCfgT], Generic[DcMotorCfgT]):
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
     assert self._joint_vel_clipped is not None
-    self._joint_vel_clipped[:] = cmd.joint_vel
+    self._joint_vel_clipped[:] = cmd.vel
     return super().compute(cmd)
 
   def _clip_effort(self, effort: torch.Tensor) -> torch.Tensor:

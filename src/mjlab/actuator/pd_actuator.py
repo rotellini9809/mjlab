@@ -45,8 +45,7 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     target_ids: list[int],
     target_names: list[str],
   ) -> None:
-    super().__init__(entity, target_ids, target_names)
-    self.cfg = cfg
+    super().__init__(cfg, entity, target_ids, target_names)
     self.stiffness: torch.Tensor | None = None
     self.damping: torch.Tensor | None = None
     self.force_limit: torch.Tensor | None = None
@@ -96,8 +95,8 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     assert self.stiffness is not None
     assert self.damping is not None
 
-    pos_error = cmd.position_target - cmd.joint_pos
-    vel_error = cmd.velocity_target - cmd.joint_vel
+    pos_error = cmd.position_target - cmd.pos
+    vel_error = cmd.velocity_target - cmd.vel
 
     computed_torques = self.stiffness * pos_error
     computed_torques += self.damping * vel_error

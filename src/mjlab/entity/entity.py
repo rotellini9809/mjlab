@@ -29,12 +29,14 @@ class EntityIndexing:
   joints: tuple[mujoco.MjsJoint, ...]
   geoms: tuple[mujoco.MjsGeom, ...]
   sites: tuple[mujoco.MjsSite, ...]
+  tendons: tuple[mujoco.MjsTendon, ...]
   actuators: tuple[mujoco.MjsActuator, ...] | None
 
   # Indices.
   body_ids: torch.Tensor
   geom_ids: torch.Tensor
   site_ids: torch.Tensor
+  tendon_ids: torch.Tensor
   ctrl_ids: torch.Tensor
   joint_ids: torch.Tensor
   mocap_id: int | None
@@ -895,10 +897,12 @@ class Entity:
     joints = self._non_free_joints
     geoms = tuple(self.spec.geoms)
     sites = tuple(self.spec.sites)
+    tendons = tuple(self.spec.tendons)
 
     body_ids = torch.tensor([b.id for b in bodies], dtype=torch.int, device=device)
     geom_ids = torch.tensor([g.id for g in geoms], dtype=torch.int, device=device)
     site_ids = torch.tensor([s.id for s in sites], dtype=torch.int, device=device)
+    tendon_ids = torch.tensor([t.id for t in tendons], dtype=torch.int, device=device)
     joint_ids = torch.tensor([j.id for j in joints], dtype=torch.int, device=device)
 
     if self.is_actuated:
@@ -938,10 +942,12 @@ class Entity:
       joints=joints,
       geoms=geoms,
       sites=sites,
+      tendons=tendons,
       actuators=actuators,
       body_ids=body_ids,
       geom_ids=geom_ids,
       site_ids=site_ids,
+      tendon_ids=tendon_ids,
       ctrl_ids=ctrl_ids,
       joint_ids=joint_ids,
       mocap_id=mocap_id,
@@ -954,11 +960,5 @@ class Entity:
   def _apply_actuator_controls(self) -> None:
     self._builtin_group.apply_controls(self._data)
     for act in self._custom_actuators:
-      command = actuator.ActuatorCmd(
-        position_target=self._data.joint_pos_target[:, act.target_ids],
-        velocity_target=self._data.joint_vel_target[:, act.target_ids],
-        effort_target=self._data.joint_effort_target[:, act.target_ids],
-        joint_pos=self._data.joint_pos[:, act.target_ids],
-        joint_vel=self._data.joint_vel[:, act.target_ids],
-      )
+      command = act.get_command(self._data)
       self._data.write_ctrl(act.compute(command), act.ctrl_ids)

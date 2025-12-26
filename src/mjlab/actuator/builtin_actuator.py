@@ -28,9 +28,9 @@ if TYPE_CHECKING:
 class BuiltinPositionActuatorCfg(ActuatorCfg):
   """Configuration for MuJoCo built-in position actuator.
 
-  Under the hood, this creates a <position> actuator for each joint and sets
-  the stiffness, damping and effort limits accordingly. It also modifies the
-  actuated joint's properties, namely armature and frictionloss.
+  Under the hood, this creates a <position> actuator for each target and sets
+  the stiffness, damping and effort limits accordingly. It also modifies the target's
+  properties, namely armature and frictionloss.
   """
 
   stiffness: float
@@ -46,7 +46,7 @@ class BuiltinPositionActuatorCfg(ActuatorCfg):
     return BuiltinPositionActuator(self, entity, target_ids, target_names)
 
 
-class BuiltinPositionActuator(Actuator):
+class BuiltinPositionActuator(Actuator[BuiltinPositionActuatorCfg]):
   """MuJoCo built-in position actuator."""
 
   def __init__(
@@ -56,8 +56,7 @@ class BuiltinPositionActuator(Actuator):
     target_ids: list[int],
     target_names: list[str],
   ) -> None:
-    super().__init__(entity, target_ids, target_names)
-    self.cfg = cfg
+    super().__init__(cfg, entity, target_ids, target_names)
 
   def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     # Add <position> actuator to spec, one per target.
@@ -82,9 +81,9 @@ class BuiltinPositionActuator(Actuator):
 class BuiltinMotorActuatorCfg(ActuatorCfg):
   """Configuration for MuJoCo built-in motor actuator.
 
-  Under the hood, this creates a <motor> actuator for each joint and sets
-  its effort limit and gear ratio accordingly. It also modifies the actuated
-  joint's properties, namely armature and frictionloss.
+  Under the hood, this creates a <motor> actuator for each target and sets
+  its effort limit and gear ratio accordingly. It also modifies the target's
+  properties, namely armature and frictionloss.
   """
 
   effort_limit: float
@@ -98,7 +97,7 @@ class BuiltinMotorActuatorCfg(ActuatorCfg):
     return BuiltinMotorActuator(self, entity, target_ids, target_names)
 
 
-class BuiltinMotorActuator(Actuator):
+class BuiltinMotorActuator(Actuator[BuiltinMotorActuatorCfg]):
   """MuJoCo built-in motor actuator."""
 
   def __init__(
@@ -108,8 +107,7 @@ class BuiltinMotorActuator(Actuator):
     target_ids: list[int],
     target_names: list[str],
   ) -> None:
-    super().__init__(entity, target_ids, target_names)
-    self.cfg = cfg
+    super().__init__(cfg, entity, target_ids, target_names)
 
   def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     # Add <motor> actuator to spec, one per target.
@@ -133,9 +131,9 @@ class BuiltinMotorActuator(Actuator):
 class BuiltinVelocityActuatorCfg(ActuatorCfg):
   """Configuration for MuJoCo built-in velocity actuator.
 
-  Under the hood, this creates a <velocity> actuator for each joint and sets
-  the damping gain. It also modifies the actuated joint's properties, namely
-  armature and frictionloss.
+  Under the hood, this creates a <velocity> actuator for each target and sets the
+  damping gain. It also modifies the target's properties, namely armature and
+  frictionloss.
   """
 
   damping: float
@@ -149,7 +147,7 @@ class BuiltinVelocityActuatorCfg(ActuatorCfg):
     return BuiltinVelocityActuator(self, entity, target_ids, target_names)
 
 
-class BuiltinVelocityActuator(Actuator):
+class BuiltinVelocityActuator(Actuator[BuiltinVelocityActuatorCfg]):
   """MuJoCo built-in velocity actuator."""
 
   def __init__(
@@ -159,8 +157,7 @@ class BuiltinVelocityActuator(Actuator):
     target_ids: list[int],
     target_names: list[str],
   ) -> None:
-    super().__init__(entity, target_ids, target_names)
-    self.cfg = cfg
+    super().__init__(cfg, entity, target_ids, target_names)
 
   def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     # Add <velocity> actuator to spec, one per target.
@@ -215,7 +212,7 @@ class BuiltinMuscleActuatorCfg(ActuatorCfg):
     return BuiltinMuscleActuator(self, entity, target_ids, target_names)
 
 
-class BuiltinMuscleActuator(Actuator):
+class BuiltinMuscleActuator(Actuator[BuiltinMuscleActuatorCfg]):
   """MuJoCo built-in muscle actuator."""
 
   def __init__(
@@ -225,8 +222,7 @@ class BuiltinMuscleActuator(Actuator):
     target_ids: list[int],
     target_names: list[str],
   ) -> None:
-    super().__init__(entity, target_ids, target_names)
-    self.cfg = cfg
+    super().__init__(cfg, entity, target_ids, target_names)
 
   def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     # Add <muscle> actuator to spec, one per target.

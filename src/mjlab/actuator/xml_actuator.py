@@ -6,7 +6,7 @@ This module provides wrappers for actuators already defined in robot XML/MJCF fi
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import mujoco
 import torch
@@ -16,9 +16,20 @@ from mjlab.actuator.actuator import Actuator, ActuatorCfg, ActuatorCmd
 if TYPE_CHECKING:
   from mjlab.entity import Entity
 
+XmlActuatorCfgT = TypeVar("XmlActuatorCfgT", bound=ActuatorCfg)
 
-class XmlActuator(Actuator):
+
+class XmlActuator(Actuator[XmlActuatorCfgT], Generic[XmlActuatorCfgT]):
   """Base class for XML-defined actuators."""
+
+  def __init__(
+    self,
+    cfg: XmlActuatorCfgT,
+    entity: Entity,
+    target_ids: list[int],
+    target_names: list[str],
+  ) -> None:
+    super().__init__(cfg, entity, target_ids, target_names)
 
   def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     # Filter to only targets that have corresponding XML actuators.
@@ -59,10 +70,10 @@ class XmlPositionActuatorCfg(ActuatorCfg):
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlPositionActuator:
-    return XmlPositionActuator(entity, target_ids, target_names)
+    return XmlPositionActuator(self, entity, target_ids, target_names)
 
 
-class XmlPositionActuator(XmlActuator):
+class XmlPositionActuator(XmlActuator[XmlPositionActuatorCfg]):
   """Wrapper for XML-defined <position> actuators."""
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
@@ -76,10 +87,10 @@ class XmlMotorActuatorCfg(ActuatorCfg):
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlMotorActuator:
-    return XmlMotorActuator(entity, target_ids, target_names)
+    return XmlMotorActuator(self, entity, target_ids, target_names)
 
 
-class XmlMotorActuator(XmlActuator):
+class XmlMotorActuator(XmlActuator[XmlMotorActuatorCfg]):
   """Wrapper for XML-defined <motor> actuators."""
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
@@ -93,10 +104,10 @@ class XmlVelocityActuatorCfg(ActuatorCfg):
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlVelocityActuator:
-    return XmlVelocityActuator(entity, target_ids, target_names)
+    return XmlVelocityActuator(self, entity, target_ids, target_names)
 
 
-class XmlVelocityActuator(XmlActuator):
+class XmlVelocityActuator(XmlActuator[XmlVelocityActuatorCfg]):
   """Wrapper for XML-defined <velocity> actuators."""
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
@@ -110,10 +121,10 @@ class XmlMuscleActuatorCfg(ActuatorCfg):
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> XmlMuscleActuator:
-    return XmlMuscleActuator(entity, target_ids, target_names)
+    return XmlMuscleActuator(self, entity, target_ids, target_names)
 
 
-class XmlMuscleActuator(XmlActuator):
+class XmlMuscleActuator(XmlActuator[XmlMuscleActuatorCfg]):
   """Wrapper for XML-defined <muscle> actuators."""
 
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:

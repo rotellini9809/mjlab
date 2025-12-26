@@ -33,6 +33,7 @@ class DelayedActuatorCfg(ActuatorCfg):
 
   def __post_init__(self):
     object.__setattr__(self, "target_names_expr", self.base_cfg.target_names_expr)
+    object.__setattr__(self, "transmission_type", self.base_cfg.transmission_type)
 
   delay_target: (
     Literal["position", "velocity", "effort"]
@@ -66,7 +67,7 @@ class DelayedActuatorCfg(ActuatorCfg):
     return DelayedActuator(self, base_actuator)
 
 
-class DelayedActuator(Actuator):
+class DelayedActuator(Actuator[DelayedActuatorCfg]):
   """Generic wrapper that adds delay to any actuator.
 
   Delays the specified command target(s) (position, velocity, and/or effort)
@@ -75,11 +76,11 @@ class DelayedActuator(Actuator):
 
   def __init__(self, cfg: DelayedActuatorCfg, base_actuator: Actuator) -> None:
     super().__init__(
+      cfg,
       base_actuator.entity,
       base_actuator._target_ids_list,
       base_actuator._target_names,
     )
-    self.cfg = cfg
     self._base_actuator = base_actuator
     self._delay_buffers: dict[str, DelayBuffer] = {}
 
@@ -143,8 +144,8 @@ class DelayedActuator(Actuator):
       position_target=position_target,
       velocity_target=velocity_target,
       effort_target=effort_target,
-      joint_pos=cmd.joint_pos,
-      joint_vel=cmd.joint_vel,
+      pos=cmd.pos,
+      vel=cmd.vel,
     )
 
     return self._base_actuator.compute(delayed_cmd)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import mujoco
 import mujoco_warp as mjwarp
@@ -13,6 +13,9 @@ import torch
 
 if TYPE_CHECKING:
   from mjlab.entity import Entity
+  from mjlab.entity.data import EntityData
+
+ActuatorCfgT = TypeVar("ActuatorCfgT", bound="ActuatorCfg")
 
 
 class TransmissionType(str, Enum):
@@ -77,36 +80,39 @@ class ActuatorCmd:
   """High-level actuator command with targets and current state.
 
   Passed to actuator's `compute()` method to generate low-level control signals.
-  All tensors have shape (num_envs, num_joints).
+  All tensors have shape (num_envs, num_targets).
   """
 
   position_target: torch.Tensor
-  """Desired joint positions."""
+  """Desired positions (joint positions, tendon lengths, or site positions)."""
   velocity_target: torch.Tensor
-  """Desired joint velocities."""
+  """Desired velocities (joint velocities, tendon velocities, or site velocities)."""
   effort_target: torch.Tensor
-  """Feedforward effort."""
-  joint_pos: torch.Tensor
-  """Current joint positions."""
-  joint_vel: torch.Tensor
-  """Current joint velocities."""
+  """Feedforward effort (torques or forces)."""
+  pos: torch.Tensor
+  """Current positions (joint positions, tendon lengths, or site positions)."""
+  vel: torch.Tensor
+  """Current velocities (joint velocities, tendon velocities, or site velocities)."""
 
 
-class Actuator(ABC):
+class Actuator(ABC, Generic[ActuatorCfgT]):
   """Base actuator interface."""
 
   def __init__(
     self,
+    cfg: ActuatorCfgT,
     entity: Entity,
     target_ids: list[int],
     target_names: list[str],
   ) -> None:
+    self.cfg = cfg
     self.entity = entity
     self._target_ids_list = target_ids
     self._target_names = target_names
     self._target_ids: torch.Tensor | None = None
     self._ctrl_ids: torch.Tensor | None = None
     self._mjs_actuators: list[mujoco.MjsActuator] = []
+    self._site_zeros: torch.Tensor | None = None
 
   @property
   def target_ids(self) -> torch.Tensor:
@@ -118,6 +124,11 @@ class Actuator(ABC):
   def target_names(self) -> list[str]:
     """Names of targets controlled by this actuator."""
     return self._target_names
+
+  @property
+  def transmission_type(self) -> TransmissionType:
+    """Transmission type of this actuator."""
+    return self.cfg.transmission_type
 
   @property
   def ctrl_ids(self) -> torch.Tensor:
@@ -154,12 +165,55 @@ class Actuator(ABC):
       data: The mjwarp data arrays.
       device: Device for tensor operations (e.g., "cuda", "cpu").
     """
-    del mj_model, model, data  # Unused.
+    del mj_model, model  # Unused.
     self._target_ids = torch.tensor(
       self._target_ids_list, dtype=torch.long, device=device
     )
     ctrl_ids_list = [act.id for act in self._mjs_actuators]
     self._ctrl_ids = torch.tensor(ctrl_ids_list, dtype=torch.long, device=device)
+
+    # Pre-allocate zeros for SITE transmission type to avoid repeated allocations.
+    if self.transmission_type == TransmissionType.SITE:
+      nenvs = data.nworld
+      ntargets = len(self._target_ids_list)
+      self._site_zeros = torch.zeros((nenvs, ntargets), device=device)
+
+  def get_command(self, data: EntityData) -> ActuatorCmd:
+    """Extract command data for this actuator from entity data.
+
+    Args:
+      data: The entity data containing all state and target information.
+
+    Returns:
+      ActuatorCmd with appropriate data based on transmission type.
+    """
+    if self.transmission_type == TransmissionType.JOINT:
+      return ActuatorCmd(
+        position_target=data.joint_pos_target[:, self.target_ids],
+        velocity_target=data.joint_vel_target[:, self.target_ids],
+        effort_target=data.joint_effort_target[:, self.target_ids],
+        pos=data.joint_pos[:, self.target_ids],
+        vel=data.joint_vel[:, self.target_ids],
+      )
+    elif self.transmission_type == TransmissionType.TENDON:
+      return ActuatorCmd(
+        position_target=data.tendon_len_target[:, self.target_ids],
+        velocity_target=data.tendon_vel_target[:, self.target_ids],
+        effort_target=data.tendon_effort_target[:, self.target_ids],
+        pos=data.tendon_len[:, self.target_ids],
+        vel=data.tendon_vel[:, self.target_ids],
+      )
+    elif self.transmission_type == TransmissionType.SITE:
+      assert self._site_zeros is not None
+      return ActuatorCmd(
+        position_target=self._site_zeros,
+        velocity_target=self._site_zeros,
+        effort_target=data.site_effort_target[:, self.target_ids],
+        pos=self._site_zeros,
+        vel=self._site_zeros,
+      )
+    else:
+      raise ValueError(f"Unknown transmission type: {self.transmission_type}")
 
   @abstractmethod
   def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
