@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import torch
 
@@ -16,9 +16,9 @@ if TYPE_CHECKING:
   from mjlab.actuator.actuator import Actuator
   from mjlab.entity.data import EntityData
 
-BuiltinActuatorType = Union[
-  BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator
-]
+BuiltinActuatorType = (
+  BuiltinMotorActuator | BuiltinPositionActuator | BuiltinVelocityActuator
+)
 
 BUILTIN_TYPES = {BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator}
 
