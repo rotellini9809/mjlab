@@ -59,12 +59,12 @@ class BuiltinPositionActuator(Actuator):
     super().__init__(entity, target_ids, target_names)
     self.cfg = cfg
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    # Add <position> actuator to spec, one per joint.
-    for joint_name in joint_names:
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
+    # Add <position> actuator to spec, one per target.
+    for target_name in target_names:
       actuator = create_position_actuator(
         spec,
-        joint_name,
+        target_name,
         stiffness=self.cfg.stiffness,
         damping=self.cfg.damping,
         effort_limit=self.cfg.effort_limit,
@@ -111,12 +111,12 @@ class BuiltinMotorActuator(Actuator):
     super().__init__(entity, target_ids, target_names)
     self.cfg = cfg
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    # Add <motor> actuator to spec, one per joint.
-    for joint_name in joint_names:
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
+    # Add <motor> actuator to spec, one per target.
+    for target_name in target_names:
       actuator = create_motor_actuator(
         spec,
-        joint_name,
+        target_name,
         effort_limit=self.cfg.effort_limit,
         gear=self.cfg.gear,
         armature=self.cfg.armature,
@@ -162,12 +162,12 @@ class BuiltinVelocityActuator(Actuator):
     super().__init__(entity, target_ids, target_names)
     self.cfg = cfg
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    # Add <velocity> actuator to spec, one per joint.
-    for joint_name in joint_names:
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
+    # Add <velocity> actuator to spec, one per target.
+    for target_name in target_names:
       actuator = create_velocity_actuator(
         spec,
-        joint_name,
+        target_name,
         damping=self.cfg.damping,
         effort_limit=self.cfg.effort_limit,
         armature=self.cfg.armature,
@@ -228,9 +228,9 @@ class BuiltinMuscleActuator(Actuator):
     super().__init__(entity, target_ids, target_names)
     self.cfg = cfg
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     # Add <muscle> actuator to spec, one per target.
-    for target_name in joint_names:
+    for target_name in target_names:
       actuator = create_muscle_actuator(
         spec,
         target_name,

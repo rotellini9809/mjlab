@@ -76,8 +76,8 @@ class DelayedActuator(Actuator):
   def __init__(self, cfg: DelayedActuatorCfg, base_actuator: Actuator) -> None:
     super().__init__(
       base_actuator.entity,
-      base_actuator._joint_ids_list,
-      base_actuator._joint_names,
+      base_actuator._target_ids_list,
+      base_actuator._target_names,
     )
     self.cfg = cfg
     self._base_actuator = base_actuator
@@ -88,8 +88,8 @@ class DelayedActuator(Actuator):
     """The underlying actuator being wrapped."""
     return self._base_actuator
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    self._base_actuator.edit_spec(spec, joint_names)
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
+    self._base_actuator.edit_spec(spec, target_names)
     self._mjs_actuators = self._base_actuator._mjs_actuators
 
   def initialize(
@@ -101,7 +101,7 @@ class DelayedActuator(Actuator):
   ) -> None:
     self._base_actuator.initialize(mj_model, model, data, device)
 
-    self._joint_ids = self._base_actuator._joint_ids
+    self._target_ids = self._base_actuator._target_ids
     self._ctrl_ids = self._base_actuator._ctrl_ids
 
     targets = (

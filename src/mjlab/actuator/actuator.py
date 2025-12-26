@@ -102,22 +102,22 @@ class Actuator(ABC):
     target_names: list[str],
   ) -> None:
     self.entity = entity
-    self._joint_ids_list = target_ids
-    self._joint_names = target_names
-    self._joint_ids: torch.Tensor | None = None
+    self._target_ids_list = target_ids
+    self._target_names = target_names
+    self._target_ids: torch.Tensor | None = None
     self._ctrl_ids: torch.Tensor | None = None
     self._mjs_actuators: list[mujoco.MjsActuator] = []
 
   @property
-  def joint_ids(self) -> torch.Tensor:
-    """Local indices of joints controlled by this actuator."""
-    assert self._joint_ids is not None
-    return self._joint_ids
+  def target_ids(self) -> torch.Tensor:
+    """Local indices of targets controlled by this actuator."""
+    assert self._target_ids is not None
+    return self._target_ids
 
   @property
-  def joint_names(self) -> list[str]:
-    """Names of joints controlled by this actuator."""
-    return self._joint_names
+  def target_names(self) -> list[str]:
+    """Names of targets controlled by this actuator."""
+    return self._target_names
 
   @property
   def ctrl_ids(self) -> torch.Tensor:
@@ -126,7 +126,7 @@ class Actuator(ABC):
     return self._ctrl_ids
 
   @abstractmethod
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
     """Edit the MjSpec to add actuators and configure joints.
 
     This is called during entity construction, before the model is compiled.
@@ -155,8 +155,8 @@ class Actuator(ABC):
       device: Device for tensor operations (e.g., "cuda", "cpu").
     """
     del mj_model, model, data  # Unused.
-    self._joint_ids = torch.tensor(
-      self._joint_ids_list, dtype=torch.long, device=device
+    self._target_ids = torch.tensor(
+      self._target_ids_list, dtype=torch.long, device=device
     )
     ctrl_ids_list = [act.id for act in self._mjs_actuators]
     self._ctrl_ids = torch.tensor(ctrl_ids_list, dtype=torch.long, device=device)

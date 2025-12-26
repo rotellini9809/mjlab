@@ -1,16 +1,17 @@
 # Actuators
 
 Actuators convert high-level commands (position, velocity, effort) into
-low-level efforts that drive joints. Implementations use either
-built-in actuators (physics engine computes torques and integrates damping
-forces implicitly) or explicit actuators (user computes torques explicitly,
-integrator cannot account for their velocity derivatives).
+low-level control signals that drive joints, tendons, or sites. Implementations
+use either built-in actuators (physics engine computes torques and integrates
+damping forces implicitly) or explicit actuators (user computes torques
+explicitly, integrator cannot account for their velocity derivatives).
 
 ## Choosing an Actuator Type
 
-**Built-in actuators** (`BuiltinPositionActuator`, `BuiltinVelocityActuator`): Use
-MuJoCo's native implementations. The physics engine computes torques and
-integrates damping forces implicitly, providing the best numerical stability.
+**Built-in actuators** (`BuiltinPositionActuator`, `BuiltinVelocityActuator`,
+`BuiltinMotorActuator`, `BuiltinMuscleActuator`): Use MuJoCo's native
+implementations. The physics engine computes torques and integrates damping
+forces implicitly, providing the best numerical stability.
 
 **Explicit actuators** (`IdealPdActuator`, `DcMotorActuator`,
 `LearnedMlpActuator`): Compute torques explicitly so the simulator cannot
@@ -19,11 +20,43 @@ actuator dynamics that can't be expressed with built-in types (e.g.,
 velocity-dependent torque limits, learned actuator networks).
 
 **XML actuators** (`XmlPositionActuator`, `XmlMotorActuator`,
-`XmlVelocityActuator`): Wrap actuators already defined in your robot's XML
-file.
+`XmlVelocityActuator`, `XmlMuscleActuator`): Wrap actuators already defined in
+your robot's XML file.
 
 **Delayed actuators** (`DelayedActuator`): Generic wrapper that adds command
 delays to any actuator type. Use for modeling communication latency.
+
+## Transmission Types
+
+Actuators can control different types of mechanical transmissions via the
+`transmission_type` parameter. We currently support three transmission types:
+`JOINT`, `TENDON`, and `SITE`.
+
+```python
+from mjlab.actuator import BuiltinPositionActuatorCfg, TransmissionType
+
+# Joint transmission.
+BuiltinPositionActuatorCfg(
+  target_names_expr=(".*_hip_.*",),
+  stiffness=80.0,
+  damping=10.0,
+)
+
+# Tendon transmission.
+BuiltinPositionActuatorCfg(
+  target_names_expr=("finger_tendon",),
+  transmission_type=TransmissionType.TENDON,
+  stiffness=50.0,
+  damping=5.0,
+)
+```
+
+**Notes:**
+
+- Site transmission only supports motor (effort) actuators.
+- When using tendon or site transmission, `target_names_expr` matches tendon or
+  site names instead of joint names.
+- Armature and frictionloss are not supported for site transmission.
 
 ## TL;DR
 
@@ -38,7 +71,7 @@ robot_cfg = EntityCfg(
   articulation=EntityArticulationInfoCfg(
     actuators=(
       BuiltinPositionActuatorCfg(
-        joint_names_expr=(".*_hip_.*", ".*_knee_.*"),
+        target_names_expr=(".*_hip_.*", ".*_knee_.*"),
         stiffness=80.0,
         damping=10.0,
         effort_limit=100.0,
@@ -55,7 +88,7 @@ from mjlab.actuator import DelayedActuatorCfg, BuiltinPositionActuatorCfg
 
 DelayedActuatorCfg(
   base_cfg=BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*",),
+    target_names_expr=(".*",),
     stiffness=80.0,
     damping=10.0,
   ),
@@ -98,8 +131,9 @@ def compute(self, cmd: ActuatorCmd) -> torch.Tensor:
 
 **Properties:**
 
-- **`joint_ids`**: Tensor of local joint indices controlled by this actuator
-- **`joint_names`**: List of joint names controlled by this actuator
+- **`target_ids`**: Tensor of local indices for the actuator's targets (joints,
+  tendons, or sites)
+- **`target_names`**: List of target names corresponding to `target_ids`
 - **`ctrl_ids`**: Tensor of global control input indices for this actuator
 
 ## Actuator Types
@@ -110,11 +144,10 @@ Built-in actuators use MuJoCo's native actuator types via the MjSpec API. The ph
 engine computes the control law and integrates velocity-dependent damping forces
 implicitly, providing best numerical stability.
 
-**BuiltinPositionActuator**: Creates `<position>` actuators for PD control.
-
-**BuiltinVelocityActuator**: Creates `<velocity>` actuators for velocity control.
-
-**BuiltinMotorActuator**: Creates `<motor>` actuators for direct torque control.
+- **BuiltinPositionActuator**: Creates `<position>` actuators for PD control
+- **BuiltinVelocityActuator**: Creates `<velocity>` actuators for velocity control
+- **BuiltinMotorActuator**: Creates `<motor>` actuators for torque control
+- **BuiltinMuscleActuator**: Creates `<muscle>` actuators
 
 ```python
 from mjlab.actuator import BuiltinPositionActuatorCfg, BuiltinVelocityActuatorCfg
@@ -122,13 +155,13 @@ from mjlab.actuator import BuiltinPositionActuatorCfg, BuiltinVelocityActuatorCf
 # Mobile manipulator: PD for arm joints, velocity control for wheels.
 actuators = (
   BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*_shoulder_.*", ".*_elbow_.*", ".*_wrist_.*"),
+    target_names_expr=(".*_shoulder_.*", ".*_elbow_.*", ".*_wrist_.*"),
     stiffness=100.0,
     damping=10.0,
     effort_limit=150.0,
   ),
   BuiltinVelocityActuatorCfg(
-    joint_names_expr=(".*_wheel_.*",),
+    target_names_expr=(".*_wheel_.*",),
     damping=20.0,
     effort_limit=50.0,
   ),
@@ -160,13 +193,13 @@ from mjlab.actuator import IdealPdActuatorCfg, DcMotorActuatorCfg
 # Ideal PD for hips, DC motor model with torque-speed curve for knees.
 actuators = (
   IdealPdActuatorCfg(
-    joint_names_expr=(".*_hip_.*",),
+    target_names_expr=(".*_hip_.*",),
     stiffness=80.0,
     damping=10.0,
     effort_limit=100.0,
   ),
   DcMotorActuatorCfg(
-    joint_names_expr=(".*_knee_.*",),
+    target_names_expr=(".*_knee_.*",),
     stiffness=80.0,
     damping=10.0,
     effort_limit=25.0,       # Continuous torque limit
@@ -192,7 +225,7 @@ from mjlab.actuator import LearnedMlpActuatorCfg
 
 actuators = (
   LearnedMlpActuatorCfg(
-    joint_names_expr=(".*_ankle_.*",),
+    target_names_expr=(".*_ankle_.*",),
     network_file="models/ankle_actuator.pt",  # TorchScript model
     pos_scale=1.0,        # Input scaling for position errors
     vel_scale=0.05,       # Input scaling for velocities
@@ -224,15 +257,14 @@ that are scaled and clipped by DC motor limits.
 ### XML Actuators
 
 XML actuators wrap actuators already defined in your robot's XML file. The
-config finds existing actuators by matching their `target` joint name against
-the `joint_names_expr` patterns. Each joint must have exactly one matching
-actuator.
+config finds existing actuators by matching their `target` name (joint, tendon,
+or site) against the `target_names_expr` patterns. Each target must have
+exactly one matching actuator.
 
-**XmlPositionActuator**: Wraps existing `<position>` actuators
-
-**XmlVelocityActuator**: Wraps existing `<velocity>` actuators
-
-**XmlMotorActuator**: Wraps existing `<motor>` actuators
+- **XmlPositionActuator**: Wraps existing `<position>` actuators
+- **XmlVelocityActuator**: Wraps existing `<velocity>` actuators
+- **XmlMotorActuator**: Wraps existing `<motor>` actuators
+- **XmlMuscleActuator**: Wraps existing `<muscle>` actuators
 
 ```python
 from mjlab.actuator import XmlPositionActuatorCfg
@@ -244,7 +276,7 @@ from mjlab.actuator import XmlPositionActuatorCfg
 
 # Wrap existing XML actuators.
 actuators = (
-  XmlPositionActuatorCfg(joint_names_expr=("hip_joint",)),
+  XmlPositionActuatorCfg(target_names_expr=("hip_joint",)),
 )
 ```
 
@@ -261,7 +293,7 @@ from mjlab.actuator import DelayedActuatorCfg, IdealPdActuatorCfg
 actuators = (
   DelayedActuatorCfg(
     base_cfg=IdealPdActuatorCfg(
-      joint_names_expr=(".*",),
+      target_names_expr=(".*",),
       stiffness=80.0,
       damping=10.0,
     ),
@@ -375,28 +407,28 @@ from mjlab.actuator import BuiltinPositionActuatorCfg
 # G1 humanoid with different gains per joint group.
 G1_ACTUATORS = (
   BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*_hip_.*", "waist_yaw_joint"),
+    target_names_expr=(".*_hip_.*", "waist_yaw_joint"),
     stiffness=180.0,
     damping=18.0,
     effort_limit=88.0,
     armature=0.0015,
   ),
   BuiltinPositionActuatorCfg(
-    joint_names_expr=("left_hip_pitch_joint", "right_hip_pitch_joint"),
+    target_names_expr=("left_hip_pitch_joint", "right_hip_pitch_joint"),
     stiffness=200.0,
     damping=20.0,
     effort_limit=88.0,
     armature=0.0015,
   ),
   BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*_knee_joint",),
+    target_names_expr=(".*_knee_joint",),
     stiffness=150.0,
     damping=15.0,
     effort_limit=139.0,
     armature=0.0025,
   ),
   BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*_ankle_.*",),
+    target_names_expr=(".*_ankle_.*",),
     stiffness=40.0,
     damping=5.0,
     effort_limit=25.0,
@@ -467,7 +499,7 @@ DAMPING = 2 * DAMPING_RATIO * ARMATURE_7520_14 * NATURAL_FREQ
 from mjlab.actuator import BuiltinPositionActuatorCfg
 
 actuator = BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*_hip_pitch_joint",),
+    target_names_expr=(".*_hip_pitch_joint",),
     stiffness=STIFFNESS,
     damping=DAMPING,
     effort_limit=ACTUATOR_7520_14.effort_limit,
@@ -492,7 +524,7 @@ sum of the individual motor armatures:
 ```python
 # Two 5020 motors driving ankle through parallel linkage.
 G1_ACTUATOR_ANKLE = BuiltinPositionActuatorCfg(
-    joint_names_expr=(".*_ankle_pitch_joint", ".*_ankle_roll_joint"),
+    target_names_expr=(".*_ankle_pitch_joint", ".*_ankle_roll_joint"),
     stiffness=STIFFNESS_5020 * 2,
     damping=DAMPING_5020 * 2,
     effort_limit=ACTUATOR_5020.effort_limit * 2,
@@ -513,7 +545,7 @@ from mjlab.envs.mdp.actions import JointPositionActionCfg
 
 JointPositionActionCfg(
   entity_name="robot",
-  actuator_names=(".*",),  # Regex patterns for joint selection
+  actuator_names=(".*",),  # Regex patterns for actuator selection
   scale=1.0,
   use_default_offset=True,  # Use robot's default joint positions as offset
 )
@@ -528,6 +560,10 @@ JointPositionActionCfg(
 The action manager calls `entity.set_joint_position_target()`,
 `set_joint_velocity_target()`, or `set_joint_effort_target()` under the hood,
 which populate the `ActuatorCmd` passed to each actuator's `compute()` method.
+
+> **Note**: Action terms work with all transmission types (joint, tendon, site).
+> The actuator system automatically routes targets to the appropriate entity
+> tensors based on each actuator's `transmission_type`.
 
 ### Domain Randomization
 

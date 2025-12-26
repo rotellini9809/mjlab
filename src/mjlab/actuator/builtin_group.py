@@ -82,7 +82,7 @@ class BuiltinActuatorGroup:
       tuple[type, TransmissionType], tuple[torch.Tensor, torch.Tensor]
     ] = {
       key: (
-        torch.cat([act.joint_ids for act in acts], dim=0),
+        torch.cat([act.target_ids for act in acts], dim=0),
         torch.cat([act.ctrl_ids for act in acts], dim=0),
       )
       for key, acts in builtin_groups.items()

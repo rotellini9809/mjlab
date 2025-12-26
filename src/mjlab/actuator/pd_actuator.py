@@ -54,12 +54,12 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     self.default_damping: torch.Tensor | None = None
     self.default_force_limit: torch.Tensor | None = None
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    # Add <motor> actuator to spec, one per joint.
-    for joint_name in joint_names:
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
+    # Add <motor> actuator to spec, one per target.
+    for target_name in target_names:
       actuator = create_motor_actuator(
         spec,
-        joint_name,
+        target_name,
         effort_limit=self.cfg.effort_limit,
         armature=self.cfg.armature,
         frictionloss=self.cfg.frictionloss,
@@ -77,7 +77,7 @@ class IdealPdActuator(Actuator, Generic[IdealPdCfgT]):
     super().initialize(mj_model, model, data, device)
 
     num_envs = data.nworld
-    num_joints = len(self._joint_names)
+    num_joints = len(self._target_names)
     self.stiffness = torch.full(
       (num_envs, num_joints), self.cfg.stiffness, dtype=torch.float, device=device
     )

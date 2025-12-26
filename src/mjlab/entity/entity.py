@@ -369,7 +369,7 @@ class Entity:
     # Collect all actuated joint names.
     actuated_joint_names_set = set()
     for act in self._actuators:
-      actuated_joint_names_set.update(act.joint_names)
+      actuated_joint_names_set.update(act.target_names)
 
     # Filter self.joint_names to only actuated joints, preserving natural order.
     actuated_in_natural_order = [
@@ -955,10 +955,10 @@ class Entity:
     self._builtin_group.apply_controls(self._data)
     for act in self._custom_actuators:
       command = actuator.ActuatorCmd(
-        position_target=self._data.joint_pos_target[:, act.joint_ids],
-        velocity_target=self._data.joint_vel_target[:, act.joint_ids],
-        effort_target=self._data.joint_effort_target[:, act.joint_ids],
-        joint_pos=self._data.joint_pos[:, act.joint_ids],
-        joint_vel=self._data.joint_vel[:, act.joint_ids],
+        position_target=self._data.joint_pos_target[:, act.target_ids],
+        velocity_target=self._data.joint_vel_target[:, act.target_ids],
+        effort_target=self._data.joint_effort_target[:, act.target_ids],
+        joint_pos=self._data.joint_pos[:, act.target_ids],
+        joint_vel=self._data.joint_vel[:, act.target_ids],
       )
       self._data.write_ctrl(act.compute(command), act.ctrl_ids)

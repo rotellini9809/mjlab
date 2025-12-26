@@ -106,7 +106,7 @@ class DcMotorActuator(IdealPdActuator[DcMotorCfgT], Generic[DcMotorCfgT]):
     super().initialize(mj_model, model, data, device)
 
     num_envs = data.nworld
-    num_joints = len(self._joint_names)
+    num_joints = len(self._target_names)
 
     self.saturation_effort = torch.full(
       (num_envs, num_joints),

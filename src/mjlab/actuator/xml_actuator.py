@@ -20,34 +20,34 @@ if TYPE_CHECKING:
 class XmlActuator(Actuator):
   """Base class for XML-defined actuators."""
 
-  def edit_spec(self, spec: mujoco.MjSpec, joint_names: list[str]) -> None:
-    # Filter to only joints that have corresponding XML actuators.
-    filtered_joint_ids = []
-    filtered_joint_names = []
-    for i, joint_name in enumerate(joint_names):
-      actuator = self._find_actuator_for_joint(spec, joint_name)
+  def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
+    # Filter to only targets that have corresponding XML actuators.
+    filtered_target_ids = []
+    filtered_target_names = []
+    for i, target_name in enumerate(target_names):
+      actuator = self._find_actuator_for_target(spec, target_name)
       if actuator is not None:
         self._mjs_actuators.append(actuator)
-        filtered_joint_ids.append(self._joint_ids_list[i])
-        filtered_joint_names.append(joint_name)
+        filtered_target_ids.append(self._target_ids_list[i])
+        filtered_target_names.append(target_name)
 
-    if len(filtered_joint_names) == 0:
+    if len(filtered_target_names) == 0:
       raise ValueError(
-        f"No XML actuators found for any joints matching the patterns. "
-        f"Searched joints: {joint_names}. "
+        f"No XML actuators found for any targets matching the patterns. "
+        f"Searched targets: {target_names}. "
         f"XML actuator config expects actuators to already exist in the XML."
       )
 
-    # Update joint IDs and names to only include those with actuators.
-    self._joint_ids_list = filtered_joint_ids
-    self._joint_names = filtered_joint_names
+    # Update target IDs and names to only include those with actuators.
+    self._target_ids_list = filtered_target_ids
+    self._target_names = filtered_target_names
 
-  def _find_actuator_for_joint(
-    self, spec: mujoco.MjSpec, joint_name: str
+  def _find_actuator_for_target(
+    self, spec: mujoco.MjSpec, target_name: str
   ) -> mujoco.MjsActuator | None:
-    """Find an actuator that targets the given joint."""
+    """Find an actuator that targets the given target (joint, tendon, or site)."""
     for actuator in spec.actuators:
-      if actuator.target == joint_name:
+      if actuator.target == target_name:
         return actuator
     return None
 

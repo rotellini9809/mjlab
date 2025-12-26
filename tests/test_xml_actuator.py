@@ -58,13 +58,13 @@ def test_xml_actuator_underactuated_with_wildcard():
   # Should only control joint2 (which has an XML actuator), not joint1.
   assert len(entity._actuators) == 1
   actuator = entity._actuators[0]
-  assert actuator._joint_names == ["joint2"]
+  assert actuator._target_names == ["joint2"]
 
 
 def test_xml_actuator_no_matching_actuators_raises_error():
-  """XmlActuator raises error when no joints have matching XML actuators."""
+  """XmlActuator raises error when no targets have matching XML actuators."""
   with pytest.raises(
-    ValueError, match="No XML actuators found for any joints matching the patterns"
+    ValueError, match="No XML actuators found for any targets matching the patterns"
   ):
     cfg = EntityCfg(
       spec_fn=lambda: mujoco.MjSpec.from_string(ROBOT_XML_UNDERACTUATED),
