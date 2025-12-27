@@ -227,6 +227,14 @@ class BuiltinMuscleActuatorCfg(ActuatorCfg):
   fvmax: float = 1.2
   """Active force at -vmax."""
 
+  def __post_init__(self) -> None:
+    super().__post_init__()
+    if self.transmission_type == TransmissionType.SITE:
+      raise ValueError(
+        "BuiltinMuscleActuatorCfg does not support SITE transmission. "
+        "Use BuiltinMotorActuatorCfg for site transmission."
+      )
+
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]
   ) -> BuiltinMuscleActuator:
