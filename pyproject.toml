@@ -136,7 +136,7 @@ ignore = ["B011"]
 
 [tool.pyright]
 pythonVersion = "3.10"
-ignore = ["./typings", "./src/mjlab/utils/lab_api"]
+ignore = ["./typings", "./src/mjlab/utils/lab_api", "./docs"]
 stubPath = "typings"
 
 [tool.ty.environment]
