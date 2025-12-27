@@ -12,7 +12,12 @@ from typing import TYPE_CHECKING
 import mujoco
 import torch
 
-from mjlab.actuator.actuator import Actuator, ActuatorCfg, ActuatorCmd
+from mjlab.actuator.actuator import (
+  Actuator,
+  ActuatorCfg,
+  ActuatorCmd,
+  TransmissionType,
+)
 from mjlab.utils.spec import (
   create_motor_actuator,
   create_muscle_actuator,
@@ -39,6 +44,14 @@ class BuiltinPositionActuatorCfg(ActuatorCfg):
   """PD derivative gain."""
   effort_limit: float | None = None
   """Maximum actuator force/torque. If None, no limit is applied."""
+
+  def __post_init__(self) -> None:
+    super().__post_init__()
+    if self.transmission_type == TransmissionType.SITE:
+      raise ValueError(
+        "BuiltinPositionActuatorCfg does not support SITE transmission. "
+        "Use BuiltinMotorActuatorCfg for site transmission."
+      )
 
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]
@@ -140,6 +153,14 @@ class BuiltinVelocityActuatorCfg(ActuatorCfg):
   """Damping gain."""
   effort_limit: float | None = None
   """Maximum actuator force/torque. If None, no limit is applied."""
+
+  def __post_init__(self) -> None:
+    super().__post_init__()
+    if self.transmission_type == TransmissionType.SITE:
+      raise ValueError(
+        "BuiltinVelocityActuatorCfg does not support SITE transmission. "
+        "Use BuiltinMotorActuatorCfg for site transmission."
+      )
 
   def build(
     self, entity: Entity, target_ids: list[int], target_names: list[str]

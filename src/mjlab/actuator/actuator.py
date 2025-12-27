@@ -138,13 +138,14 @@ class Actuator(ABC, Generic[ActuatorCfgT]):
 
   @abstractmethod
   def edit_spec(self, spec: mujoco.MjSpec, target_names: list[str]) -> None:
-    """Edit the MjSpec to add actuators and configure joints.
+    """Edit the MjSpec to add actuators.
 
     This is called during entity construction, before the model is compiled.
 
     Args:
       spec: The entity's MjSpec to edit.
-      joint_names: Names of joints controlled by this actuator.
+      target_names: Names of targets (joints, tendons, or sites) controlled by
+        this actuator.
     """
     raise NotImplementedError
 

@@ -8,6 +8,7 @@ import torch
 from mjlab.actuator.actuator import TransmissionType
 from mjlab.actuator.builtin_actuator import (
   BuiltinMotorActuator,
+  BuiltinMuscleActuator,
   BuiltinPositionActuator,
   BuiltinVelocityActuator,
 )
@@ -17,7 +18,10 @@ if TYPE_CHECKING:
   from mjlab.entity.data import EntityData
 
 BuiltinActuatorType = (
-  BuiltinMotorActuator | BuiltinPositionActuator | BuiltinVelocityActuator
+  BuiltinMotorActuator
+  | BuiltinMuscleActuator
+  | BuiltinPositionActuator
+  | BuiltinVelocityActuator
 )
 
 # Maps (actuator_type, transmission_type) to EntityData target tensor attribute name.
@@ -29,6 +33,8 @@ _TARGET_TENSOR_MAP: dict[tuple[type[BuiltinActuatorType], TransmissionType], str
   (BuiltinVelocityActuator, TransmissionType.TENDON): "tendon_vel_target",
   (BuiltinMotorActuator, TransmissionType.TENDON): "tendon_effort_target",
   (BuiltinMotorActuator, TransmissionType.SITE): "site_effort_target",
+  (BuiltinMuscleActuator, TransmissionType.JOINT): "joint_effort_target",
+  (BuiltinMuscleActuator, TransmissionType.TENDON): "tendon_effort_target",
 }
 
 
@@ -64,9 +70,7 @@ class BuiltinActuatorGroup:
 
     # Group actuators by (type, transmission_type).
     for act in actuators:
-      if isinstance(
-        act, (BuiltinMotorActuator, BuiltinPositionActuator, BuiltinVelocityActuator)
-      ):
+      if isinstance(act, BuiltinActuatorType):
         key: tuple[type, TransmissionType] = (type(act), act.cfg.transmission_type)
         builtin_groups.setdefault(key, []).append(act)
       else:
