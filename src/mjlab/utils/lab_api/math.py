@@ -8,6 +8,8 @@
 #     rigid_body_twist_transform() (lines 820-821). The quat_rotate_inverse function was
 #     deprecated/removed in newer PyTorch versions, replaced by quat_apply_inverse with
 #     identical functionality.
+#   - 2025-12-29: Fixed NaN in apply_delta_pose() when rotation angle is zero by clamping
+#     the angle to eps before division.
 
 """Sub-module containing utilities for various math operations."""
 
