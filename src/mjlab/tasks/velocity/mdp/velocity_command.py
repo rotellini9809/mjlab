@@ -183,7 +183,6 @@ class UniformVelocityCommandCfg(CommandTermCfg):
   rel_standing_envs: float = 0.0
   rel_heading_envs: float = 1.0
   init_velocity_prob: float = 0.0
-  class_type: type[CommandTerm] = UniformVelocityCommand
 
   @dataclass
   class Ranges:
@@ -200,6 +199,9 @@ class UniformVelocityCommandCfg(CommandTermCfg):
     scale: float = 0.5
 
   viz: VizCfg = field(default_factory=VizCfg)
+
+  def build(self, env: ManagerBasedRlEnv) -> UniformVelocityCommand:
+    return UniformVelocityCommand(self, env)
 
   def __post_init__(self):
     if self.heading_command and self.ranges.heading is None:
