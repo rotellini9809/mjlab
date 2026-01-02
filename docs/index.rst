@@ -23,7 +23,7 @@ You can try mjlab *without installing anything* by using `uvx`:
 
    # Run the mjlab demo (no local installation needed)
    uvx --from mjlab \
-       --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@24e07def301f3c073d8bc0f948831c5611737ff0" \
+       --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@55ab24595ea4939ff583f1910e1615361d49d9ad" \
        demo
 
 If this runs, your setup is compatible with mjlab *for evaluation*.
