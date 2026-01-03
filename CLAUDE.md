@@ -1,35 +1,40 @@
-# Developer Guide
+# Development Workflow
 
-## Commands
+**Always use `uv run`, not python**.
 
-Use `make` for common workflows:
+```sh
 
-```bash
+# 1. Make changes.
+
+# 2. Type check.
+uv run ty check  # Fast
+uv run pyright  # More thorough, but slower
+
+# 3. Run tests.
+uv run pytest tests/  # Single suite
+uv run pytest tests/<test_file>.py  # Specific file
+
+# 4. Format and lint before committing.
+uv run ruff format
+uv run ruff check --fix
+```
+
+We've bundled common commands into a Makefile for convenience.
+
+```sh
 make format     # Format and lint
-make type       # Format, lint, and type-check
+make type       # Type-check
+make check      # make format && make type
 make test-fast  # Run tests excluding slow ones
 make test       # Run the full test suite
 make docs       # Build documentation
 ```
 
-You can also run individual commands directly with `uv`:
+Before creating a PR, ensure all checks pass with `make test`.
 
-```bash
-uv run pytest tests/<test_file>.py  # Run a specific test file
-uv run ty check                     # Run the ty type checker (faster)
-uv run pyright                      # Run the pyright type checker (slower)
-```
-
-## General Guidelines
-
-- Run `make check` frequently to format, lint, and type-check your code. This catches many issues before tests are executed.
-- Before finalizing changes, run `make test-fast` to ensure nothing is broken.
-
-## Style Guidelines
-
-- General
-  - Avoid local imports unless they are strictly necessary (e.g. circular imports).
-- Tests
+Some style guidelines to follow:
+- Avoid local imports unless they are strictly necessary (e.g. circular imports).
+- Tests should follow these principles:
   - Use functions and fixtures; do not use test classes.
   - Favor targeted, efficient tests over exhaustive edge-case coverage.
   - Prefer running individual tests rather than the full test suite to improve iteration speed.
