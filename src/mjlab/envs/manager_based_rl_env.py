@@ -353,6 +353,8 @@ class ManagerBasedRlEnv:
   def update_visualizers(self, visualizer: DebugVisualizer) -> None:
     for mod in self.manager_visualizers.values():
       mod.debug_vis(visualizer)
+    for sensor in self.scene.sensors.values():
+      sensor.debug_vis(visualizer)
 
   # Private methods.
 
