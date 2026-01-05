@@ -995,3 +995,81 @@ def test_ray_alignment_world(device):
   assert torch.allclose(data_rotated.distances, baseline_dist, atol=0.1), (
     f"Expected ~2m, got {data_rotated.distances}"
   )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Likely bug on CPU MjWarp")
+def test_ray_alignment_yaw_singularity(device):
+  """Test yaw alignment handles 90° pitch singularity correctly.
+
+  With yaw alignment, rays should maintain their pattern regardless of body pitch.
+  At 90° pitch, the body's X-axis is vertical, making yaw extraction ambiguous.
+  The implementation uses Y-axis fallback to produce a valid yaw rotation.
+
+  This test verifies that distances at 90° pitch match the baseline (0° pitch).
+  """
+  xml = """
+    <mujoco>
+      <option gravity="0 0 0"/>
+      <worldbody>
+        <geom name="floor" type="plane" size="10 10 0.1" pos="0 0 0"/>
+        <body name="base" pos="0 0 2">
+          <freejoint name="free_joint"/>
+          <geom name="base_geom" type="sphere" size="0.1" mass="1.0"/>
+        </body>
+      </worldbody>
+    </mujoco>
+  """
+
+  entity_cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(xml))
+
+  # Use grid pattern with diagonal direction - has X component to expose singularity.
+  # Direction [1, 0, -1] points forward and down at 45°.
+  raycast_cfg = RayCastSensorCfg(
+    name="yaw_scan",
+    frame=ObjRef(type="body", name="base", entity="robot"),
+    pattern=GridPatternCfg(size=(0.0, 0.0), resolution=0.1, direction=(1.0, 0.0, -1.0)),
+    ray_alignment="yaw",
+    max_distance=10.0,
+  )
+
+  scene_cfg = SceneCfg(
+    num_envs=1,
+    env_spacing=5.0,
+    entities={"robot": entity_cfg},
+    sensors=(raycast_cfg,),
+  )
+
+  scene = Scene(scene_cfg, device)
+  model = scene.compile()
+  sim_cfg = SimulationCfg(njmax=20)
+  sim = Simulation(num_envs=1, cfg=sim_cfg, model=model, device=device)
+  scene.initialize(sim.mj_model, sim.model, sim.data)
+
+  sensor = scene["yaw_scan"]
+
+  # Baseline: no rotation. Ray at 45° from height 2m hits floor at x=2, z=0.
+  sim.step()
+  baseline_hit_pos = sensor.data.hit_pos_w.clone()
+  # Ray goes diagonally +X and -Z, starting from (0,0,2), should hit floor at (2, 0, 0).
+  assert torch.allclose(
+    baseline_hit_pos[0, 0, 0], torch.tensor(2.0, device=device), atol=0.1
+  ), f"Baseline X hit should be ~2, got {baseline_hit_pos[0, 0, 0]}"
+  assert torch.allclose(
+    baseline_hit_pos[0, 0, 2], torch.tensor(0.0, device=device), atol=0.1
+  ), f"Baseline Z hit should be ~0, got {baseline_hit_pos[0, 0, 2]}"
+
+  # Pitch 90° around Y-axis. Body X-axis now points straight down (singularity).
+  angle = math.pi / 2
+  quat = [math.cos(angle / 2), 0, math.sin(angle / 2), 0]  # w, x, y, z
+  sim.data.qpos[0, 3:7] = torch.tensor(quat, device=device)
+  sim.step()
+
+  singularity_hit_pos = sensor.data.hit_pos_w
+
+  # With yaw alignment, hit position should match baseline regardless of pitch.
+  # The ray should still go diagonally and hit at (2, 0, 0).
+  assert torch.allclose(singularity_hit_pos, baseline_hit_pos, atol=0.1), (
+    f"Yaw alignment failed at 90° pitch singularity.\n"
+    f"Baseline hit_pos: {baseline_hit_pos}\n"
+    f"Singularity hit_pos: {singularity_hit_pos}"
+  )

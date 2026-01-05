@@ -682,16 +682,46 @@ class RayCastSensor(Sensor[RayCastData]):
       raise ValueError(f"Unknown ray_alignment: {self.cfg.ray_alignment}")
 
   def _extract_yaw_rotation(self, rot_mat: torch.Tensor) -> torch.Tensor:
-    """Extract yaw-only rotation matrix (rotation around Z axis)."""
-    # Project X-axis onto XY plane and normalize.
+    """Extract yaw-only rotation matrix (rotation around Z axis).
+
+    Handles the singularity at ±90° pitch by falling back to the Y-axis
+    when the X-axis projection onto the XY plane is too small.
+    """
+    batch_size = rot_mat.shape[0]
+    device = rot_mat.device
+    dtype = rot_mat.dtype
+
+    # Project X-axis onto XY plane.
     x_axis = rot_mat[:, :, 0]  # First column [B, 3]
     x_proj = x_axis.clone()
     x_proj[:, 2] = 0  # Zero out Z component
-    x_norm = x_proj.norm(dim=1, keepdim=True).clamp(min=1e-6)
-    x_proj = x_proj / x_norm
+    x_norm = x_proj.norm(dim=1)  # [B]
+
+    # Check for singularity (X-axis nearly vertical).
+    threshold = 0.1
+    singular = x_norm < threshold  # [B]
+
+    # For singular cases, use Y-axis instead.
+    if singular.any():
+      y_axis = rot_mat[:, :, 1]  # Second column [B, 3]
+      y_proj = y_axis.clone()
+      y_proj[:, 2] = 0
+      y_norm = y_proj.norm(dim=1).clamp(min=1e-6)
+      y_proj = y_proj / y_norm.unsqueeze(-1)
+      # Y-axis points left; rotate -90° around Z to get forward direction.
+      # [y_x, y_y] -> [y_y, -y_x]
+      x_from_y = torch.zeros_like(y_proj)
+      x_from_y[:, 0] = y_proj[:, 1]
+      x_from_y[:, 1] = -y_proj[:, 0]
+      x_proj[singular] = x_from_y[singular]
+      x_norm[singular] = 1.0  # Already normalized
+
+    # Normalize X projection.
+    x_norm = x_norm.clamp(min=1e-6)
+    x_proj = x_proj / x_norm.unsqueeze(-1)
 
     # Build yaw-only rotation matrix.
-    yaw_mat = torch.zeros_like(rot_mat)
+    yaw_mat = torch.zeros((batch_size, 3, 3), device=device, dtype=dtype)
     yaw_mat[:, 0, 0] = x_proj[:, 0]
     yaw_mat[:, 1, 0] = x_proj[:, 1]
     yaw_mat[:, 0, 1] = -x_proj[:, 1]
