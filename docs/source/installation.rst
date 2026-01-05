@@ -92,7 +92,7 @@ install. These options are interchangeable: you can switch at any time.
 
       .. code:: bash
 
-         uv add mjlab "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@55ab24595ea4939ff583f1910e1615361d49d9ad"
+         uv add mjlab "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@1c6b31692eaa5d3134093958d839165245d196a6"
 
       .. note::
 
@@ -104,7 +104,7 @@ install. These options are interchangeable: you can switch at any time.
 
       .. code:: bash
 
-         uv add "mjlab @ git+https://github.com/mujocolab/mjlab" "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@55ab24595ea4939ff583f1910e1615361d49d9ad"
+         uv add "mjlab @ git+https://github.com/mujocolab/mjlab" "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@1c6b31692eaa5d3134093958d839165245d196a6"
 
       .. note::
 
@@ -201,7 +201,7 @@ Install mjlab and dependencies via pip
 
       .. code:: bash
 
-         pip install git+https://github.com/google-deepmind/mujoco_warp@55ab24595ea4939ff583f1910e1615361d49d9ad
+         pip install git+https://github.com/google-deepmind/mujoco_warp@1c6b31692eaa5d3134093958d839165245d196a6
          pip install mjlab
 
    .. tab-item:: Source
@@ -210,7 +210,7 @@ Install mjlab and dependencies via pip
 
       .. code:: bash
 
-         pip install git+https://github.com/google-deepmind/mujoco_warp@55ab24595ea4939ff583f1910e1615361d49d9ad
+         pip install git+https://github.com/google-deepmind/mujoco_warp@1c6b31692eaa5d3134093958d839165245d196a6
          git clone https://github.com/mujocolab/mjlab.git
          cd mjlab
          pip install -e .
