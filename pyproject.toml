@@ -65,9 +65,9 @@ dev = [
   "ipdb>=0.13.13",
   "pre-commit>=4.3.0",
   "pyright>=1.1.407",
-  "pytest>=8.4.2",
-  "ruff>=0.14.7",
-  "ty>=0.0.1a29",
+  "pytest>=v9.0.2",
+  "ruff>=v0.14.10",
+  "ty>=v0.0.9",
 ]
 
 [project.optional-dependencies]
