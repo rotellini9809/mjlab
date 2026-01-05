@@ -166,8 +166,7 @@ import mujoco
 import mujoco_warp as mjwarp
 import torch
 import warp as wp
-from mujoco_warp._src.ray import rays
-from mujoco_warp._src.types import vec6
+from mujoco_warp import rays
 
 from mjlab.entity import Entity
 from mjlab.sensor.builtin_sensor import ObjRef
@@ -177,6 +176,9 @@ from mjlab.utils.lab_api.math import quat_from_matrix
 if TYPE_CHECKING:
   from mjlab.viewer.debug_visualizer import DebugVisualizer
 
+
+# NOTE: Need to define this here because it's not publicly exposed by mujoco_warp.
+vec6 = wp.types.vector(length=6, dtype=float)
 
 # Type aliases for configuration choices.
 RayAlignment = Literal["base", "yaw", "world"]
@@ -463,7 +465,7 @@ class RayCastSensor(Sensor[RayCastData]):
     self._ray_geomid: wp.array | None = None
     self._ray_normal: wp.array | None = None
     self._ray_bodyexclude: wp.array | None = None
-    self._geomgroup: vec6 = vec6(-1, -1, -1, -1, -1, -1)
+    self._geomgroup = vec6(-1, -1, -1, -1, -1, -1)
 
     self._distances: torch.Tensor | None = None
     self._normals_w: torch.Tensor | None = None
@@ -669,7 +671,7 @@ class RayCastSensor(Sensor[RayCastData]):
       d=self._data.struct,  # type: ignore[attr-defined]
       pnt=self._ray_pnt,
       vec=self._ray_vec,
-      geomgroup=self._geomgroup,
+      geomgroup=self._geomgroup,  # type: ignore[arg-type]
       flg_static=True,
       bodyexclude=self._ray_bodyexclude,
       dist=self._ray_dist,
