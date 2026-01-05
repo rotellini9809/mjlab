@@ -113,7 +113,7 @@ def create_env_cfg(
         border_width=0.25,
       ),
     },
-    add_lights=False,
+    add_lights=True,
   )
 
   terrain_cfg = TerrainImporterCfg(
