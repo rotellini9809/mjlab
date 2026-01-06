@@ -69,15 +69,33 @@ class ObservationTermCfg(ManagerTermBaseCfg):
 class ObservationGroupCfg:
   """Configuration for an observation group.
 
-  The `terms` field contains a dictionary mapping term names to their configurations.
+  An observation group bundles multiple observation terms together. Groups are
+  typically used to separate observations for different purposes (e.g., "policy"
+  for the actor, "critic" for the value function).
   """
 
   terms: dict[str, ObservationTermCfg]
+  """Dictionary mapping term names to their configurations."""
+
   concatenate_terms: bool = True
+  """Whether to concatenate all terms into a single tensor. If False, returns
+  a dict mapping term names to their individual tensors."""
+
   concatenate_dim: int = -1
+  """Dimension along which to concatenate terms. Default -1 (last dimension)."""
+
   enable_corruption: bool = False
+  """Whether to apply noise corruption to observations. Set to True during
+  training for domain randomization, False during evaluation."""
+
   history_length: int | None = None
+  """Group-level history length override. If set, applies to all terms in
+  this group. If None, each term uses its own ``history_length`` setting."""
+
   flatten_history_dim: bool = True
+  """Whether to flatten history into the observation dimension. If True,
+  observations have shape ``(num_envs, obs_dim * history_length)``. If False,
+  shape is ``(num_envs, history_length, obs_dim)``."""
 
 
 class ObservationManager(ManagerBase):
