@@ -268,7 +268,7 @@ class ManagerBasedRlEnv:
 
     # Command manager (must be before observation manager since observations
     # may reference commands).
-    if self.cfg.commands:
+    if len(self.cfg.commands) > 0:
       self.command_manager = CommandManager(self.cfg.commands, self)
     else:
       self.command_manager = NullCommandManager()
@@ -288,7 +288,7 @@ class ManagerBasedRlEnv:
       self.cfg.rewards, self, scale_by_dt=self.cfg.scale_rewards_by_dt
     )
     print_info(f"[INFO] {self.reward_manager}")
-    if self.cfg.curriculum:
+    if len(self.cfg.curriculum) > 0:
       self.curriculum_manager = CurriculumManager(self.cfg.curriculum, self)
     else:
       self.curriculum_manager = NullCurriculumManager()
