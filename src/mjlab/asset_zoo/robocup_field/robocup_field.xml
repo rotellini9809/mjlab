@@ -9,8 +9,7 @@
       name="robocup_field_mat"
       texture="robocup_field_tex"
       texrepeat="1 1"
-      texuniform="false"
-      reflectance="0.1"
+      texuniform="true"
     />
   </asset>
 

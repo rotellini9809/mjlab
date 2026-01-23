@@ -2,12 +2,16 @@ from mjlab.asset_zoo.robots import (
     T1_23_ACTION_SCALE,
     get_t1_23_robot_cfg,
 )
+from mjlab.asset_zoo.robocup_field import get_robocup_field_cfg
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp.actions import JointPositionActionCfg
+from mjlab.envs.mdp.events import reset_scene_to_default
+from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
+from mjlab.viewer import ViewerConfig
 
 
 def booster_t1_23_flat_tracking_env_cfg(
@@ -124,5 +128,47 @@ def booster_t1_23_flat_tracking_env_cfg(
         motion_cmd.pose_range = {}
         motion_cmd.velocity_range = {}
         motion_cmd.sampling_mode = "start"
+
+    return cfg
+
+
+def booster_t1_23_portiere_env_cfg(
+    play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+    """Create Booster T1 RoboCup portiere environment configuration."""
+    cfg = make_tracking_env_cfg()
+
+    cfg.scene.terrain = None
+    cfg.scene.entities = {
+        "robot": get_t1_23_robot_cfg(),
+        "soccer_field": get_robocup_field_cfg(),
+    }
+
+    cfg.commands = {}
+    cfg.observations = {}
+    cfg.rewards = {}
+    cfg.terminations = {}
+    cfg.curriculum = {}
+    cfg.events = {
+        "reset_scene_to_default": EventTermCfg(
+            mode="reset",
+            func=reset_scene_to_default,
+        ),
+    }
+
+    cfg.viewer = ViewerConfig(
+        origin_type=ViewerConfig.OriginType.WORLD,
+        lookat=(0.0, 0.0, 0.0),
+        distance=12.0,
+        elevation=-60.0,
+        azimuth=90.0,
+    )
+
+    joint_pos_action = cfg.actions["joint_pos"]
+    assert isinstance(joint_pos_action, JointPositionActionCfg)
+    joint_pos_action.scale = T1_23_ACTION_SCALE
+
+    if play:
+        cfg.episode_length_s = int(1e9)
 
     return cfg
