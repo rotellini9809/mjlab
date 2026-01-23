@@ -34,8 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-editable --no-dev
 
 ENV MUJOCO_GL=egl
-ENV WANDB_ENTITY=fratelligpt-sapienza-universit-di-roma
-ENV WANDB_API_KEY=2afebd919c3c3e82e91783cae9df8ee5de971b6f
+
 
 EXPOSE 8080
 
