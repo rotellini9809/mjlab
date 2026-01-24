@@ -18,3 +18,4 @@ benchmark_results/
 **/_build/*
 **/generated/*
 
+*.patch
