@@ -1,0 +1,84 @@
+<mujoco model="ball">
+  <compiler angle="radian"/>
+
+  <!--
+    RoboCup ball (simple + training-friendly)
+
+    MAIN PHYSICS KNOBS you will likely tune later:
+
+    1) SIZE
+       - For a sphere, geom size is the RADIUS in meters.
+         size="0.11"  -> diameter 0.22 m
+       - Changing radius changes rolling/contact behavior.
+
+    2) MASS / DENSITY
+       - Use ONE of:
+         a) density="..."  (MuJoCo computes mass = density * volume)
+         b) mass="..."     (explicit mass in kg; overrides density)
+       - A typical soccer ball mass is about 0.43 kg.
+       - If the ball feels too light (flies/jitters), increase mass (or density) a bit.
+
+    3) FRICTION (very important for roll realism)
+       friction="slide torsion rolling"
+       - slide: tangential friction (how easily it slips)
+       - torsion: resistance to spinning at the contact patch (reduces endless spin)
+       - rolling: rolling resistance (helps the ball settle and stop)
+       Tuning hints:
+       - Slips too much -> increase slide (e.g., 1.0)
+       - Spins forever  -> increase torsion and/or rolling slightly
+       - Stops too fast -> decrease rolling
+
+    4) CONTACT COMPLIANCE / BOUNCINESS
+       - solref="timeconst dampratio"
+         * larger timeconst => softer contact
+         * dampratio controls damping (higher => less bouncy)
+       - solimp controls how forces ramp with penetration.
+       Tuning hints:
+       - Too bouncy -> increase dampratio or soften contact (timeconst up)
+       - Too stiff/jittery -> soften contact (timeconst up) and/or increase mass
+
+    5) VISUALS vs PHYSICS
+       - Later you can add a visual-only textured mesh without changing physics:
+         keep this sphere for collision; add a second visual geom with contype=0, conaffinity=0.
+
+    6) SOLVER / TIMESTEP (global, not in this file)
+       If you see jitter at contacts:
+       - smaller timestep
+       - more solver iterations
+       - slightly higher mass
+       - slightly softer contact (increase solref timeconst)
+  -->
+
+  <asset>
+    <texture name="ball_tex" type="2d" file="texture.png"/>
+    <material name="ball_mat"
+              texture="ball_tex"
+              texrepeat="1 1"
+              specular="0"
+              shininess="0"
+              reflectance="0"/>
+  </asset>
+
+  <worldbody>
+    <!-- Soccer ball as a free body -->
+    <body name="ball" pos="0 0 0.11">
+      <!-- Free joint = 6DOF (3 pos + 3 rot) -->
+      <freejoint name="ball_free"/>
+
+      <!-- Choose ONE of these mass approaches:
+           - density="..." for mass = density * volume
+           - mass="0.43"   for explicit kg (typical soccer ball ~0.43 kg) -->
+
+      <!-- Sphere: size = radius -->
+      <geom name="ball_geom"
+            type="sphere"
+            size="0.11"
+            density="300"
+            friction="0.8 0.005 0.0001"
+            solref="0.02 1"
+            solimp="0.9 0.95 0.001"
+            material="ball_mat"
+            rgba="1 1 1 1"/>
+    </body>
+  </worldbody>
+</mujoco>

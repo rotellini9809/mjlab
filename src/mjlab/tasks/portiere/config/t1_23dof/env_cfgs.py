@@ -2,7 +2,9 @@ from mjlab.asset_zoo.robots import (
     T1_23_ACTION_SCALE,
     get_t1_23_robot_cfg,
 )
-from mjlab.asset_zoo.robocup_field import get_robocup_field_cfg
+from mjlab.asset_zoo.robocup_assets.ball import get_robocup_ball_cfg
+from mjlab.asset_zoo.robocup_assets.field import get_robocup_field_cfg
+from mjlab.asset_zoo.robocup_assets.goalpost import get_robocup_goalpost_cfg
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp.actions import JointPositionActionCfg
 from mjlab.envs.mdp.events import reset_scene_to_default
@@ -138,10 +140,19 @@ def booster_t1_23_portiere_env_cfg(
     """Create Booster T1 RoboCup portiere environment configuration."""
     cfg = make_tracking_env_cfg()
 
+    ball_cfg = get_robocup_ball_cfg()
+    ball_cfg.init_state.pos = (0.0, 0.0, 5.0)
+    goal_left_cfg = get_robocup_goalpost_cfg()
+    goal_left_cfg.init_state.pos = (8.0, 0.0, 0.0)
+    goal_right_cfg = get_robocup_goalpost_cfg()
+    goal_right_cfg.init_state.pos = (-8.0, 0.0, 0.0)
     cfg.scene.terrain = None
     cfg.scene.entities = {
         "robot": get_t1_23_robot_cfg(),
         "soccer_field": get_robocup_field_cfg(),
+        "soccer_ball": ball_cfg,
+        "goalpost_left": goal_left_cfg,
+        "goalpost_right": goal_right_cfg,
     }
 
     cfg.commands = {}

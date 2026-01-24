@@ -1,0 +1,27 @@
+<mujoco model="goalpost">
+  <compiler angle="radian"/>
+
+  <asset>
+    <!-- Onshape-exported OBJ (MTL is auto-loaded) -->
+    <mesh name="goalpost_mesh" file="goalpost.obj" scale="-1 1 1"/>
+    <material
+      name="goalpost_mat"
+      rgba="0.9 0.9 0.9 1"
+      specular="0"
+      shininess="0"
+    />
+  </asset>
+
+  <worldbody>
+    <!-- Goal: VISUAL ONLY -->
+    <body name="goalpost" pos="0 0 0.04">
+      <geom
+        name="goalpost_geom"
+        type="mesh"
+        mesh="goalpost_mesh"
+        material="goalpost_mat"
+        contype="0"
+        conaffinity="0"/>
+    </body>
+  </worldbody>
+</mujoco>

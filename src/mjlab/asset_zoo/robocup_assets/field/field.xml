@@ -1,0 +1,33 @@
+<mujoco model="field">
+  <asset>
+    <texture
+      name="field_tex"
+      type="2d"
+      file="campo_robo_cup-16x11.png"
+    />
+    <material
+      name="field_mat"
+      texture="field_tex"
+      texrepeat="1 1"
+      specular="0"
+      shininess="0"
+      reflectance="0"
+      emission="0.2"
+    />
+  </asset>
+
+  <worldbody>
+    <body name="field">
+      <geom
+        name="ground"
+        type="plane"
+        size="8 5.5 0.05"
+        pos="0 0 0"
+        material="field_mat"
+        friction="1.0 0.005 0.0001"
+        condim="3"
+        rgba="1 1 1 1"
+      />
+    </body>
+  </worldbody>
+</mujoco>
