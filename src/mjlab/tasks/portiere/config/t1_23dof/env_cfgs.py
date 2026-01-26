@@ -143,9 +143,10 @@ def booster_t1_23_portiere_env_cfg(
     ball_cfg = get_robocup_ball_cfg()
     ball_cfg.init_state.pos = (0.0, 0.0, 5.0)
     goal_left_cfg = get_robocup_goalpost_cfg()
-    goal_left_cfg.init_state.pos = (8.0, 0.0, 0.0)
+    goal_left_cfg.init_state.pos = (7.3, 0.0, 0.0)
+    goal_left_cfg.init_state.rot = (0.0, 0.0, 0.0, 1.0)
     goal_right_cfg = get_robocup_goalpost_cfg()
-    goal_right_cfg.init_state.pos = (-8.0, 0.0, 0.0)
+    goal_right_cfg.init_state.pos = (-7.3, 0.0, 0.0)    
     cfg.scene.terrain = None
     cfg.scene.entities = {
         "robot": get_t1_23_robot_cfg(),

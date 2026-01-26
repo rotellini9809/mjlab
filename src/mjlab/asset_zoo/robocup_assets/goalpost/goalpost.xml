@@ -3,25 +3,58 @@
 
   <asset>
     <!-- Onshape-exported OBJ (MTL is auto-loaded) -->
-    <mesh name="goalpost_mesh" file="goalpost.obj" scale="-1 1 1"/>
+    <mesh name="goalpost_mesh" file="goalpost.obj" scale="1 1 1"/>
     <material
       name="goalpost_mat"
       rgba="0.9 0.9 0.9 1"
       specular="0"
-      shininess="0"
-    />
+      shininess="0"/>
   </asset>
 
   <worldbody>
-    <!-- Goal: VISUAL ONLY -->
-    <body name="goalpost" pos="0 0 0.04">
+    <body
+      name="goalpost"
+      pos="0 0 0.04"
+      euler="0 0 1.57079632679">
+
+      <!-- ================= VISUAL (no collision) ================= -->
       <geom
-        name="goalpost_geom"
+        name="goalpost_visual"
         type="mesh"
         mesh="goalpost_mesh"
         material="goalpost_mat"
+        pos="0 0 0.02"
         contype="0"
         conaffinity="0"/>
+
+      <!-- ================= COLLISION ================= -->
+
+      <!-- Palo sinistro -->
+      <geom
+        name="goal_left_post_col"
+        type="cylinder"
+        size="0.04 0.94"
+        pos="-1.34 -0.34 0.92"
+        rgba="1 0 0 0.2"/>
+
+      <!-- Palo destro -->
+      <geom
+        name="goal_right_post_col"
+        type="cylinder"
+        size="0.04 0.94"
+        pos="1.34 -0.34 0.92"
+        rgba="0 1 0 0.2"/>
+
+      <!-- Traversa -->
+      <geom
+        name="goal_crossbar_col"
+        type="cylinder"
+        size="0.04 1.3"
+        pos="0 -0.34 1.82"
+        euler="0 1.57079632679 0"
+        rgba="0 0 1 0.2"/>
+
+
     </body>
   </worldbody>
 </mujoco>
