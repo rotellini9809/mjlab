@@ -50,14 +50,18 @@
   -->
 
   <asset>
-    <texture name="ball_tex" type="2d" file="texture.png"/>
-    <material name="ball_mat"
-              texture="ball_tex"
-              texrepeat="1 1"
+    <mesh name="ball_visual_mesh" file="visual_ball.obj" scale="0.11457 0.11457 0.11457"/>
+    <texture name="ball_visual_tex" type="2d" file="texture_visual.png"/>
+    <material name="ball_visual_mat"
+              texture="ball_visual_tex"
+              texuniform="true"
               specular="0"
               shininess="0"
               reflectance="0"/>
+    <!-- Transparent collision material (no texture). -->
+    <material name="ball_collision_mat" rgba="1 1 1 0" specular="0" shininess="0"/>
   </asset>
+
 
   <worldbody>
     <!-- Soccer ball as a free body -->
@@ -69,16 +73,26 @@
            - density="..." for mass = density * volume
            - mass="0.43"   for explicit kg (typical soccer ball ~0.43 kg) -->
 
-      <!-- Sphere: size = radius -->
-      <geom name="ball_geom"
+      <!-- Collision sphere (primitive, transparent, no texture). -->
+      <geom name="ball_collision"
             type="sphere"
             size="0.11"
             density="300"
             friction="0.8 0.005 0.0001"
             solref="0.02 1"
             solimp="0.9 0.95 0.001"
-            material="ball_mat"
-            rgba="1 1 1 1"/>
+            material="ball_collision_mat"
+            />
+
+      <!-- Visual mesh (no collision, textured). -->
+      <geom name="ball_visual"
+            type="mesh"
+            mesh="ball_visual_mesh"
+            material="ball_visual_mat"
+            mass="0"
+            contype="0"
+            conaffinity="0"
+            />
     </body>
   </worldbody>
 </mujoco>
