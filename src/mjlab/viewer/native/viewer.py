@@ -239,6 +239,7 @@ class NativeMujocoViewer(BaseViewer):
   def _safe_key_callback(self, key: int) -> None:
     """Runs on MuJoCo viewer thread; must not touch env/sim directly."""
     from mjlab.viewer.native.keys import (
+      KEY_C,
       KEY_COMMA,
       KEY_ENTER,
       KEY_EQUAL,
@@ -263,6 +264,8 @@ class NativeMujocoViewer(BaseViewer):
       self.request_action("NEXT_ENV")
     elif key == KEY_P:
       self.request_action("TOGGLE_PLOTS", "TOGGLE_PLOTS")
+    elif key == KEY_C:
+      self.request_action("CAMERA_FOLLOW", "CAMERA_FOLLOW")
     elif key == KEY_R:
       self.request_action("TOGGLE_DEBUG_VIS", "TOGGLE_DEBUG_VIS")
 
@@ -298,6 +301,15 @@ class NativeMujocoViewer(BaseViewer):
             f"[INFO] Debug visualization {'shown' if self._show_debug_vis else 'hidden'}",
             VerbosityLevel.INFO,
           )
+          return True
+        elif payload == "CAMERA_FOLLOW":
+          if self._restore_camera_tracking():
+            self.log("[INFO] Camera tracking restored", VerbosityLevel.INFO)
+          else:
+            self.log(
+              "[WARN] Camera tracking unavailable for current viewer config",
+              VerbosityLevel.INFO,
+            )
           return True
     return False
 
@@ -346,6 +358,32 @@ class NativeMujocoViewer(BaseViewer):
       self.viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FREE.value
       self.viewer.cam.fixedcamid = -1
       self.viewer.cam.trackbodyid = -1
+
+  def _restore_camera_tracking(self) -> bool:
+    """Reapply camera tracking without resetting view parameters."""
+    if not self.viewer or not self.cfg or not hasattr(self.cfg, "origin_type"):
+      return False
+
+    if self.cfg.origin_type == self.cfg.OriginType.ASSET_ROOT:
+      if not self.cfg.entity_name:
+        return False
+      robot: Entity = self.env.unwrapped.scene[self.cfg.entity_name]
+      body_id = robot.indexing.root_body_id
+    elif self.cfg.origin_type == self.cfg.OriginType.ASSET_BODY:
+      if not self.cfg.entity_name or not self.cfg.body_name:
+        return False
+      robot = self.env.unwrapped.scene[self.cfg.entity_name]
+      if self.cfg.body_name not in robot.body_names:
+        return False
+      body_id_list, _ = robot.find_bodies(self.cfg.body_name)
+      body_id = robot.indexing.bodies[body_id_list[0]].id
+    else:
+      return False
+
+    self.viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING.value
+    self.viewer.cam.trackbodyid = body_id
+    self.viewer.cam.fixedcamid = -1
+    return True
 
   # Reward plotting helpers.
 
