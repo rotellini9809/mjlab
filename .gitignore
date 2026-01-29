@@ -14,9 +14,10 @@ artifacts/
 render_robots.py
 benchmark_results/
 
+motion.mp4
+
 # Documentation outputs.
 **/_build/*
 **/generated/*
 
 *.patch
-motion.mp4
