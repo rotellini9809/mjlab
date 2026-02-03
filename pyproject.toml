@@ -59,6 +59,11 @@ play = "mjlab.scripts.play:main"
 demo = "mjlab.scripts.demo:main"
 list_envs = "mjlab.scripts.list_envs:main"
 viz-nan = "mjlab.scripts.nan_viz:main"
+collect-rollouts = "mjlab.scripts.collect_rollouts:main"
+train-motor-stage1 = "mjlab.scripts.train_motor_controller_stage1:main"
+eval-motor-stage1 = "mjlab.scripts.eval_motor_controller_stage1:main"
+play-motor-stage1 = "mjlab.scripts.play_motor_controller_stage1:main"
+view-portiere = "mjlab.scripts.view_portiere:main"
 
 [dependency-groups]
 dev = [

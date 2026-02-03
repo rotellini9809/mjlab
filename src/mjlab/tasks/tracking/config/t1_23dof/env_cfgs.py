@@ -80,26 +80,6 @@ def booster_t1_23_flat_tracking_env_cfg(
     # Viewer: segui il tronco
     cfg.viewer.body_name = "Trunk"
 
-    # ------------------------------------------------------------------
-    # Booster T1_23: rimuovi osservazioni che richiedono IMU non presenti
-    # ------------------------------------------------------------------
-    # Il tracking env di base aggiunge "base_lin_vel" e "base_ang_vel"
-    # che usano i sensori "robot/imu_lin_vel" e "robot/imu_ang_vel".
-    # Nel nostro T1_23 ci sono solo "robot/orientation" e "robot/angular-velocity",
-    # quindi togliamo questi termini sia per policy che per critic.
-    for group_name in ("policy", "critic"):
-        obs_group = cfg.observations[group_name]
-        new_terms = {
-            name: term
-            for name, term in obs_group.terms.items()
-            if name not in ("base_lin_vel", "base_ang_vel")
-        }
-        cfg.observations[group_name] = ObservationGroupCfg(
-            terms=new_terms,
-            concatenate_terms=obs_group.concatenate_terms,
-            enable_corruption=obs_group.enable_corruption,
-        )
-
     # No state estimation: togli solo motion_anchor_pos_b dalla policy
     if not has_state_estimation:
         obs_group = cfg.observations["policy"]

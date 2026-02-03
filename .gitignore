@@ -21,3 +21,6 @@ motion.mp4
 **/generated/*
 
 *.patch
+
+
+data/motor_controller_rollouts/
