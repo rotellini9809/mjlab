@@ -6,7 +6,8 @@ from typing import Literal
 
 import numpy as np
 
-_REQUIRED_KEYS = ("obs", "a_clean", "done")
+_REQUIRED_KEYS = ("a_clean", "done")
+_OBS_KEYS = ("obs_student", "obs")
 
 
 @dataclass(frozen=True)
@@ -185,13 +186,32 @@ class RolloutDataset:
       if missing:
         raise ValueError(f"Shard {path} missing required keys: {missing}")
 
-      obs = np.asarray(data["obs"], dtype=np.float32)
+      obs_key = "obs_student" if "obs_student" in data.files else None
+      if obs_key is None and "obs" in data.files:
+        obs_key = "obs"
+      if obs_key is None:
+        raise ValueError(
+          f"Shard {path} missing observation key: expected one of {_OBS_KEYS}"
+        )
+
+      obs = np.asarray(data[obs_key], dtype=np.float32)
       a_clean = np.asarray(data["a_clean"], dtype=np.float32)
       done = np.asarray(data["done"], dtype=np.bool_)
 
       extras = {}
+      ignore_keys = {
+        obs_key,
+        "obs_teacher",
+        "obs_student_meta_json",
+        "obs_student_anchors_stripped",
+        "obs_student_features_stripped",
+        "obs_student_teacher_dim",
+        "obs_student_dim",
+      }
+      if obs_key != "obs":
+        ignore_keys.add("obs")
       for key in data.files:
-        if key in _REQUIRED_KEYS:
+        if key in _REQUIRED_KEYS or key in ignore_keys:
           continue
         value = np.asarray(data[key])
         if value.ndim > 0 and value.shape[0] == obs.shape[0]:

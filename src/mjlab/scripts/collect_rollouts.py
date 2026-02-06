@@ -1,4 +1,4 @@
-"""Collect rollouts from a trained tracking policy and save dataset shards."""
+"""Collect rollouts from a trained policy and save dataset shards."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from tqdm import tqdm
 from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
+from mjlab.motor_controller_stage1.obs_views import build_student_obs
 from mjlab.rl import RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
@@ -41,6 +42,8 @@ class CollectRolloutsConfig:
   """Save env_id per row (recommended for num_envs > 1)."""
   save_step_in_episode: bool = False
   """Optionally save step index within each episode."""
+  save_teacher_obs: bool = False
+  """Optionally save full teacher observations as obs_teacher."""
 
 
 class ShardWriter:
@@ -154,6 +157,36 @@ def _resolve_checkpoint_path(
   return resume_path, was_cached
 
 
+def _removed_dim_from_meta(obs_meta: dict[str, object]) -> int:
+  removed_present_raw = obs_meta.get("removed_terms_present", [])
+  if not isinstance(removed_present_raw, list):
+    return 0
+  removed_present = {str(term) for term in removed_present_raw}
+  if not removed_present:
+    return 0
+
+  slice_map = obs_meta.get("slice_map")
+  if not isinstance(slice_map, list):
+    return 0
+
+  removed_dim = 0
+  for entry in slice_map:
+    if not isinstance(entry, dict):
+      continue
+    name = str(entry.get("name", ""))
+    if name not in removed_present:
+      continue
+    size = entry.get("size")
+    if size is not None:
+      removed_dim += int(size)
+      continue
+    start = entry.get("start")
+    end = entry.get("end")
+    if start is not None and end is not None:
+      removed_dim += int(end) - int(start)
+  return removed_dim
+
+
 def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
   configure_torch_backends()
 
@@ -203,17 +236,62 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
   if "policy" not in obs:
     raise RuntimeError("Policy observation group not found in observations.")
 
-  motion_term = env.unwrapped.command_manager.get_term("motion")
-  if not isinstance(motion_term, MotionCommand):
-    raise RuntimeError("Motion command not available; expected tracking task.")
-  prev_time_steps = motion_term.time_steps.clone()
+  motion_term = None
+  prev_time_steps = None
+  if is_tracking_task:
+    maybe_motion_term = env.unwrapped.command_manager.get_term("motion")
+    if isinstance(maybe_motion_term, MotionCommand):
+      motion_term = maybe_motion_term
+      prev_time_steps = motion_term.time_steps.clone()
 
   policy_obs = obs["policy"]
-  if isinstance(policy_obs, dict):
-    raise RuntimeError("Policy observations are not concatenated; cannot log.")
-
-  obs_dim = policy_obs.shape[-1]
+  obs_manager = env.unwrapped.observation_manager
+  obs_meta = {
+    "term_order": obs_manager.active_terms.get("policy", []),
+    "term_dims": obs_manager.group_obs_term_dim.get("policy", []),
+    "act_dim": env.num_actions,
+  }
+  obs_student, obs_student_meta = build_student_obs(policy_obs, obs_meta)
+  teacher_dim = int(obs_student_meta.get("teacher_obs_dim", obs_student.shape[-1]))
+  obs_dim = int(obs_student_meta.get("student_obs_dim", obs_student.shape[-1]))
+  anchors_stripped = bool(obs_student_meta.get("anchors_stripped", False))
+  features_stripped = bool(obs_student_meta.get("features_stripped", anchors_stripped))
+  removed_terms_present_raw = obs_student_meta.get("removed_terms_present", [])
+  removed_terms_present = (
+    [str(term) for term in removed_terms_present_raw]
+    if isinstance(removed_terms_present_raw, list)
+    else []
+  )
+  kept_terms_raw = obs_student_meta.get("kept_terms", [])
+  kept_terms = (
+    [str(term) for term in kept_terms_raw] if isinstance(kept_terms_raw, list) else []
+  )
+  removed_dim = _removed_dim_from_meta(obs_student_meta)
   act_dim = env.num_actions
+  anchors_present_in_student = any(
+    term in kept_terms for term in ("motion_anchor_pos_b", "motion_anchor_ori_b")
+  )
+
+  print(
+    "[INFO] Student obs dims: "
+    f"teacher_dim={teacher_dim}, student_dim={obs_dim}, "
+    f"anchors_stripped={anchors_stripped}, features_stripped={features_stripped}"
+  )
+  print(
+    "[INFO] Student obs terms: "
+    f"removed={removed_terms_present if removed_terms_present else 'none'}, "
+    f"anchors_present_in_student={anchors_present_in_student}"
+  )
+  if features_stripped:
+    if removed_dim > 0:
+      assert obs_dim == teacher_dim - removed_dim, (
+        "features_stripped=True but student_dim mismatch: "
+        f"teacher_dim={teacher_dim}, removed_dim={removed_dim}, student_dim={obs_dim}"
+      )
+    assert not anchors_present_in_student, (
+      "Anchor terms are still present in student observation view: "
+      f"kept_terms={kept_terms}"
+    )
 
   num_envs = env.num_envs
   episode_ids = np.zeros(num_envs, dtype=np.int64)
@@ -257,23 +335,51 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
       actions = a_clean
 
     obs_next, rewards, dones, _ = env.step(actions)
-    current_time_steps = motion_term.time_steps
-    wrap_mask = current_time_steps < prev_time_steps
+    if motion_term is not None and prev_time_steps is not None:
+      current_time_steps = motion_term.time_steps
+      wrap_mask = current_time_steps < prev_time_steps
+    else:
+      wrap_mask = torch.zeros_like(dones, dtype=torch.bool)
     done_mask = dones.bool() | wrap_mask
 
     policy_obs = obs["policy"]
-    if isinstance(policy_obs, dict):
-      raise RuntimeError("Policy observations are not concatenated; cannot log.")
-
-    obs_np = policy_obs.detach().cpu().numpy()
+    obs_student, _ = build_student_obs(policy_obs, obs_meta)
+    if torch.is_tensor(obs_student):
+      obs_student_np = obs_student.detach().cpu().numpy()
+    else:
+      obs_student_np = np.asarray(obs_student)
     act_np = a_clean.detach().cpu().numpy()
     done_np = done_mask.detach().cpu().numpy().astype(np.bool_)
 
+    meta_json = json.dumps(obs_student_meta)
+    meta_json_arr = np.full(
+      (obs_student_np.shape[0],), meta_json, dtype=object
+    )
+    anchors_stripped_arr = np.full(
+      (obs_student_np.shape[0],), anchors_stripped, dtype=np.bool_
+    )
+    features_stripped_arr = np.full(
+      (obs_student_np.shape[0],), features_stripped, dtype=np.bool_
+    )
+    teacher_dim_arr = np.full(
+      (obs_student_np.shape[0],), teacher_dim, dtype=np.int64
+    )
+    student_dim_arr = np.full(
+      (obs_student_np.shape[0],), obs_dim, dtype=np.int64
+    )
+
     data: dict[str, np.ndarray] = {
-      "obs": obs_np,
+      "obs_student": obs_student_np,
+      "obs_student_meta_json": meta_json_arr,
+      "obs_student_anchors_stripped": anchors_stripped_arr,
+      "obs_student_features_stripped": features_stripped_arr,
+      "obs_student_teacher_dim": teacher_dim_arr,
+      "obs_student_dim": student_dim_arr,
       "a_clean": act_np,
       "done": done_np,
     }
+    if cfg.save_teacher_obs:
+      data["obs_teacher"] = policy_obs.detach().cpu().numpy()
     if cfg.save_reward:
       data["reward"] = rewards.detach().cpu().numpy()
     if cfg.save_episode_id:
@@ -285,7 +391,7 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
 
     writer.append(data)
 
-    total_steps += obs_np.shape[0]
+    total_steps += obs_student_np.shape[0]
     total_episodes += int(done_mask.sum().item())
     if done_mask.any():
       episode_ids[done_np] += 1
@@ -293,17 +399,19 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
       step_in_episode += 1
       step_in_episode[done_np] = 0
 
-    wrap_ids = torch.where(wrap_mask & ~dones.bool())[0]
-    if wrap_ids.numel() > 0:
-      reset_obs, _ = env.unwrapped.reset(env_ids=wrap_ids)
-      for key, value in reset_obs.items():
-        obs_next[key][wrap_ids] = value[wrap_ids]
+    if motion_term is not None and prev_time_steps is not None:
+      wrap_ids = torch.where(wrap_mask & ~dones.bool())[0]
+      if wrap_ids.numel() > 0:
+        reset_obs, _ = env.unwrapped.reset(env_ids=wrap_ids)
+        for key, value in reset_obs.items():
+          obs_next[key][wrap_ids] = value[wrap_ids]
 
-    pbar.update(obs_np.shape[0])
+    pbar.update(obs_student_np.shape[0])
     pbar.set_postfix(episodes=total_episodes)
 
     obs = obs_next
-    prev_time_steps = motion_term.time_steps.clone()
+    if motion_term is not None and prev_time_steps is not None:
+      prev_time_steps = motion_term.time_steps.clone()
 
     if stop_on_steps and cfg.num_steps is not None:
       if total_steps >= cfg.num_steps:
@@ -325,8 +433,10 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
     "num_steps": cfg.num_steps,
     "shard_count": writer.shard_count,
     "obs_dim": obs_dim,
+    "teacher_obs_dim": teacher_dim,
     "act_dim": act_dim,
     "keys": list(data.keys()) if "data" in locals() else [],
+    "obs_student_view": obs_student_meta,
   }
   (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 

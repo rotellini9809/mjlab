@@ -14,6 +14,7 @@ import tyro
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.motor_controller_stage1.model import LatentModelConfig, NPMPLatentMotorPrimitive
+from mjlab.motor_controller_stage1.obs_views import build_student_obs
 from mjlab.motor_controller_stage1.trainer import Normalizer
 from mjlab.rl import RslRlVecEnvWrapper
 from mjlab.tasks.registry import load_env_cfg, load_rl_cfg
@@ -146,11 +147,17 @@ class PriorPolicy:
     num_envs: int,
     device: str,
     env: Any | None = None,
+    obs_meta: dict[str, object] | None = None,
+    target_obs_dim: int | None = None,
+    pad_missing: bool = False,
   ) -> None:
     self.model = model
     self.normalizer = normalizer
     self.device = device
     self.env = env
+    self.obs_meta = obs_meta
+    self.target_obs_dim = target_obs_dim
+    self.pad_missing = pad_missing
     self.z_prev = torch.zeros(num_envs, model.cfg.z_dim, device=device)
     self.obs_mean = torch.from_numpy(normalizer.obs_mean).to(device)
     self.obs_std = torch.from_numpy(normalizer.obs_std).to(device)
@@ -167,6 +174,13 @@ class PriorPolicy:
 
   def __call__(self, obs: Any) -> torch.Tensor:
     obs_policy = _extract_policy_tensor(obs)
+    obs_student, _ = build_student_obs(obs_policy, self.obs_meta)
+    if self.pad_missing and self.target_obs_dim is not None:
+      if obs_student.shape[-1] < self.target_obs_dim:
+        pad = self.target_obs_dim - obs_student.shape[-1]
+        pad_vals = self.obs_mean[-pad:].expand(obs_student.shape[0], -1)
+        obs_student = torch.cat([obs_student, pad_vals], dim=-1)
+    obs_policy = obs_student
     obs_norm = (obs_policy - self.obs_mean) / self.obs_std
     prior_h = self.model.prior(self.z_prev)
     mu_p, logvar_p = torch.chunk(prior_h, 2, dim=-1)
@@ -310,13 +324,48 @@ def main() -> None:
   env = ManagerBasedRlEnv(cfg=env_cfg, device=device)
   env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
 
-  policy = PriorPolicy(model, normalizer, cfg.num_envs, device, env=env)
+  obs_manager = env.unwrapped.observation_manager
+  obs_meta = {
+    "term_order": obs_manager.active_terms.get("policy", []),
+    "term_dims": obs_manager.group_obs_term_dim.get("policy", []),
+    "act_dim": env.num_actions,
+  }
+  obs = env.get_observations()
+  obs_policy = _extract_policy_tensor(obs)
+  obs_student, _ = build_student_obs(obs_policy, obs_meta)
+  student_dim = int(obs_student.shape[-1])
+  target_dim = int(obs_dim)
+  pad_missing = False
+  if student_dim != target_dim:
+    if student_dim < target_dim:
+      pad_missing = True
+      print(
+        "[WARN] Student obs dim smaller than model; "
+        f"padding {target_dim - student_dim} dims with mean values."
+      )
+    else:
+      raise RuntimeError(
+        f"Student obs dim mismatch: env={student_dim} vs model={target_dim}. "
+        "Set MJLAB_MOTOR_CONTROLLER_TASK_ID to a compatible task."
+      )
+
+  policy = PriorPolicy(
+    model,
+    normalizer,
+    cfg.num_envs,
+    device,
+    env=env,
+    obs_meta=obs_meta,
+    target_obs_dim=target_dim,
+    pad_missing=pad_missing,
+  )
 
   obs = env.get_observations()
   obs_policy = _extract_policy_tensor(obs)
-  if obs_policy.shape[-1] != int(obs_dim):
+  obs_student, _ = build_student_obs(obs_policy, obs_meta)
+  if obs_student.shape[-1] != target_dim and not pad_missing:
     raise RuntimeError(
-      f"Policy obs dim mismatch: env={obs_policy.shape[-1]} vs model={obs_dim}. "
+      f"Student obs dim mismatch: env={obs_student.shape[-1]} vs model={obs_dim}. "
       "Set MJLAB_MOTOR_CONTROLLER_TASK_ID to a compatible task."
     )
 

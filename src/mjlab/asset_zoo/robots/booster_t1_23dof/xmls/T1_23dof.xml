@@ -34,8 +34,6 @@
   </asset>
 
   <worldbody>
-    <light directional="true" diffuse=".4 .4 .4" specular="0.1 0.1 0.1" pos="0 0 5.0" dir="0 0 -1" castshadow="false" />
-    <light directional="true" diffuse=".6 .6 .6" specular="0.2 0.2 0.2" pos="0 0 4" dir="0 0 -1" />
     <!-- <geom name="ground" type="plane" pos="0 0 0" size="0 0 1" material="matplane" condim="1"/> -->
 
     <body name="Trunk" pos="0 0 0.7">
@@ -54,7 +52,7 @@
           <inertial pos="0.007802 0.001262 0.098631" quat="0.988453 0.106172 -0.0745686 -0.0782786" mass="0.631019" diaginertia="0.00203553 0.00192467 0.00172381"/>
           <joint name="Head_pitch" pos="0 0 0" axis="0 1 0" range="-0.35 1.22"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1." mesh="H2"/>
-          <geom size="0.08" pos="0.01 0 0.11" rgba="0.4 0.4 0.4 0.5"/>
+          <geom size="0.08" pos="0.01 0 0.11" rgba="0.4 0.4 0.4 0.0"/>
         </body>
       </body>
       <body name="AL1" pos="0.0575 0.1063 0.219" quat="1 0 0.000440565 0">
