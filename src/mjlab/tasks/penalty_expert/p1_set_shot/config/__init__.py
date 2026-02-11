@@ -1,0 +1,1 @@
+"""Configuration package for Penalty Expert P1: Set & Square."""
