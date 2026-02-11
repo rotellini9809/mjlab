@@ -360,7 +360,9 @@ def run_sim(
         ):
           log[k] = np.stack(log[k], axis=0)
 
-        motion_npz_path = Path("/tmp") / f"{output_name}.npz"
+        # Keep artifact name unique (output_name), but store a standard filename
+        # inside artifacts for consistency with csv_to_npz.py.
+        motion_npz_path = Path("/tmp") / "motion.npz"
         print(f"Saving to {motion_npz_path}...")
         np.savez(motion_npz_path, **log)  # type: ignore[arg-type]
 

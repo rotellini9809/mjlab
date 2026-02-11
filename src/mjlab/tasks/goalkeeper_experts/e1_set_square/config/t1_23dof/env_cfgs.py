@@ -25,10 +25,21 @@ KEEPER_SPAWN_Y_RANGE = (-0.6, 0.6)
 KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1, GOAL_X_LINE, -2, 2)
 KEEPER_AREA_HARD_MARGIN = 0.7
 
-# Target marker spawn relative to keeper spawn.
+# Target ball spawn relative to keeper spawn.
 TARGET_SPAWN_FORWARD_RANGE = (1.0, 2.7)
 TARGET_SPAWN_LATERAL_RANGE = (-3, 3)
-TARGET_MARKER_HEIGHT = 0.85
+# Ball geometry in robocup asset: radius=0.11 -> height=0.22.
+TARGET_BALL_HEIGHT = 0.22
+# Enforce lower bound: z cannot go below ball_height / 2.
+TARGET_BALL_Z_MIN = TARGET_BALL_HEIGHT / 2.0
+# Exponential distribution scale (meters):
+# smaller -> more concentration near ground, larger -> more high balls.
+TARGET_BALL_Z_EXP_SCALE = 0.06
+# Optional upper cap to avoid very high outliers.
+TARGET_BALL_Z_MAX = 2.0
+# Temporary debug: force constant z to verify ground spawning.
+DEBUG_FORCE_TARGET_BALL_GROUND_Z = False
+DEBUG_TARGET_BALL_GROUND_Z = TARGET_BALL_HEIGHT / 2.0
 
 # Future reset curriculum hook (for now always default pose).
 P_READY = 0.0
@@ -65,7 +76,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   goal_right_cfg.init_state.pos = (-GOALPOST_X, 0.0, 0.0)
   goal_right_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
 
-  target_marker_cfg = mdp.get_target_marker_cfg()
+  target_ball_cfg = mdp.get_target_ball_cfg()
 
   cfg.scene.terrain = None
   cfg.scene.num_envs = 512 if not play else 1
@@ -74,7 +85,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     "soccer_field": get_robocup_field_cfg(),
     "goalpost_left": goal_left_cfg,
     "goalpost_right": goal_right_cfg,
-    "target_marker": target_marker_cfg,
+    "target_ball": target_ball_cfg,
   }
 
   motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
@@ -98,7 +109,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   cfg.commands = {
     "set_square": mdp.SetSquareCommandCfg(
       entity_name="robot",
-      marker_entity_name="target_marker",
+      marker_entity_name="target_ball",
       command_dim=MOTOR_COMMAND_DIM,
       keeper_spawn_x_range=KEEPER_SPAWN_X_RANGE,
       keeper_spawn_y_range=KEEPER_SPAWN_Y_RANGE,
@@ -106,11 +117,15 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       hard_area_margin=KEEPER_AREA_HARD_MARGIN,
       target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
       target_lateral_range=TARGET_SPAWN_LATERAL_RANGE,
-      target_height=TARGET_MARKER_HEIGHT,
+      target_height_min=TARGET_BALL_Z_MIN,
+      target_height_exp_scale=TARGET_BALL_Z_EXP_SCALE,
+      target_height_max=TARGET_BALL_Z_MAX,
+      debug_force_target_ground_z=DEBUG_FORCE_TARGET_BALL_GROUND_Z,
+      debug_target_ground_z=DEBUG_TARGET_BALL_GROUND_Z,
       p_ready=P_READY,
       spawn_yaw_range=SPAWN_YAW_RANGE,
       resampling_time_range=(1.0e9, 1.0e9),
-      debug_vis=False,
+      debug_vis=True,
     )
   }
 
@@ -137,8 +152,8 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       func=mdp.target_direction_xy,
       params={"command_name": "set_square"},
     ),
-    "target_rel_xy": ObservationTermCfg(
-      func=mdp.target_relative_xy,
+    "ball_pos_rel_xyz": ObservationTermCfg(
+      func=mdp.target_position_relative_xyz,
       params={"command_name": "set_square"},
     ),
   }
@@ -166,8 +181,8 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       func=mdp.target_direction_xy,
       params={"command_name": "set_square"},
     ),
-    "target_rel_xy": ObservationTermCfg(
-      func=mdp.target_relative_xy,
+    "ball_pos_rel_xyz": ObservationTermCfg(
+      func=mdp.target_position_relative_xyz,
       params={"command_name": "set_square"},
     ),
   }

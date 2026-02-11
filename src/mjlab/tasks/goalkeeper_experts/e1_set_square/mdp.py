@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import cast
 
 import mujoco
 import torch
 
+from mjlab.asset_zoo.robocup_assets.ball import get_robocup_ball_cfg
 from mjlab.entity import Entity, EntityCfg
 from mjlab.envs.mdp import *  # noqa: F401,F403
 from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
@@ -16,11 +17,10 @@ from mjlab.motor_controller_stage1.latent_action import (
   motor_last_decoded_action,
 )
 from mjlab.utils.lab_api.math import (
-  quat_apply,
   quat_from_euler_xyz,
   quat_mul,
 )
-from mjlab.utils.spec import disable_collision
+from mjlab.utils.spec import disable_collision, get_free_joint
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
@@ -43,12 +43,23 @@ def _compute_yaw_error(
   robot: Entity,
   target_pos_w: torch.Tensor,
 ) -> torch.Tensor:
+  """Signed yaw-only error between torso heading and target direction.
+
+  Uses only torso yaw (rotation around world z). Pitch/roll are ignored.
+  Target direction is projected on the ground plane (xy).
+  """
   trunk_pos = robot.data.root_link_pos_w
   target_xy = target_pos_w[:, :2] - trunk_pos[:, :2]
   target_dir_xy = _normalize_xy(target_xy)
 
-  forward_w = quat_apply(robot.data.root_link_quat_w, robot.data.forward_vec_b)
-  forward_xy = _normalize_xy(forward_w[:, :2])
+  # Extract yaw from world quaternion (wxyz) and build horizontal forward direction.
+  q = robot.data.root_link_quat_w
+  qw, qx, qy, qz = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+  yaw = torch.atan2(
+    2.0 * (qw * qz + qx * qy),
+    1.0 - 2.0 * (qy * qy + qz * qz),
+  )
+  forward_xy = torch.stack([torch.cos(yaw), torch.sin(yaw)], dim=1)
 
   dot = torch.sum(forward_xy * target_dir_xy, dim=1).clamp(-1.0, 1.0)
   det = forward_xy[:, 0] * target_dir_xy[:, 1] - forward_xy[:, 1] * target_dir_xy[:, 0]
@@ -73,26 +84,39 @@ def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
 
-def get_target_marker_cfg(
-  radius: float = 0.12,
-  rgba: tuple[float, float, float, float] = (0.95, 0.15, 0.1, 1.0),
-) -> EntityCfg:
-  """Create a visual-only target marker entity (collision disabled)."""
+def get_target_ball_cfg() -> EntityCfg:
+  """Create a visual-only target ball entity for E1.
+
+  Reuses RoboCup ball asset and removes physics interaction:
+  - free joint removed (fixed-base entity, auto-wrapped as mocap),
+  - collisions disabled on all geoms.
+  """
+
+  base_ball_cfg = get_robocup_ball_cfg()
+  base_spec_fn = base_ball_cfg.spec_fn
 
   def _get_spec() -> mujoco.MjSpec:
-    spec = mujoco.MjSpec()
-    body = spec.worldbody.add_body(name="target_marker_body")
-    geom = body.add_geom(
-      name="target_marker_geom",
-      type=mujoco.mjtGeom.mjGEOM_SPHERE,
-      size=(radius, radius, radius),
-      rgba=rgba,
-    )
-    disable_collision(geom)
+    spec = base_spec_fn()
+
+    # Make the ball fixed-base so we can place it kinematically per environment.
+    free_joint = get_free_joint(spec)
+    if free_joint is not None:
+      spec.delete(free_joint)
+
+    # Remove the original XML body z-offset (ball body is authored at z=0.11
+    # for freejoint use). For fixed-base mocap placement we need zero local
+    # offset so commanded z directly controls world center height.
+    if len(spec.bodies) > 1:
+      spec.bodies[1].pos[:] = (0.0, 0.0, 0.0)
+
+    # Visual-only: disable any collision interaction.
+    for geom in spec.geoms:
+      disable_collision(geom)
+
     return spec
 
   return EntityCfg(
-    init_state=EntityCfg.InitialStateCfg(pos=(0.0, 0.0, radius + 0.05)),
+    init_state=base_ball_cfg.init_state,
     spec_fn=_get_spec,
   )
 
@@ -102,7 +126,7 @@ class SetSquareCommandCfg(CommandTermCfg):
   """Command term for E1 spawn/target sampling and marker placement."""
 
   entity_name: str = "robot"
-  marker_entity_name: str = "target_marker"
+  marker_entity_name: str = "target_ball"
 
   # Motor-controller command vector dimension (from Stage-1 obs layout).
   command_dim: int = 46
@@ -118,7 +142,13 @@ class SetSquareCommandCfg(CommandTermCfg):
   # Target marker sampling relative to keeper spawn.
   target_forward_range: tuple[float, float] = (1.0, 2.5)
   target_lateral_range: tuple[float, float] = (-1.2, 1.2)
-  target_height: float = 0.8
+  target_height_min: float = 0.11
+  # Exponential scale (meters): smaller -> more mass near ground.
+  target_height_exp_scale: float = 0.06
+  target_height_max: float | None = None
+  # Temporary debug override: force constant z for target ball.
+  debug_force_target_ground_z: bool = False
+  debug_target_ground_z: float = 0.11
 
   # Reset curriculum hook.
   p_ready: float = 0.0
@@ -126,6 +156,17 @@ class SetSquareCommandCfg(CommandTermCfg):
   # Keep target fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
   debug_vis: bool = False
+
+  @dataclass
+  class VizCfg:
+    z_offset: float = 0.65
+    desired_length: float = 0.8
+    actual_length: float = 0.8
+    width: float = 0.015
+    desired_color: tuple[float, float, float, float] = (0.2, 0.2, 0.9, 0.75)
+    actual_color: tuple[float, float, float, float] = (0.0, 0.9, 0.6, 0.75)
+
+  viz: VizCfg = field(default_factory=VizCfg)
 
   # Optional yaw jitter at spawn.
   spawn_yaw_range: tuple[float, float] = (0.0, 0.0)
@@ -315,7 +356,21 @@ class SetSquareCommand(CommandTerm):
     # Keep the target on the keeper's front side after rotating the spawn heading by 180 deg.
     target[:, 0] -= forward
     target[:, 1] += lateral
-    target[:, 2] = self._env.scene.env_origins[env_ids, 2] + self.cfg.target_height
+    z_min = float(self.cfg.target_height_min)
+    scale = max(float(self.cfg.target_height_exp_scale), 1.0e-6)
+    # Exponential tail from z_min:
+    # z = z_min + Exp(scale). High probability near z_min, but occasional high values.
+    u = torch.rand(len(env_ids), device=self.device)
+    excess = -scale * torch.log(torch.clamp(1.0 - u, min=1.0e-6))
+    z = z_min + excess
+
+    if self.cfg.target_height_max is not None:
+      z = torch.clamp(z, max=float(self.cfg.target_height_max))
+
+    if self.cfg.debug_force_target_ground_z:
+      z = torch.full_like(z, float(self.cfg.debug_target_ground_z))
+
+    target[:, 2] = self._env.scene.env_origins[env_ids, 2] + z
     self._target_pos_w[env_ids] = target
 
   def _update_marker_pose(self, env_ids: torch.Tensor) -> None:
@@ -330,6 +385,53 @@ class SetSquareCommand(CommandTerm):
       self._marker.write_mocap_pose_to_sim(marker_pose, env_ids=env_ids)
     else:
       self._marker.write_root_link_pose_to_sim(marker_pose, env_ids=env_ids)
+
+  def _debug_vis_impl(self, visualizer) -> None:
+    batch = visualizer.env_idx
+    if batch >= self.num_envs:
+      return
+
+    root_pos = self._robot.data.root_link_pos_w[batch]
+    target_pos = self._target_pos_w[batch]
+
+    target_xy = target_pos[:2] - root_pos[:2]
+    target_norm = torch.linalg.norm(target_xy)
+    if float(target_norm.item()) < 1.0e-6:
+      return
+
+    desired_dir_xy = target_xy / target_norm
+
+    start = root_pos.clone()
+    start[2] += float(self.cfg.viz.z_offset)
+
+    desired_end = start.clone()
+    desired_end[0] += desired_dir_xy[0] * float(self.cfg.viz.desired_length)
+    desired_end[1] += desired_dir_xy[1] * float(self.cfg.viz.desired_length)
+
+    q = self._robot.data.root_link_quat_w[batch]
+    qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+    yaw = torch.atan2(
+      2.0 * (qw * qz + qx * qy),
+      1.0 - 2.0 * (qy * qy + qz * qz),
+    )
+    actual_end = start.clone()
+    actual_end[0] += torch.cos(yaw) * float(self.cfg.viz.actual_length)
+    actual_end[1] += torch.sin(yaw) * float(self.cfg.viz.actual_length)
+
+    visualizer.add_arrow(
+      start.cpu().numpy(),
+      desired_end.cpu().numpy(),
+      color=self.cfg.viz.desired_color,
+      width=float(self.cfg.viz.width),
+      label="desired_facing",
+    )
+    visualizer.add_arrow(
+      start.cpu().numpy(),
+      actual_end.cpu().numpy(),
+      color=self.cfg.viz.actual_color,
+      width=float(self.cfg.viz.width),
+      label="actual_facing",
+    )
 
 
 def target_direction_xy(
@@ -351,6 +453,16 @@ def target_relative_xy(
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   return command.target_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+
+
+def target_position_relative_xyz(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  return command.target_pos_w - robot.data.root_link_pos_w
 
 
 def yaw_alignment_reward(
