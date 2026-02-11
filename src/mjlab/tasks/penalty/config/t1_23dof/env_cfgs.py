@@ -143,7 +143,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     BALL_R = 0.11
 
     # distanza "dischetto" dalla porta (metti quello che ti torna bene)
-    PENALTY_DIST_FROM_GOAL = 6.0  # metri circa nel tuo mondo
+    PENALTY_DIST_FROM_GOAL = 2.5  # metri circa nel tuo mondo
     ball_x = GOAL_X - PENALTY_DIST_FROM_GOAL
 
     # robot dietro la palla
