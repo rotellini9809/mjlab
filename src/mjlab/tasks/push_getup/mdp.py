@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 import warnings
 
 import torch
@@ -64,6 +65,15 @@ class FixedMotionCommandCfg(CommandTermCfg):
   )
   stage1_fallen_joint_pos: tuple[float, ...] | None = None
   stage1_fallen_joint_noise: float = 0.02
+  stand_pose_ramp_success_threshold: float = 0.8
+  stand_pose_ramp_steps: int = 2000
+  stand_pose_ramp_standing_threshold: float = 0.5
+  stand_pose_ramp_standing_ema_alpha: float = 0.05
+  stand_pose_height_threshold: float = 0.9
+  stand_pose_feet_sensor_name: str = "feet_ground_contact"
+  stand_pose_pelvis_sensor_name: str | None = "pelvis_ground_contact"
+  stand_pose_feet_normal_threshold: float | None = None
+  stand_pose_require_pelvis_off: bool = True
 
   def build(self, env):
     return FixedMotionCommand(self, env)
@@ -109,6 +119,9 @@ class FixedMotionCommand(CommandTerm):
       if self.cfg.curriculum_enabled
       else 0.0
     )
+    self._stand_pose_ramp_start_step = -1
+    self._stand_pose_multiplier = 0.0
+    self._standing_mask_ema = torch.tensor(0.0, device=self.device)
 
     self._asset_cfg = SceneEntityCfg(cfg.entity_name)
     self._init_metrics()
@@ -118,10 +131,10 @@ class FixedMotionCommand(CommandTerm):
     return self._command
 
   def _update_metrics(self) -> None:
-    self._update_curriculum_stats()
     self._prev_trunk_height_norm = self._trunk_height_norm
     self._trunk_height_norm = self._compute_trunk_height_norm()
     self._update_phase()
+    self._update_curriculum_stats()
     self._update_logging_metrics()
 
   def _resample_command(self, env_ids: torch.Tensor) -> None:
@@ -491,6 +504,7 @@ class FixedMotionCommand(CommandTerm):
     reset_buf = getattr(self._env, "reset_buf", None)
     if reset_buf is None:
       self._episode_step_counter += 1
+      self._update_stand_pose_ramp()
       return
     done_env_ids = reset_buf.nonzero(as_tuple=False).flatten()
     if done_env_ids.numel() > 0:
@@ -563,6 +577,7 @@ class FixedMotionCommand(CommandTerm):
       self._episode_step_counter[done_env_ids] = 0
 
     self._episode_step_counter += 1
+    self._update_stand_pose_ramp()
 
   def _init_metrics(self) -> None:
     self.metrics = {
@@ -576,6 +591,12 @@ class FixedMotionCommand(CommandTerm):
         self._env.num_envs, device=self.device
       ),
       "Curriculum/push_getup_upright_time_ema_s": torch.zeros(
+        self._env.num_envs, device=self.device
+      ),
+      "Curriculum/stand_pose_multiplier": torch.zeros(
+        self._env.num_envs, device=self.device
+      ),
+      "Curriculum/standing_mask_frac": torch.zeros(
         self._env.num_envs, device=self.device
       ),
       "Curriculum/push_getup_gain_scale": torch.zeros(
@@ -606,6 +627,10 @@ class FixedMotionCommand(CommandTerm):
       float(self._upright_time_ema_s.item()),
       device=self.device,
     )
+    self.metrics["Curriculum/stand_pose_multiplier"] = torch.full(
+      (self._env.num_envs,), float(self._stand_pose_multiplier), device=self.device
+    )
+    self.metrics["Curriculum/standing_mask_frac"] = self._compute_standing_mask().float()
     self.metrics["Curriculum/push_getup_gain_scale"] = self._last_gain_scale
     self.metrics["Curriculum/push_getup_control_enabled_frac"] = (
       self._control_enabled.float()
@@ -616,6 +641,81 @@ class FixedMotionCommand(CommandTerm):
     self.metrics["Curriculum/push_getup_stage2_unlocked"] = torch.full(
       (self._env.num_envs,), float(self._stage2_unlocked), device=self.device
     )
+
+  def _update_stand_pose_ramp(self) -> None:
+    mask = self._compute_standing_mask()
+    mask_mean = float(mask.float().mean().item())
+    ema_alpha = float(self.cfg.stand_pose_ramp_standing_ema_alpha)
+    if ema_alpha <= 0.0:
+      self._standing_mask_ema = torch.tensor(mask_mean, device=self.device)
+    else:
+      self._standing_mask_ema = (
+        (1.0 - ema_alpha) * self._standing_mask_ema
+        + ema_alpha * torch.tensor(mask_mean, device=self.device)
+      )
+
+    threshold = float(self.cfg.stand_pose_ramp_standing_threshold)
+    ramp_steps = int(self.cfg.stand_pose_ramp_steps)
+    condition_met = threshold <= 0.0 or self._standing_mask_ema.item() >= threshold
+
+    if condition_met and self._stand_pose_ramp_start_step < 0:
+      self._stand_pose_ramp_start_step = int(self._env.common_step_counter)
+
+    if self._stand_pose_ramp_start_step < 0:
+      self._stand_pose_multiplier = 0.0
+      return
+
+    if ramp_steps <= 0:
+      self._stand_pose_multiplier = 1.0
+      return
+
+    elapsed = int(self._env.common_step_counter) - self._stand_pose_ramp_start_step
+    self._stand_pose_multiplier = max(0.0, min(1.0, elapsed / float(ramp_steps)))
+
+  @property
+  def stand_pose_multiplier(self) -> float:
+    return self._stand_pose_multiplier
+
+  def _compute_standing_mask(self) -> torch.Tensor:
+    trunk_height_norm = self._trunk_height_norm
+    gate = self._fallen_once & self._control_enabled
+    height_mask = trunk_height_norm >= float(self.cfg.stand_pose_height_threshold)
+
+    # Feet contact.
+    both_feet = torch.zeros(self._env.num_envs, device=self.device, dtype=torch.bool)
+    try:
+      feet_sensor: ContactSensor = self._env.scene[self.cfg.stand_pose_feet_sensor_name]
+      if feet_sensor.data.found is not None:
+        feet_found = feet_sensor.data.found.squeeze(-1).clone()
+        if (
+          self.cfg.stand_pose_feet_normal_threshold is not None
+          and feet_sensor.data.normal is not None
+        ):
+          normal_z = feet_sensor.data.normal[..., 2]
+          feet_found = feet_found * (
+            torch.abs(normal_z) >= float(self.cfg.stand_pose_feet_normal_threshold)
+          )
+        if feet_found.shape[1] >= 2:
+          both_feet = (feet_found[:, 0] > 0) & (feet_found[:, 1] > 0)
+    except Exception:
+      pass
+
+    # Pelvis contact.
+    pelvis_clear = torch.ones(
+      self._env.num_envs, device=self.device, dtype=torch.bool
+    )
+    if self.cfg.stand_pose_require_pelvis_off and self.cfg.stand_pose_pelvis_sensor_name:
+      try:
+        pelvis_sensor: ContactSensor = self._env.scene[
+          self.cfg.stand_pose_pelvis_sensor_name
+        ]
+        if pelvis_sensor.data.found is not None:
+          pelvis_contact = (pelvis_sensor.data.found.squeeze(-1) > 0).any(dim=1)
+          pelvis_clear = ~pelvis_contact
+      except Exception:
+        pass
+
+    return gate & height_mask & both_feet & pelvis_clear
 
 
 class UprightSuccess:
@@ -666,6 +766,68 @@ class UprightSuccess:
     upright = (height >= self.height_threshold) & (angle <= self.angle_threshold)
     self._counter = torch.where(
       upright, self._counter + 1, torch.zeros_like(self._counter)
+    )
+    return self._counter >= self.consecutive_steps
+
+
+class LowMotionTermination:
+  """Terminate when movement is below thresholds for K consecutive steps."""
+
+  def __init__(
+    self,
+    lin_vel_threshold: float,
+    ang_vel_threshold: float,
+    consecutive_steps: int,
+    min_recovery_steps: int = 0,
+    min_height_norm: float = 0.0,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    command_name: str | None = None,
+  ) -> None:
+    self.lin_vel_threshold = lin_vel_threshold
+    self.ang_vel_threshold = ang_vel_threshold
+    self.consecutive_steps = consecutive_steps
+    self.min_recovery_steps = min_recovery_steps
+    self.min_height_norm = min_height_norm
+    self.asset_cfg = asset_cfg
+    self.command_name = command_name
+    self._counter: torch.Tensor | None = None
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    if self._counter is None:
+      return
+    if env_ids is None:
+      env_ids = slice(None)
+    self._counter[env_ids] = 0
+
+  def __call__(self, env) -> torch.Tensor:
+    asset = env.scene[self.asset_cfg.name]
+    if self._counter is None or self._counter.shape[0] != env.num_envs:
+      self._counter = torch.zeros(
+        env.num_envs, dtype=torch.long, device=env.device
+      )
+
+    lin_vel = asset.data.root_link_lin_vel_w
+    ang_vel = asset.data.root_link_ang_vel_w
+    lin_speed = torch.linalg.norm(lin_vel, dim=1)
+    ang_speed = torch.linalg.norm(ang_vel, dim=1)
+
+    recovery_steps = _recovery_steps(env, self.command_name)
+    trunk_height_norm = _trunk_height_norm(env, self.command_name)
+    gate = _recovery_gate_mask(env, self.command_name)
+
+    active = gate
+    if self.min_recovery_steps > 0:
+      active = active & (recovery_steps >= int(self.min_recovery_steps))
+    if self.min_height_norm > 0.0:
+      active = active & (trunk_height_norm >= float(self.min_height_norm))
+
+    low_motion = (lin_speed <= self.lin_vel_threshold) & (
+      ang_speed <= self.ang_vel_threshold
+    )
+    stalled = active & low_motion
+
+    self._counter = torch.where(
+      stalled, self._counter + 1, torch.zeros_like(self._counter)
     )
     return self._counter >= self.consecutive_steps
 
@@ -765,6 +927,26 @@ def _recovery_steps(env, command_name: str | None = None) -> torch.Tensor:
   return steps
 
 
+def _stand_pose_multiplier(env, command_name: str | None = None) -> torch.Tensor:
+  cmd = _get_command_term(env, command_name)
+  if cmd is None:
+    return torch.zeros(env.num_envs, device=env.device)
+  multiplier = getattr(cmd, "stand_pose_multiplier", 0.0)
+  return torch.full((env.num_envs,), float(multiplier), device=env.device)
+
+
+def _standing_mask(env, command_name: str | None = None) -> torch.Tensor:
+  cmd = _get_command_term(env, command_name)
+  if cmd is not None and hasattr(cmd, "_compute_standing_mask"):
+    try:
+      mask = cmd._compute_standing_mask()
+      if torch.is_tensor(mask):
+        return mask
+    except Exception:
+      pass
+  return torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+
+
 def _stage_id(env, command_name: str | None = None) -> torch.Tensor:
   cmd = _get_command_term(env, command_name)
   if cmd is None:
@@ -830,6 +1012,7 @@ def support_points_reward(
   foot_weight: float = 1.0,
   hand_weight: float = 1.0,
   dh_clip: float = 0.05,
+  feet_normal_threshold: float | None = None,
   command_name: str | None = None,
 ) -> torch.Tensor:
   cmd = _get_command_term(env, command_name)
@@ -845,6 +1028,9 @@ def support_points_reward(
   assert feet_sensor.data.found is not None
   assert hands_sensor.data.found is not None
   feet_found = (feet_sensor.data.found.squeeze(-1) > 0).float()
+  if feet_normal_threshold is not None and feet_sensor.data.normal is not None:
+    normal_z = feet_sensor.data.normal[..., 2]
+    feet_found = feet_found * (torch.abs(normal_z) >= float(feet_normal_threshold))
   hand_found = (hands_sensor.data.found.squeeze(-1) > 0).float()
   if feet_found.numel() > 0:
     feet_frac = feet_found.mean(dim=1)
@@ -863,10 +1049,40 @@ def support_points_reward(
   return reward * early_mask.float() * _recovery_gate_mask(env, command_name).float()
 
 
+def hand_push_reward(
+  env,
+  hands_sensor_name: str,
+  height_threshold: float,
+  dh_clip: float = 0.05,
+  command_name: str | None = None,
+) -> torch.Tensor:
+  cmd = _get_command_term(env, command_name)
+  if cmd is None:
+    return torch.zeros(env.num_envs, device=env.device)
+  trunk_height_norm = getattr(cmd, "trunk_height_norm", None)
+  prev_height_norm = getattr(cmd, "prev_trunk_height_norm", None)
+  if trunk_height_norm is None or prev_height_norm is None:
+    return torch.zeros(env.num_envs, device=env.device)
+  early_mask = trunk_height_norm < height_threshold
+  hands_sensor: ContactSensor = env.scene[hands_sensor_name]
+  assert hands_sensor.data.found is not None
+  hand_found = (hands_sensor.data.found.squeeze(-1) > 0).float()
+  if hand_found.numel() > 0:
+    hand_frac = hand_found.mean(dim=1)
+  else:
+    hand_frac = torch.zeros(env.num_envs, device=env.device)
+  delta_h = torch.clamp(trunk_height_norm - prev_height_norm, min=0.0)
+  if dh_clip > 0.0:
+    delta_h = torch.clamp(delta_h, max=dh_clip)
+  reward = hand_frac * delta_h
+  return reward * early_mask.float() * _recovery_gate_mask(env, command_name).float()
+
+
 def both_feet_reward(
   env,
   feet_sensor_name: str,
   height_threshold: float,
+  feet_normal_threshold: float | None = None,
   command_name: str | None = None,
 ) -> torch.Tensor:
   trunk_height_norm = _trunk_height_norm(env, command_name)
@@ -874,6 +1090,9 @@ def both_feet_reward(
   feet_sensor: ContactSensor = env.scene[feet_sensor_name]
   assert feet_sensor.data.found is not None
   feet_found = feet_sensor.data.found.squeeze(-1)
+  if feet_normal_threshold is not None and feet_sensor.data.normal is not None:
+    normal_z = feet_sensor.data.normal[..., 2]
+    feet_found = feet_found * (torch.abs(normal_z) >= float(feet_normal_threshold))
   if feet_found.shape[1] < 2:
     return torch.zeros(env.num_envs, device=env.device)
   left_contact = feet_found[:, 0] > 0
@@ -891,17 +1110,19 @@ def hands_contact_penalty(
 ) -> torch.Tensor:
   trunk_height_norm = _trunk_height_norm(env, command_name)
   late_mask = trunk_height_norm >= height_threshold
-  feet_sensor: ContactSensor = env.scene[feet_sensor_name]
   hands_sensor: ContactSensor = env.scene[hands_sensor_name]
-  assert feet_sensor.data.found is not None
   assert hands_sensor.data.found is not None
-  feet_found = feet_sensor.data.found.squeeze(-1)
-  if feet_found.shape[1] < 2:
-    both_feet = torch.zeros(env.num_envs, device=env.device)
-  else:
-    both_feet = ((feet_found[:, 0] > 0) & (feet_found[:, 1] > 0)).float()
+  standing_mask = _standing_mask(env, command_name)
+  if not torch.any(standing_mask):
+    feet_sensor: ContactSensor = env.scene[feet_sensor_name]
+    assert feet_sensor.data.found is not None
+    feet_found = feet_sensor.data.found.squeeze(-1)
+    if feet_found.shape[1] < 2:
+      standing_mask = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+    else:
+      standing_mask = (feet_found[:, 0] > 0) & (feet_found[:, 1] > 0)
   hand_contacts = (hands_sensor.data.found.squeeze(-1) > 0).float().mean(dim=1)
-  penalty = hand_contacts * late_mask.float() * both_feet
+  penalty = hand_contacts * late_mask.float() * standing_mask.float()
   return penalty * _recovery_gate_mask(env, command_name).float()
 
 
@@ -923,6 +1144,100 @@ def pelvis_contact_penalty(
   assert pelvis_sensor.data.found is not None
   pelvis_contacts = (pelvis_sensor.data.found.squeeze(-1) > 0).float().sum(dim=1)
   return pelvis_contacts * gate_mask.float() * _recovery_gate_mask(env, command_name).float()
+
+
+def head_contact_penalty(
+  env,
+  head_sensor_name: str,
+  height_threshold: float,
+  early_scale: float = 0.2,
+  late_scale: float = 1.0,
+  command_name: str | None = None,
+) -> torch.Tensor:
+  trunk_height_norm = _trunk_height_norm(env, command_name)
+  head_sensor: ContactSensor = env.scene[head_sensor_name]
+  assert head_sensor.data.found is not None
+  head_contacts = (head_sensor.data.found.squeeze(-1) > 0).float()
+  if head_contacts.numel() > 0:
+    head_contact_frac = head_contacts.mean(dim=1)
+  else:
+    head_contact_frac = torch.zeros(env.num_envs, device=env.device)
+  early_mask = trunk_height_norm < height_threshold
+  scale = torch.where(
+    early_mask,
+    torch.tensor(float(early_scale), device=env.device),
+    torch.tensor(float(late_scale), device=env.device),
+  )
+  return head_contact_frac * scale * _recovery_gate_mask(env, command_name).float()
+
+
+def stand_pose_penalty(
+  env,
+  feet_sensor_name: str,
+  pelvis_sensor_name: str | None,
+  height_threshold: float,
+  q_scale: float = 1.0,
+  require_pelvis_off: bool = True,
+  exclude_joint_patterns: tuple[str, ...] | None = None,
+  command_name: str | None = None,
+) -> torch.Tensor:
+  trunk_height_norm = _trunk_height_norm(env, command_name)
+  feet_sensor: ContactSensor = env.scene[feet_sensor_name]
+  assert feet_sensor.data.found is not None
+  feet_found = feet_sensor.data.found.squeeze(-1)
+  if feet_found.shape[1] < 2:
+    both_feet = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+  else:
+    both_feet = (feet_found[:, 0] > 0) & (feet_found[:, 1] > 0)
+  pelvis_clear = torch.ones(env.num_envs, device=env.device, dtype=torch.bool)
+  if pelvis_sensor_name and require_pelvis_off:
+    pelvis_sensor: ContactSensor = env.scene[pelvis_sensor_name]
+    assert pelvis_sensor.data.found is not None
+    pelvis_contact = (pelvis_sensor.data.found.squeeze(-1) > 0).any(dim=1)
+    pelvis_clear = ~pelvis_contact
+
+  standing_mask = (
+    (trunk_height_norm >= height_threshold)
+    & both_feet
+    & pelvis_clear
+    & _recovery_gate_mask(env, command_name)
+  )
+
+  asset = env.scene["robot"]
+  q = asset.data.joint_pos
+  q_ref = asset.data.default_joint_pos
+  if q_ref is None:
+    return torch.zeros(env.num_envs, device=env.device)
+  if exclude_joint_patterns:
+    cache_key = "_stand_pose_include_mask"
+    mask = getattr(env, cache_key, None)
+    if (
+      mask is None
+      or not torch.is_tensor(mask)
+      or mask.shape[0] != q.shape[1]
+      or getattr(env, "_stand_pose_exclude_patterns", None) != exclude_joint_patterns
+    ):
+      names = asset.joint_names
+      include = []
+      for name in names:
+        exclude = False
+        for pattern in exclude_joint_patterns:
+          if re.fullmatch(pattern, name):
+            exclude = True
+            break
+        include.append(not exclude)
+      mask = torch.tensor(include, device=env.device, dtype=torch.bool)
+      setattr(env, cache_key, mask)
+      setattr(env, "_stand_pose_exclude_patterns", exclude_joint_patterns)
+    include_idx = torch.nonzero(mask, as_tuple=False).flatten()
+    if include_idx.numel() == 0:
+      return torch.zeros(env.num_envs, device=env.device)
+    q = q[:, include_idx]
+    q_ref = q_ref[:, include_idx]
+  scale = max(float(q_scale), 1.0e-6)
+  pose_err = torch.mean(((q - q_ref) / scale) ** 2, dim=1)
+  multiplier = _stand_pose_multiplier(env, command_name)
+  return pose_err * multiplier * standing_mask.float()
 
 
 def self_collision_cost(

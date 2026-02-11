@@ -45,7 +45,6 @@ class TrainConfig:
   run_name: str = ""
   device: str | None = None
   experiment_name: str = "motor_controller_stage1"
-  wandb: bool = False
   wandb_project: str | None = "motor_controller_stage1"
   wandb_entity: str | None = None
   wandb_tags: str | None = None
@@ -160,7 +159,7 @@ def train_stage1(cfg: TrainConfig) -> None:
 
   start_time = time.time()
   metrics_logger = MetricsLogger(run_dir / "metrics.csv")
-  wandb_run = _init_wandb(cfg, run_dir) if cfg.wandb else None
+  wandb_run = _init_wandb(cfg, run_dir)
 
   device = cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
   torch.manual_seed(cfg.seed)
@@ -347,18 +346,17 @@ def train_stage1(cfg: TrainConfig) -> None:
           elapsed,
         )
       )
-      if wandb_run is not None:
-        _wandb_log_metrics(
-          wandb_run,
-          step,
-          "train",
-          loss.item(),
-          bc_loss.item(),
-          kl_loss.item(),
-          beta_kl_current,
-          train_diag,
-          elapsed,
-        )
+      _wandb_log_metrics(
+        wandb_run,
+        step,
+        "train",
+        loss.item(),
+        bc_loss.item(),
+        kl_loss.item(),
+        beta_kl_current,
+        train_diag,
+        elapsed,
+      )
 
       if val_metrics is not None:
         val_diag = val_metrics.get("diag", _nan_diag())
@@ -374,18 +372,17 @@ def train_stage1(cfg: TrainConfig) -> None:
             elapsed,
           )
         )
-        if wandb_run is not None:
-          _wandb_log_metrics(
-            wandb_run,
-            step,
-            "val",
-            val_metrics["loss"],
-            val_metrics["bc"],
-            val_metrics["kl"],
-            beta_kl_current,
-            val_diag,
-            elapsed,
-          )
+        _wandb_log_metrics(
+          wandb_run,
+          step,
+          "val",
+          val_metrics["loss"],
+          val_metrics["bc"],
+          val_metrics["kl"],
+          beta_kl_current,
+          val_diag,
+          elapsed,
+        )
 
       candidate = (
         val_metrics["loss"]
@@ -398,9 +395,11 @@ def train_stage1(cfg: TrainConfig) -> None:
 
   print("[INFO] Stage-1 placeholder training complete.")
   _save_checkpoint(run_dir / "model_last.pt", model, cfg.max_iters)
-  if wandb_run is not None:
-    _wandb_save_files(wandb_run, run_dir)
-    wandb_run.finish()
+  run_path = _wandb_run_path(wandb_run)
+  if run_path is not None:
+    print(f"[INFO] W&B run saved at: {run_path}")
+  _wandb_save_files(wandb_run, run_dir)
+  wandb_run.finish()
 
 
 def _find_repo_root(start: Path) -> Path:
@@ -1030,9 +1029,10 @@ def _build_metrics_row(
 def _init_wandb(cfg: TrainConfig, run_dir: Path):
   try:
     import wandb
-  except ImportError:
-    print("[WARN] wandb not installed; disabling W&B logging.")
-    return None
+  except ImportError as exc:
+    raise RuntimeError(
+      "W&B is required but the 'wandb' package is not installed."
+    ) from exc
 
   # Match rsl_rl-style logging: place wandb/ under the experiment log root,
   # not inside the specific run_dir.
@@ -1041,31 +1041,59 @@ def _init_wandb(cfg: TrainConfig, run_dir: Path):
   api_key = os.environ.get("WANDB_API_KEY") or os.environ.get("wandb_api_key")
   if api_key and not os.environ.get("WANDB_API_KEY"):
     os.environ["WANDB_API_KEY"] = api_key
-  if api_key:
-    try:
+  try:
+    login_ok = (
       wandb.login(key=api_key, relogin=False)
-    except Exception as exc:
-      print(f"[WARN] W&B login failed: {exc}")
-  else:
-    try:
-      wandb.login()
-    except Exception as exc:
-      print(f"[WARN] WANDB_API_KEY not set and wandb.login() failed: {exc}")
-      return None
+      if api_key
+      else wandb.login()
+    )
+  except Exception as exc:
+    raise RuntimeError(
+      "W&B is required but login failed. "
+      "Set WANDB_API_KEY (or run `wandb login`) and retry."
+    ) from exc
+  if login_ok is False:
+    raise RuntimeError(
+      "W&B is required but login was not successful. "
+      "Set WANDB_API_KEY (or run `wandb login`) and retry."
+    )
 
   tags = None
   if cfg.wandb_tags:
     tags = [tag.strip() for tag in cfg.wandb_tags.split(",") if tag.strip()]
 
-  wandb_run = wandb.init(
-    project=cfg.wandb_project,
-    entity=cfg.wandb_entity,
-    tags=tags,
-    name=run_dir.name,
-    dir=str(run_dir.parent),
-  )
+  try:
+    wandb_run = wandb.init(
+      project=cfg.wandb_project,
+      entity=cfg.wandb_entity,
+      tags=tags,
+      name=run_dir.name,
+      dir=str(run_dir.parent),
+    )
+  except Exception as exc:
+    raise RuntimeError(
+      "W&B is required but run initialization failed. "
+      "Check project/entity permissions and network access."
+    ) from exc
+  if wandb_run is None:
+    raise RuntimeError("W&B is required but wandb.init returned None.")
   wandb_run.config.update(asdict(cfg), allow_val_change=True)
+  run_path = _wandb_run_path(wandb_run)
+  if run_path is not None:
+    print(f"[INFO] W&B run path: {run_path}")
+  run_url = getattr(wandb_run, "url", None)
+  if isinstance(run_url, str) and run_url:
+    print(f"[INFO] W&B URL: {run_url}")
   return wandb_run
+
+
+def _wandb_run_path(wandb_run) -> str | None:
+  entity = getattr(wandb_run, "entity", None)
+  project = getattr(wandb_run, "project", None)
+  run_id = getattr(wandb_run, "id", None)
+  if entity and project and run_id:
+    return f"{entity}/{project}/{run_id}"
+  return None
 
 
 def _wandb_log_metrics(

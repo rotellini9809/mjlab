@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -194,6 +196,8 @@ def run_sim(
   render,
   line_range,
   renderer: OffscreenRenderer | None = None,
+  wandb_project: str = "csv_to_npz",
+  wandb_entity: str | None = None,
 ):
   motion = MotionLoader(
     motion_file=input_file,
@@ -356,18 +360,19 @@ def run_sim(
         ):
           log[k] = np.stack(log[k], axis=0)
 
-        print("Saving to /tmp/motion.npz...")
-        np.savez("/tmp/motion.npz", **log)  # type: ignore[arg-type]
+        motion_npz_path = Path("/tmp") / f"{output_name}.npz"
+        print(f"Saving to {motion_npz_path}...")
+        np.savez(motion_npz_path, **log)  # type: ignore[arg-type]
 
         print("Uploading to Weights & Biases...")
         import wandb
 
         COLLECTION = output_name
-        run = wandb.init(project="csv_to_npz", name=COLLECTION)
+        run = wandb.init(project=wandb_project, entity=wandb_entity, name=COLLECTION)
         print(f"[INFO]: Logging motion to wandb: {COLLECTION}")
         REGISTRY = "motions"
         logged_artifact = run.log_artifact(
-          artifact_or_path="/tmp/motion.npz", name=COLLECTION, type=REGISTRY
+          artifact_or_path=str(motion_npz_path), name=COLLECTION, type=REGISTRY
         )
         run.link_artifact(
           artifact=logged_artifact,
@@ -380,43 +385,60 @@ def run_sim(
 
           print("Creating video...")
           clip = ImageSequenceClip(frames, fps=output_fps)
-          clip.write_videofile("./motion.mp4")
+          motion_video_path = Path("/tmp") / f"{output_name}.mp4"
+          clip.write_videofile(str(motion_video_path))
 
           print("Logging video to wandb...")
-          wandb.log({"motion_video": wandb.Video("./motion.mp4", format="mp4")})
+          wandb.log({"motion_video": wandb.Video(str(motion_video_path), format="mp4")})
 
         wandb.finish()
 
 
-def main(
+def _resolve_wandb_entity(wandb_entity: str | None) -> str | None:
+  return wandb_entity or os.environ.get("WANDB_ENTITY")
+
+
+def _artifact_exists(
+  output_name: str,
+  wandb_project: str,
+  wandb_entity: str | None,
+) -> bool:
+  import wandb
+
+  entity = _resolve_wandb_entity(wandb_entity)
+  artifact_path = (
+    f"{entity}/{wandb_project}/{output_name}:latest"
+    if entity
+    else f"{wandb_project}/{output_name}:latest"
+  )
+
+  try:
+    wandb.Api().artifact(artifact_path)
+    return True
+  except Exception as exc:  # WandB raises CommError for missing artifacts.
+    err = str(exc).lower()
+    if "not found" in err or "404" in err or "could not find" in err:
+      return False
+    raise
+
+
+def _run_single_csv(
   input_file: str,
   output_name: str,
-  input_fps: float = 30.0,
-  output_fps: float = 50.0,
-  device: str = "cuda:0",
-  render: bool = False,
-  line_range: tuple[int, int] | None = None,
-):
-  """Replay motion from CSV file and output to npz file.
-
-  Args:
-    input_file: Path to the input CSV file.
-    output_name: Path to the output npz file.
-    input_fps: Frame rate of the CSV file.
-    output_fps: Desired output frame rate.
-    device: Device to use.
-    render: Whether to render the simulation and save a video.
-    line_range: Range of lines to process from the CSV file.
-  """
+  input_fps: float,
+  output_fps: float,
+  device: str,
+  render: bool,
+  line_range: tuple[int, int] | None,
+  wandb_project: str,
+  wandb_entity: str | None,
+) -> None:
   sim_cfg = SimulationCfg()
   sim_cfg.mujoco.timestep = 1.0 / output_fps
 
   scene = Scene(booster_t1_23_flat_tracking_env_cfg().scene, device=device)
-
   model = scene.compile()
-
   sim = Simulation(num_envs=1, cfg=sim_cfg, model=model, device=device)
-
   scene.initialize(sim.mj_model, sim.model, sim.data)
 
   renderer = None
@@ -436,7 +458,7 @@ def main(
     )
     renderer.initialize()
 
-    run_sim(
+  run_sim(
     sim=sim,
     scene=scene,
     joint_names=[
@@ -477,6 +499,105 @@ def main(
     render=render,
     line_range=line_range,
     renderer=renderer,
+    wandb_project=wandb_project,
+    wandb_entity=wandb_entity,
+  )
+
+
+def main(
+  input_file: str | None = None,
+  output_name: str | None = None,
+  root_dir: str | None = None,
+  input_fps: float = 30.0,
+  output_fps: float = 50.0,
+  device: str = "cuda:0",
+  render: bool = True,
+  line_range: tuple[int, int] | None = None,
+  wandb_project: str = "csv_to_npz",
+  wandb_entity: str | None = None,
+):
+  """Replay motion from CSV file and output to npz file.
+
+  Args:
+    input_file: Path to one input CSV file.
+    output_name: Optional artifact name. Defaults to input CSV stem.
+    root_dir: Optional folder; if set, process all *.csv files recursively.
+    input_fps: Frame rate of the CSV file.
+    output_fps: Desired output frame rate.
+    device: Device to use.
+    render: Whether to render the simulation and save a video.
+      Default is True; disable with `--no-render`.
+    line_range: Range of lines to process from the CSV file.
+    wandb_project: W&B project name used for upload/check.
+    wandb_entity: Optional W&B entity. If unset, WANDB_ENTITY env var is used.
+  """
+  if (input_file is None) == (root_dir is None):
+    raise ValueError("Provide exactly one of `input_file` or `root_dir`.")
+
+  if root_dir is not None and output_name is not None:
+    raise ValueError("`output_name` cannot be used with `root_dir` batch mode.")
+
+  if root_dir is not None and line_range is not None:
+    raise ValueError("`line_range` is only supported in single-file mode.")
+
+  if root_dir is not None:
+    csv_files = sorted(Path(root_dir).rglob("*.csv"))
+    if not csv_files:
+      raise FileNotFoundError(f"No CSV files found in root_dir: {root_dir}")
+
+    print(f"[INFO] Found {len(csv_files)} CSV file(s) under {root_dir}")
+    uploaded = 0
+    skipped = 0
+
+    for csv_path in csv_files:
+      collection_name = csv_path.stem
+      print(f"\n[INFO] Processing: {csv_path} -> {collection_name}")
+
+      if _artifact_exists(collection_name, wandb_project, wandb_entity):
+        print(f"[SKIP] Artifact already exists: {collection_name}")
+        skipped += 1
+        continue
+
+      _run_single_csv(
+        input_file=str(csv_path),
+        output_name=collection_name,
+        input_fps=input_fps,
+        output_fps=output_fps,
+        device=device,
+        render=render,
+        line_range=None,
+        wandb_project=wandb_project,
+        wandb_entity=wandb_entity,
+      )
+      uploaded += 1
+
+    print(
+      f"\n[INFO] Done. uploaded={uploaded}, skipped_existing={skipped}, total={len(csv_files)}"
+    )
+    return
+
+  assert input_file is not None
+  input_path = Path(input_file)
+  if not input_path.is_file():
+    raise FileNotFoundError(f"Input CSV not found: {input_file}")
+
+  collection_name = output_name or input_path.stem
+  print(f"[INFO] Processing: {input_path} -> {collection_name}")
+
+  if _artifact_exists(collection_name, wandb_project, wandb_entity):
+    print(f"[SKIP] Artifact already exists: {collection_name}")
+    return
+
+  _run_single_csv(
+    input_file=str(input_path),
+    output_name=collection_name,
+    input_fps=input_fps,
+    output_fps=output_fps,
+    device=device,
+    render=render,
+    line_range=line_range,
+    wandb_project=wandb_project,
+    wandb_entity=wandb_entity,
   )
 
 

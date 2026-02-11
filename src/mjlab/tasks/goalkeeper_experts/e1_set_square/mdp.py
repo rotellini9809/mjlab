@@ -1,0 +1,474 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import cast
+
+import mujoco
+import torch
+
+from mjlab.entity import Entity, EntityCfg
+from mjlab.envs.mdp import *  # noqa: F401,F403
+from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
+from mjlab.managers.scene_entity_config import SceneEntityCfg
+from mjlab.motor_controller_stage1.latent_action import (
+  default_motor_obs_layout,
+  MotorLatentActionCfg,
+  motor_last_decoded_action,
+)
+from mjlab.utils.lab_api.math import (
+  quat_apply,
+  quat_from_euler_xyz,
+  quat_mul,
+)
+from mjlab.utils.spec import disable_collision
+
+_DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
+
+
+def _sample_uniform_range(
+  low: float,
+  high: float,
+  num: int,
+  device: str,
+) -> torch.Tensor:
+  return torch.rand(num, device=device) * (high - low) + low
+
+
+def _normalize_xy(vec_xy: torch.Tensor, eps: float = 1.0e-6) -> torch.Tensor:
+  norm = torch.linalg.norm(vec_xy, dim=1, keepdim=True).clamp_min(eps)
+  return vec_xy / norm
+
+
+def _compute_yaw_error(
+  robot: Entity,
+  target_pos_w: torch.Tensor,
+) -> torch.Tensor:
+  trunk_pos = robot.data.root_link_pos_w
+  target_xy = target_pos_w[:, :2] - trunk_pos[:, :2]
+  target_dir_xy = _normalize_xy(target_xy)
+
+  forward_w = quat_apply(robot.data.root_link_quat_w, robot.data.forward_vec_b)
+  forward_xy = _normalize_xy(forward_w[:, :2])
+
+  dot = torch.sum(forward_xy * target_dir_xy, dim=1).clamp(-1.0, 1.0)
+  det = forward_xy[:, 0] * target_dir_xy[:, 1] - forward_xy[:, 1] * target_dir_xy[:, 0]
+  return torch.atan2(det, dot)
+
+
+def _outside_area_violation(
+  pos_xy: torch.Tensor,
+  bounds: tuple[float, float, float, float],
+) -> torch.Tensor:
+  x_min, x_max, y_min, y_max = bounds
+  x = pos_xy[:, 0]
+  y = pos_xy[:, 1]
+  x_low = (x_min - x).clamp_min(0.0)
+  x_high = (x - x_max).clamp_min(0.0)
+  y_low = (y_min - y).clamp_min(0.0)
+  y_high = (y - y_max).clamp_min(0.0)
+  return x_low + x_high + y_low + y_high
+
+
+def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
+  return pos_w_xy - env.scene.env_origins[:, :2]
+
+
+def get_target_marker_cfg(
+  radius: float = 0.12,
+  rgba: tuple[float, float, float, float] = (0.95, 0.15, 0.1, 1.0),
+) -> EntityCfg:
+  """Create a visual-only target marker entity (collision disabled)."""
+
+  def _get_spec() -> mujoco.MjSpec:
+    spec = mujoco.MjSpec()
+    body = spec.worldbody.add_body(name="target_marker_body")
+    geom = body.add_geom(
+      name="target_marker_geom",
+      type=mujoco.mjtGeom.mjGEOM_SPHERE,
+      size=(radius, radius, radius),
+      rgba=rgba,
+    )
+    disable_collision(geom)
+    return spec
+
+  return EntityCfg(
+    init_state=EntityCfg.InitialStateCfg(pos=(0.0, 0.0, radius + 0.05)),
+    spec_fn=_get_spec,
+  )
+
+
+@dataclass(kw_only=True)
+class SetSquareCommandCfg(CommandTermCfg):
+  """Command term for E1 spawn/target sampling and marker placement."""
+
+  entity_name: str = "robot"
+  marker_entity_name: str = "target_marker"
+
+  # Motor-controller command vector dimension (from Stage-1 obs layout).
+  command_dim: int = 46
+
+  # Keeper spawn (world XY, before adding env origin).
+  keeper_spawn_x_range: tuple[float, float]
+  keeper_spawn_y_range: tuple[float, float]
+
+  # Safe keeper area bounds: (x_min, x_max, y_min, y_max).
+  keeper_area_bounds: tuple[float, float, float, float]
+  hard_area_margin: float = 0.8
+
+  # Target marker sampling relative to keeper spawn.
+  target_forward_range: tuple[float, float] = (1.0, 2.5)
+  target_lateral_range: tuple[float, float] = (-1.2, 1.2)
+  target_height: float = 0.8
+
+  # Reset curriculum hook.
+  p_ready: float = 0.0
+
+  # Keep target fixed for full episode.
+  resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
+  debug_vis: bool = False
+
+  # Optional yaw jitter at spawn.
+  spawn_yaw_range: tuple[float, float] = (0.0, 0.0)
+
+  def build(self, env):
+    return SetSquareCommand(self, env)
+
+
+class SetSquareCommand(CommandTerm):
+  cfg: SetSquareCommandCfg
+
+  def __init__(self, cfg: SetSquareCommandCfg, env):
+    super().__init__(cfg, env)
+    self._robot: Entity = env.scene[cfg.entity_name]
+    self._marker: Entity = env.scene[cfg.marker_entity_name]
+
+    self._command = torch.zeros(env.num_envs, cfg.command_dim, device=self.device)
+    self._spawn_pos_w = torch.zeros(env.num_envs, 3, device=self.device)
+    self._target_pos_w = torch.zeros(env.num_envs, 3, device=self.device)
+
+    self.metrics["yaw_error_abs"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["target_distance_xy"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["outside_keeper_area"] = torch.zeros(env.num_envs, device=self.device)
+
+  @property
+  def command(self) -> torch.Tensor:
+    return self._command
+
+  @property
+  def spawn_pos_w(self) -> torch.Tensor:
+    return self._spawn_pos_w
+
+  @property
+  def target_pos_w(self) -> torch.Tensor:
+    return self._target_pos_w
+
+  @property
+  def keeper_area_bounds(self) -> tuple[float, float, float, float]:
+    return self.cfg.keeper_area_bounds
+
+  @property
+  def hard_keeper_area_bounds(self) -> tuple[float, float, float, float]:
+    x_min, x_max, y_min, y_max = self.cfg.keeper_area_bounds
+    m = self.cfg.hard_area_margin
+    return (x_min - m, x_max + m, y_min - m, y_max + m)
+
+  def _update_metrics(self) -> None:
+    yaw_error = _compute_yaw_error(self._robot, self._target_pos_w)
+    self.metrics["yaw_error_abs"] = yaw_error.abs()
+
+    trunk_xy = self._robot.data.root_link_pos_w[:, :2]
+    target_xy = self._target_pos_w[:, :2]
+    self.metrics["target_distance_xy"] = torch.linalg.norm(target_xy - trunk_xy, dim=1)
+
+    trunk_xy_local = _world_to_env_local_xy(self._env, trunk_xy)
+    outside = _outside_area_violation(trunk_xy_local, self.cfg.keeper_area_bounds)
+    self.metrics["outside_keeper_area"] = outside
+
+  def _resample_command(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    self._reset_robot_pose(env_ids)
+    self._sample_target(env_ids)
+    self._update_marker_pose(env_ids)
+
+    # Stage-1 decoder command input. For E1 we keep it deterministic zero.
+    self._command[env_ids] = 0.0
+
+  def _update_command(self) -> None:
+    # Keep command and target fixed during episode.
+    pass
+
+  def _reset_robot_pose(self, env_ids: torch.Tensor) -> None:
+    default_root_state = self._robot.data.default_root_state
+    default_joint_pos = self._robot.data.default_joint_pos
+    default_joint_vel = self._robot.data.default_joint_vel
+
+    assert default_root_state is not None
+    assert default_joint_pos is not None
+    assert default_joint_vel is not None
+
+    spawn_x = _sample_uniform_range(
+      self.cfg.keeper_spawn_x_range[0],
+      self.cfg.keeper_spawn_x_range[1],
+      len(env_ids),
+      self.device,
+    )
+    spawn_y = _sample_uniform_range(
+      self.cfg.keeper_spawn_y_range[0],
+      self.cfg.keeper_spawn_y_range[1],
+      len(env_ids),
+      self.device,
+    )
+
+    # Future reset curriculum hook.
+    use_ready = (
+      torch.rand(len(env_ids), device=self.device) < float(self.cfg.p_ready)
+    )
+    if use_ready.any():
+      self._reset_to_ready_stance(env_ids[use_ready], spawn_x[use_ready], spawn_y[use_ready])
+    if (~use_ready).any():
+      self._reset_to_default_pose(
+        env_ids[(~use_ready)],
+        spawn_x[(~use_ready)],
+        spawn_y[(~use_ready)],
+      )
+
+    # Ensure joint state always starts from default keyframe for E1 stage.
+    self._robot.write_joint_state_to_sim(
+      default_joint_pos[env_ids],
+      default_joint_vel[env_ids],
+      env_ids=env_ids,
+    )
+    self._robot.clear_state(env_ids=env_ids)
+
+    # Cache spawn in world frame for rewards.
+    origins = self._env.scene.env_origins[env_ids]
+    spawn_pos_w = default_root_state[env_ids, :3].clone()
+    spawn_pos_w[:, 0] = origins[:, 0] + spawn_x
+    spawn_pos_w[:, 1] = origins[:, 1] + spawn_y
+    self._spawn_pos_w[env_ids] = spawn_pos_w
+
+  def _reset_to_default_pose(
+    self,
+    env_ids: torch.Tensor,
+    spawn_x: torch.Tensor,
+    spawn_y: torch.Tensor,
+  ) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    default_root_state = self._robot.data.default_root_state
+    assert default_root_state is not None
+
+    root_state = default_root_state[env_ids].clone()
+    origins = self._env.scene.env_origins[env_ids]
+
+    root_state[:, 0] = origins[:, 0] + spawn_x
+    root_state[:, 1] = origins[:, 1] + spawn_y
+
+    yaw_lo, yaw_hi = self.cfg.spawn_yaw_range
+    # Support both fixed-yaw resets (yaw_lo == yaw_hi) and sampled yaw ranges.
+    if abs(yaw_hi - yaw_lo) <= 1.0e-9:
+      yaw = torch.full((len(env_ids),), float(yaw_lo), device=self.device)
+    else:
+      yaw = _sample_uniform_range(yaw_lo, yaw_hi, len(env_ids), self.device)
+    if torch.any(torch.abs(yaw) > 1.0e-9):
+      yaw_q = quat_from_euler_xyz(
+        torch.zeros_like(yaw),
+        torch.zeros_like(yaw),
+        yaw,
+      )
+      root_state[:, 3:7] = quat_mul(root_state[:, 3:7], yaw_q)
+
+    root_state[:, 7:13] = 0.0
+    self._robot.write_root_state_to_sim(root_state, env_ids=env_ids)
+
+  def _reset_to_ready_stance(
+    self,
+    env_ids: torch.Tensor,
+    spawn_x: torch.Tensor,
+    spawn_y: torch.Tensor,
+  ) -> None:
+    # TODO: plug ready-stance reset once ready pose distribution is provided.
+    self._reset_to_default_pose(env_ids, spawn_x, spawn_y)
+
+  def _sample_target(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    forward = _sample_uniform_range(
+      self.cfg.target_forward_range[0],
+      self.cfg.target_forward_range[1],
+      len(env_ids),
+      self.device,
+    )
+    lateral = _sample_uniform_range(
+      self.cfg.target_lateral_range[0],
+      self.cfg.target_lateral_range[1],
+      len(env_ids),
+      self.device,
+    )
+
+    spawn_w = self._spawn_pos_w[env_ids]
+    target = spawn_w.clone()
+    # Keep the target on the keeper's front side after rotating the spawn heading by 180 deg.
+    target[:, 0] -= forward
+    target[:, 1] += lateral
+    target[:, 2] = self._env.scene.env_origins[env_ids, 2] + self.cfg.target_height
+    self._target_pos_w[env_ids] = target
+
+  def _update_marker_pose(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    q_identity = torch.zeros((len(env_ids), 4), device=self.device)
+    q_identity[:, 0] = 1.0
+    marker_pose = torch.cat([self._target_pos_w[env_ids], q_identity], dim=-1)
+
+    if self._marker.is_mocap:
+      self._marker.write_mocap_pose_to_sim(marker_pose, env_ids=env_ids)
+    else:
+      self._marker.write_root_link_pose_to_sim(marker_pose, env_ids=env_ids)
+
+
+def target_direction_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  rel_xy = command.target_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+  return _normalize_xy(rel_xy)
+
+
+def target_relative_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  return command.target_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+
+
+def yaw_alignment_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  k: float = 2.5,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  yaw_error = _compute_yaw_error(robot, command.target_pos_w)
+  return torch.exp(-k * torch.square(yaw_error))
+
+
+def upright_stability_reward(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  height_target: float = 0.62,
+  height_sigma: float = 0.12,
+  tilt_sigma: float = 0.5,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+
+  height = robot.data.root_link_pos_w[:, 2]
+  height_err_sq = torch.square(height - height_target)
+  height_reward = torch.exp(-height_err_sq / max(height_sigma * height_sigma, 1.0e-6))
+
+  projected_gravity_b = robot.data.projected_gravity_b
+  tilt = torch.linalg.norm(projected_gravity_b[:, :2], dim=1)
+  upright_reward = torch.exp(-torch.square(tilt) / max(tilt_sigma * tilt_sigma, 1.0e-6))
+
+  return height_reward * upright_reward
+
+
+def xy_drift_l2(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  delta = robot.data.root_link_pos_w[:, :2] - command.spawn_pos_w[:, :2]
+  return torch.sum(torch.square(delta), dim=1)
+
+
+def xy_speed_l2(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  vel_xy = robot.data.root_link_lin_vel_w[:, :2]
+  return torch.sum(torch.square(vel_xy), dim=1)
+
+
+def outside_keeper_area_penalty(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
+  return _outside_area_violation(pos_xy_local, command.keeper_area_bounds)
+
+
+def fallen_indicator(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  min_height: float = 0.30,
+  max_tilt: float = 1.20,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  height = robot.data.root_link_pos_w[:, 2]
+  tilt = torch.linalg.norm(robot.data.projected_gravity_b[:, :2], dim=1)
+  fallen = (height < min_height) | (tilt > max_tilt)
+  return fallen.float()
+
+
+def outside_keeper_area_hard(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
+  violation = _outside_area_violation(
+    pos_xy_local,
+    command.hard_keeper_area_bounds,
+  )
+  return violation > 0.0
+
+
+class FallTermination:
+  """Terminate if fallen state persists for several consecutive steps."""
+
+  def __init__(self, cfg, env):
+    del cfg
+    self._counter = torch.zeros(env.num_envs, device=env.device, dtype=torch.long)
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    self._counter[env_ids] = 0
+
+  def __call__(
+    self,
+    env,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    min_height: float = 0.30,
+    max_tilt: float = 1.20,
+    consecutive_steps: int = 6,
+  ) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    height = robot.data.root_link_pos_w[:, 2]
+    tilt = torch.linalg.norm(robot.data.projected_gravity_b[:, :2], dim=1)
+    fallen_now = (height < min_height) | (tilt > max_tilt)
+    self._counter = torch.where(
+      fallen_now,
+      self._counter + 1,
+      torch.zeros_like(self._counter),
+    )
+    return self._counter >= int(consecutive_steps)
