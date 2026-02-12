@@ -135,6 +135,14 @@ class SetShotCommand(CommandTerm):
     m = self.cfg.hard_area_margin
     return (x_min - m, x_max + m, y_min - m, y_max + m)
 
+  def _update_metrics(self) -> None:
+    yaw_error = _compute_yaw_error(self._robot, self._aim_pos_w)
+    self.metrics["yaw_error_abs"] = yaw_error.abs()
+
+    trunk_xy = self._robot.data.root_link_pos_w[:, :2]
+    ball_xy = self._ball.data.root_link_pos_w[:, :2]
+    self.metrics["ball_dist_xy"] = torch.linalg.norm(ball_xy - trunk_xy, dim=1)
+
   def _resample_command(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:
       return

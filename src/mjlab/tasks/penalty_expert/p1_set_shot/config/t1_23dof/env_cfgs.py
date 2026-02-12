@@ -61,6 +61,17 @@ EPISODE_LENGTH_S = 8.0
 def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     cfg = make_tracking_env_cfg()
 
+    to_remove = []
+    for name, term in cfg.terminations.items():
+        params = getattr(term, "params", {}) or {}
+        if params.get("command_name") == "motion":
+            to_remove.append(name)
+
+    for name in to_remove:
+        cfg.terminations.pop(name, None)
+   
+
+
 
     # distanza "dischetto" dalla porta (metti quello che ti torna bene)
     PENALTY_DIST_FROM_GOAL = 2.5  # metri circa nel tuo mondo
