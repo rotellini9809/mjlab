@@ -95,11 +95,11 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
     # ------------------ goals ------------------
     goal_left_cfg = get_robocup_goalpost_cfg()
-    goal_left_cfg.init_state.pos = (GOAL_X_LINE, 0.0, 0.0)
+    goal_left_cfg.init_state.pos = (GOALPOST_X, 0.0, 0.0)
     goal_left_cfg.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
     goal_right_cfg = get_robocup_goalpost_cfg()
-    goal_right_cfg.init_state.pos = (-GOAL_X_LINE, 0.0, 0.0)
+    goal_right_cfg.init_state.pos = (-GOALPOST_X, 0.0, 0.0)
     goal_right_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
 
     # ------------------ scene ------------------
@@ -122,11 +122,12 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
     cfg.viewer = ViewerConfig(
         origin_type=ViewerConfig.OriginType.WORLD,
-        lookat=(0.0, 0.0, 0.0),
-        distance=12.0,
-        elevation=-60.0,
-        azimuth=90.0,
+        lookat=(ROBOT_X + 1.0, 0.0, 1.0),
+        distance=5.0,
+        elevation=-25.0,
+        azimuth=0.0,
     )
+
 
     motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
         act_dim=MOTOR_ACT_DIM,
