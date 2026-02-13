@@ -52,13 +52,14 @@
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'source/installation';</script>
+    <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Migrating from Isaac Lab" href="migration_isaac_lab.html" />
     <link rel="prev" title="Welcome to mjlab!" href="../index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Feb 03, 2026"/>
+    <meta name="docbuild:last-update" content="Feb 13, 2026"/>
   </head>
   
   
@@ -170,7 +171,18 @@
           
           
           
-          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-0.1.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-1.0.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://mujocolab.github.io/mjlab/nightly/" title="Benchmarks" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/Nightly-Benchmarks-blue" class="icon-link-image" alt="Benchmarks"/></a>
         </li>
         <li class="nav-item">
           
@@ -212,6 +224,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="motivation.html">Why mjlab?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -449,23 +462,24 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-choose-an-installation-method">How to choose an installation method?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-1-use-mjlab-as-a-dependency-uv">Method 1 - Use mjlab as a dependency (uv)</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-uv">Install uv</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#add-mjlab-dependency">Add mjlab dependency</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-1-use-mjlab-as-a-dependency-uv">Method 1 - Use mjlab as a dependency (uv)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-uv">1. Install uv</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#initialize-your-project">2. Initialize your project</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#add-mjlab-dependencies">3. Add mjlab dependencies</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verification">Verification</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-2-develop-contribute-uv">Method 2 - Develop / contribute (uv)</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-2-develop-contribute-uv">Method 2 - Develop / contribute (uv)</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Verification</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-3-classic-pip-venv-conda">Method 3 - Classic pip / venv / conda</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-3-classic-pip-venv-conda">Method 3 - Classic pip / venv / conda</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#create-and-activate-your-virtual-environment">Create and activate your virtual environment</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-mjlab-and-dependencies-via-pip">Install mjlab and dependencies via pip</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Verification</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-4-docker-clusters">Method 4 - Docker / clusters</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-4-docker-clusters">Method 4 - Docker / clusters</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequisites">Prerequisites</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#build-the-docker-image">Build the Docker image</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-mjlab-in-docker">Run mjlab in Docker</a></li>
@@ -485,8 +499,7 @@ document.write(`
                   
   <section id="installation-guide">
 <span id="installation"></span><h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">mjlab</span></code> is in active <strong>beta</strong> and tightly coupled to MuJoCo Warp.
-This guide presents different installation paths so you can
+<p>This guide presents different installation paths so you can
 choose the one that best fits your use case.</p>
 <nav class="contents local" id="contents">
 <ul class="simple">
@@ -559,14 +572,23 @@ Method 4 - Docker / clusters</div>
 your own project and want to use <code class="docutils literal notranslate"><span class="pre">mjlab</span></code> as a dependency
 using <code class="docutils literal notranslate"><span class="pre">uv</span></code>.</p>
 <section id="install-uv">
-<h3>Install uv<a class="headerlink" href="#install-uv" title="Link to this heading">#</a></h3>
+<h3>1. Install uv<a class="headerlink" href="#install-uv" title="Link to this heading">#</a></h3>
 <p>If you do not have <code class="docutils literal notranslate"><span class="pre">uv</span></code> installed, run:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
 </pre></div>
 </div>
 </section>
-<section id="add-mjlab-dependency">
-<h3>Add mjlab dependency<a class="headerlink" href="#add-mjlab-dependency" title="Link to this heading">#</a></h3>
+<section id="initialize-your-project">
+<h3>2. Initialize your project<a class="headerlink" href="#initialize-your-project" title="Link to this heading">#</a></h3>
+<p>Initialize a managed Python project:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create a new package-based project</span>
+uv<span class="w"> </span>init<span class="w"> </span>--package<span class="w"> </span>my_mjlab_project
+<span class="nb">cd</span><span class="w"> </span>my_mjlab_project
+</pre></div>
+</div>
+</section>
+<section id="add-mjlab-dependencies">
+<h3>3. Add mjlab dependencies<a class="headerlink" href="#add-mjlab-dependencies" title="Link to this heading">#</a></h3>
 <p>There are different options to add <code class="docutils literal notranslate"><span class="pre">mjlab</span></code> as a dependency.
 We recommend using the latest stable version from PyPI. If you need
 the latest features, use the direct GitHub installation. Finally, if you
@@ -577,7 +599,7 @@ install. These options are interchangeable: you can switch at any time.</p>
 <label class="sd-tab-label" for="sd-tab-item-0">
 PyPI</label><div class="sd-tab-content docutils">
 <p>Once in your project, install the latest snapshot from PyPI:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span>mjlab<span class="w"> </span><span class="s2">&quot;mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@9491175b7cbea87e28d3e3e67733095317c33398&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span>mjlab<span class="w"> </span><span class="s2">&quot;mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@7c20a44bfed722e6415235792a1b247ea6b6a6d3&quot;</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -589,7 +611,7 @@ PyPI</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-1">
 Source</label><div class="sd-tab-content docutils">
 <p>Once in your project, install directly from GitHub without cloning:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;mjlab @ git+https://github.com/mujocolab/mjlab&quot;</span><span class="w"> </span><span class="s2">&quot;mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@9491175b7cbea87e28d3e3e67733095317c33398&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;mjlab @ git+https://github.com/mujocolab/mjlab&quot;</span><span class="w"> </span><span class="s2">&quot;mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@0828fb0b57d7baf734dd71fa164d092cb17e635b&quot;</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -609,6 +631,12 @@ Local</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For a complete example of how to structure a project that integrates a custom robot
+with an existing <code class="docutils literal notranslate"><span class="pre">mjlab</span></code> task, check out the
+<a class="reference external" href="https://github.com/mujocolab/anymal_c_velocity">ANYmal C Velocity Tracking</a> repository.</p>
 </div>
 </section>
 <section id="verification">
@@ -669,7 +697,7 @@ conda<span class="w"> </span>activate<span class="w"> </span>mjlab
 <label class="sd-tab-label" for="sd-tab-item-5">
 PyPI</label><div class="sd-tab-content docutils">
 <p>From PyPI:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/google-deepmind/mujoco_warp@9491175b7cbea87e28d3e3e67733095317c33398
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/google-deepmind/mujoco_warp@7c20a44bfed722e6415235792a1b247ea6b6a6d3
 pip<span class="w"> </span>install<span class="w"> </span>mjlab
 </pre></div>
 </div>
@@ -678,7 +706,7 @@ pip<span class="w"> </span>install<span class="w"> </span>mjlab
 <label class="sd-tab-label" for="sd-tab-item-6">
 Source</label><div class="sd-tab-content docutils">
 <p>From Source:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/google-deepmind/mujoco_warp@9491175b7cbea87e28d3e3e67733095317c33398
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/google-deepmind/mujoco_warp@0828fb0b57d7baf734dd71fa164d092cb17e635b
 git<span class="w"> </span>clone<span class="w"> </span>https://github.com/mujocolab/mjlab.git
 <span class="nb">cd</span><span class="w"> </span>mjlab
 pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
@@ -810,23 +838,24 @@ the Docker configuration section of the NVIDIA install guide.</p></li>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-choose-an-installation-method">How to choose an installation method?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-1-use-mjlab-as-a-dependency-uv">Method 1 - Use mjlab as a dependency (uv)</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-uv">Install uv</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#add-mjlab-dependency">Add mjlab dependency</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-1-use-mjlab-as-a-dependency-uv">Method 1 - Use mjlab as a dependency (uv)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-uv">1. Install uv</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#initialize-your-project">2. Initialize your project</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#add-mjlab-dependencies">3. Add mjlab dependencies</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verification">Verification</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-2-develop-contribute-uv">Method 2 - Develop / contribute (uv)</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-2-develop-contribute-uv">Method 2 - Develop / contribute (uv)</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Verification</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-3-classic-pip-venv-conda">Method 3 - Classic pip / venv / conda</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-3-classic-pip-venv-conda">Method 3 - Classic pip / venv / conda</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#create-and-activate-your-virtual-environment">Create and activate your virtual environment</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-mjlab-and-dependencies-via-pip">Install mjlab and dependencies via pip</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Verification</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-4-docker-clusters">Method 4 - Docker / clusters</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-4-docker-clusters">Method 4 - Docker / clusters</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequisites">Prerequisites</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#build-the-docker-image">Build the Docker image</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-mjlab-in-docker">Run mjlab in Docker</a></li>
@@ -866,7 +895,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Feb 03, 2026.
+  Last updated on Feb 13, 2026.
   <br/>
 </p>
   </div>

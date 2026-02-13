@@ -52,13 +52,14 @@
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'source/api/managers';</script>
+    <link rel="icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="mjlab.terrains" href="terrains.html" />
     <link rel="prev" title="mjlab.sensor" href="sensor.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Feb 03, 2026"/>
+    <meta name="docbuild:last-update" content="Feb 13, 2026"/>
   </head>
   
   
@@ -170,7 +171,18 @@
           
           
           
-          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-0.1.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-1.0.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://mujocolab.github.io/mjlab/nightly/" title="Benchmarks" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/Nightly-Benchmarks-blue" class="icon-link-image" alt="Benchmarks"/></a>
         </li>
         <li class="nav-item">
           
@@ -212,6 +224,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../motivation.html">Why mjlab?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -448,7 +461,7 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager"><code class="docutils literal notranslate"><span class="pre">ActionManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager"><code class="docutils literal notranslate"><span class="pre">ActionManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.__init__"><code class="docutils literal notranslate"><span class="pre">ActionManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.total_action_dim"><code class="docutils literal notranslate"><span class="pre">ActionManager.total_action_dim</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.action_term_dim"><code class="docutils literal notranslate"><span class="pre">ActionManager.action_term_dim</span></code></a></li>
@@ -463,7 +476,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">ActionManager.get_active_iterable_terms()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm"><code class="docutils literal notranslate"><span class="pre">ActionTerm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm"><code class="docutils literal notranslate"><span class="pre">ActionTerm</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.__init__"><code class="docutils literal notranslate"><span class="pre">ActionTerm.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.action_dim"><code class="docutils literal notranslate"><span class="pre">ActionTerm.action_dim</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.process_actions"><code class="docutils literal notranslate"><span class="pre">ActionTerm.process_actions()</span></code></a></li>
@@ -471,14 +484,14 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.raw_action"><code class="docutils literal notranslate"><span class="pre">ActionTerm.raw_action</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.entity_name"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.entity_name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.clip"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.clip</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.build"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.build()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager"><code class="docutils literal notranslate"><span class="pre">CommandManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager"><code class="docutils literal notranslate"><span class="pre">CommandManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.__init__"><code class="docutils literal notranslate"><span class="pre">CommandManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">CommandManager.debug_vis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.active_terms"><code class="docutils literal notranslate"><span class="pre">CommandManager.active_terms</span></code></a></li>
@@ -490,7 +503,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">CommandManager.get_term_cfg()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm"><code class="docutils literal notranslate"><span class="pre">CommandTerm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm"><code class="docutils literal notranslate"><span class="pre">CommandTerm</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.__init__"><code class="docutils literal notranslate"><span class="pre">CommandTerm.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.debug_vis"><code class="docutils literal notranslate"><span class="pre">CommandTerm.debug_vis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.command"><code class="docutils literal notranslate"><span class="pre">CommandTerm.command</span></code></a></li>
@@ -498,14 +511,14 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.compute"><code class="docutils literal notranslate"><span class="pre">CommandTerm.compute()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.resampling_time_range"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.resampling_time_range</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.debug_vis"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.debug_vis</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.build"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.build()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager"><code class="docutils literal notranslate"><span class="pre">NullCommandManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager"><code class="docutils literal notranslate"><span class="pre">NullCommandManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.debug_vis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.get_active_iterable_terms()</span></code></a></li>
@@ -516,7 +529,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.get_term_cfg()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager"><code class="docutils literal notranslate"><span class="pre">CurriculumManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager"><code class="docutils literal notranslate"><span class="pre">CurriculumManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.__init__"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.active_terms"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.get_term_cfg()</span></code></a></li>
@@ -525,18 +538,18 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.compute"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.compute()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumTermCfg"><code class="docutils literal notranslate"><span class="pre">CurriculumTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumTermCfg"><code class="docutils literal notranslate"><span class="pre">CurriculumTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">CurriculumTermCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.get_active_iterable_terms()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.reset"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.reset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.compute"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.compute()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager"><code class="docutils literal notranslate"><span class="pre">EventManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager"><code class="docutils literal notranslate"><span class="pre">EventManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.__init__"><code class="docutils literal notranslate"><span class="pre">EventManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.active_terms"><code class="docutils literal notranslate"><span class="pre">EventManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.available_modes"><code class="docutils literal notranslate"><span class="pre">EventManager.available_modes</span></code></a></li>
@@ -546,7 +559,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.apply"><code class="docutils literal notranslate"><span class="pre">EventManager.apply()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg"><code class="docutils literal notranslate"><span class="pre">EventTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg"><code class="docutils literal notranslate"><span class="pre">EventTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.mode"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.mode</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.interval_range_s"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.interval_range_s</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.is_global_time"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.is_global_time</span></code></a></li>
@@ -557,7 +570,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.params"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.params</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase"><code class="docutils literal notranslate"><span class="pre">ManagerBase</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase"><code class="docutils literal notranslate"><span class="pre">ManagerBase</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerBase.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.num_envs"><code class="docutils literal notranslate"><span class="pre">ManagerBase.num_envs</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.device"><code class="docutils literal notranslate"><span class="pre">ManagerBase.device</span></code></a></li>
@@ -566,7 +579,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">ManagerBase.get_active_iterable_terms()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.num_envs"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.num_envs</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.device"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.device</span></code></a></li>
@@ -574,23 +587,44 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.reset"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.reset()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg.func"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg.func</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg.params"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg.params</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager"><code class="docutils literal notranslate"><span class="pre">MetricsManager</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">MetricsManager.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.active_terms"><code class="docutils literal notranslate"><span class="pre">MetricsManager.active_terms</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.reset"><code class="docutils literal notranslate"><span class="pre">MetricsManager.reset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.compute"><code class="docutils literal notranslate"><span class="pre">MetricsManager.compute()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">MetricsManager.get_active_iterable_terms()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.get_active_iterable_terms()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.reset"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.reset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.compute"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.compute()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.terms"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.concatenate_terms"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.concatenate_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.concatenate_dim"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.concatenate_dim</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.enable_corruption"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.enable_corruption</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.history_length"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.history_length</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.flatten_history_dim"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.flatten_history_dim</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.nan_policy"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.nan_policy</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.nan_check_per_term"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.nan_check_per_term</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager"><code class="docutils literal notranslate"><span class="pre">ObservationManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager"><code class="docutils literal notranslate"><span class="pre">ObservationManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.__init__"><code class="docutils literal notranslate"><span class="pre">ObservationManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">ObservationManager.get_active_iterable_terms()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.active_terms"><code class="docutils literal notranslate"><span class="pre">ObservationManager.active_terms</span></code></a></li>
@@ -603,7 +637,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.compute_group"><code class="docutils literal notranslate"><span class="pre">ObservationManager.compute_group()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.noise"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.clip"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.clip</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.scale"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.scale</span></code></a></li>
@@ -620,7 +654,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.params"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.params</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager"><code class="docutils literal notranslate"><span class="pre">RewardManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager"><code class="docutils literal notranslate"><span class="pre">RewardManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.__init__"><code class="docutils literal notranslate"><span class="pre">RewardManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.active_terms"><code class="docutils literal notranslate"><span class="pre">RewardManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.reset"><code class="docutils literal notranslate"><span class="pre">RewardManager.reset()</span></code></a></li>
@@ -629,14 +663,14 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">RewardManager.get_term_cfg()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.func"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.func</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.weight"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.weight</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.params"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.params</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.name"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.joint_names"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.joint_names</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.joint_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.joint_ids</span></code></a></li>
@@ -653,7 +687,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.resolve"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.resolve()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager"><code class="docutils literal notranslate"><span class="pre">TerminationManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager"><code class="docutils literal notranslate"><span class="pre">TerminationManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.__init__"><code class="docutils literal notranslate"><span class="pre">TerminationManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.active_terms"><code class="docutils literal notranslate"><span class="pre">TerminationManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.dones"><code class="docutils literal notranslate"><span class="pre">TerminationManager.dones</span></code></a></li>
@@ -666,7 +700,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">TerminationManager.get_active_iterable_terms()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg.time_out"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg.time_out</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg.func"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg.func</span></code></a></li>
@@ -736,28 +770,37 @@ document.write(`
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.ManagerTermBaseCfg" title="mjlab.managers.ManagerTermBaseCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ManagerTermBaseCfg</span></code></a></p></td>
 <td><p>Base configuration for manager terms.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.ObservationGroupCfg" title="mjlab.managers.ObservationGroupCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.MetricsManager" title="mjlab.managers.MetricsManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetricsManager</span></code></a></p></td>
+<td><p>Accumulates per-step metric values, reports episode averages.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.MetricsTermCfg" title="mjlab.managers.MetricsTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a></p></td>
+<td><p>Configuration for a metrics term.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.NullMetricsManager" title="mjlab.managers.NullMetricsManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NullMetricsManager</span></code></a></p></td>
+<td><p>Placeholder for absent metrics manager that safely no-ops all operations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.ObservationGroupCfg" title="mjlab.managers.ObservationGroupCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a></p></td>
 <td><p>Configuration for an observation group.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.ObservationManager" title="mjlab.managers.ObservationManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObservationManager</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.ObservationManager" title="mjlab.managers.ObservationManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObservationManager</span></code></a></p></td>
 <td><p>Manages observation computation for the environment.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.ObservationTermCfg" title="mjlab.managers.ObservationTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.ObservationTermCfg" title="mjlab.managers.ObservationTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a></p></td>
 <td><p>Configuration for an observation term.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.RewardManager" title="mjlab.managers.RewardManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RewardManager</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.RewardManager" title="mjlab.managers.RewardManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RewardManager</span></code></a></p></td>
 <td><p>Manages reward computation by aggregating weighted reward terms.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.RewardTermCfg" title="mjlab.managers.RewardTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.RewardTermCfg" title="mjlab.managers.RewardTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a></p></td>
 <td><p>Configuration for a reward term.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.SceneEntityCfg" title="mjlab.managers.SceneEntityCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SceneEntityCfg</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.SceneEntityCfg" title="mjlab.managers.SceneEntityCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SceneEntityCfg</span></code></a></p></td>
 <td><p>Configuration for a scene entity that is used by the manager's term.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.TerminationManager" title="mjlab.managers.TerminationManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TerminationManager</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.TerminationManager" title="mjlab.managers.TerminationManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TerminationManager</span></code></a></p></td>
 <td><p>Manages termination conditions for the environment.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.TerminationTermCfg" title="mjlab.managers.TerminationTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.TerminationTermCfg" title="mjlab.managers.TerminationTermCfg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a></p></td>
 <td><p>Configuration for a termination term.</p></td>
 </tr>
 </tbody>
@@ -1825,12 +1868,142 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">MetricsManager</span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsManager" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mjlab.managers.ManagerBase" title="mjlab.managers.manager_base.ManagerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManagerBase</span></code></a></p>
+<p>Accumulates per-step metric values, reports episode averages.</p>
+<p>Unlike rewards, metrics have no weight, no dt scaling, and no
+normalization by episode length. Episode values are true per-step
+averages (sum / step_count), so a metric in [0,1] stays in [0,1]
+in the logger.</p>
+<p><strong>Methods:</strong></p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.MetricsManager.__init__" title="mjlab.managers.MetricsManager.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(cfg, env)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.MetricsManager.reset" title="mjlab.managers.MetricsManager.reset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reset</span></code></a>([env_ids])</p></td>
+<td><p>Resets the manager and returns logging info for the current step.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.MetricsManager.compute" title="mjlab.managers.MetricsManager.compute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.MetricsManager.get_active_iterable_terms" title="mjlab.managers.MetricsManager.get_active_iterable_terms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_iterable_terms</span></code></a>(env_idx)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Attributes:</strong></p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.MetricsManager.active_terms" title="mjlab.managers.MetricsManager.active_terms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_terms</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#mjlab.managers.MetricsTermCfg" title="mjlab.managers.MetricsTermCfg"><span class="pre">MetricsTermCfg</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnv" title="mjlab.envs.ManagerBasedRlEnv"><span class="pre">ManagerBasedRlEnv</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsManager.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsManager.active_terms">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">active_terms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.managers.MetricsManager.active_terms" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsManager.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsManager.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsManager.reset" title="Link to this definition">#</a></dt>
+<dd><p>Resets the manager and returns logging info for the current step.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsManager.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsManager.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsManager.compute" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsManager.get_active_iterable_terms">
+<span class="sig-name descname"><span class="pre">get_active_iterable_terms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsManager.get_active_iterable_terms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsManager.get_active_iterable_terms" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsTermCfg">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">MetricsTermCfg</span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsTermCfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsTermCfg" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mjlab.managers.ManagerTermBaseCfg" title="mjlab.managers.manager_base.ManagerTermBaseCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManagerTermBaseCfg</span></code></a></p>
+<p>Configuration for a metrics term.</p>
+<p><strong>Methods:</strong></p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.MetricsTermCfg.__init__" title="mjlab.managers.MetricsTermCfg.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(func[, params])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.MetricsTermCfg.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func:</span> <span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.managers.MetricsTermCfg.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mjlab.managers.NullMetricsManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">NullMetricsManager</span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#NullMetricsManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullMetricsManager" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Placeholder for absent metrics manager that safely no-ops all operations.</p>
+<p><strong>Methods:</strong></p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.NullMetricsManager.__init__" title="mjlab.managers.NullMetricsManager.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.NullMetricsManager.get_active_iterable_terms" title="mjlab.managers.NullMetricsManager.get_active_iterable_terms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_iterable_terms</span></code></a>(env_idx)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.NullMetricsManager.reset" title="mjlab.managers.NullMetricsManager.reset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reset</span></code></a>([env_ids])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.NullMetricsManager.compute" title="mjlab.managers.NullMetricsManager.compute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.NullMetricsManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#NullMetricsManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullMetricsManager.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.NullMetricsManager.get_active_iterable_terms">
+<span class="sig-name descname"><span class="pre">get_active_iterable_terms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#NullMetricsManager.get_active_iterable_terms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullMetricsManager.get_active_iterable_terms" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.NullMetricsManager.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#NullMetricsManager.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullMetricsManager.reset" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.NullMetricsManager.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#NullMetricsManager.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullMetricsManager.compute" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="mjlab.managers.ObservationGroupCfg">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">ObservationGroupCfg</span></span><a class="reference internal" href="../../_modules/mjlab/managers/observation_manager.html#ObservationGroupCfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.ObservationGroupCfg" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Configuration for an observation group.</p>
 <p>An observation group bundles multiple observation terms together. Groups are
-typically used to separate observations for different purposes (e.g., “policy”
+typically used to separate observations for different purposes (e.g., “actor”
 for the actor, “critic” for the value function).</p>
 <p><strong>Attributes:</strong></p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -1852,6 +2025,12 @@ for the actor, “critic” for the value function).</p>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.ObservationGroupCfg.flatten_history_dim" title="mjlab.managers.ObservationGroupCfg.flatten_history_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flatten_history_dim</span></code></a></p></td>
 <td><p>Whether to flatten history into the observation dimension.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.managers.ObservationGroupCfg.nan_policy" title="mjlab.managers.ObservationGroupCfg.nan_policy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nan_policy</span></code></a></p></td>
+<td><p>NaN/Inf handling policy for observations in this group.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.managers.ObservationGroupCfg.nan_check_per_term" title="mjlab.managers.ObservationGroupCfg.nan_check_per_term"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nan_check_per_term</span></code></a></p></td>
+<td><p>If True, check each observation term individually to identify NaN source.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1898,17 +2077,37 @@ training for domain randomization, False during evaluation.</p>
 this group. If None, each term uses its own <code class="docutils literal notranslate"><span class="pre">history_length</span></code> setting.</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.ObservationGroupCfg.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#mjlab.managers.ObservationTermCfg" title="mjlab.managers.observation_manager.ObservationTermCfg"><span class="pre">ObservationTermCfg</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concatenate_terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concatenate_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_corruption</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flatten_history_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.managers.ObservationGroupCfg.__init__" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.managers.ObservationGroupCfg.flatten_history_dim">
 <span class="sig-name descname"><span class="pre">flatten_history_dim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#mjlab.managers.ObservationGroupCfg.flatten_history_dim" title="Link to this definition">#</a></dt>
 <dd><p>Whether to flatten history into the observation dimension. If True,
 observations have shape <code class="docutils literal notranslate"><span class="pre">(num_envs,</span> <span class="pre">obs_dim</span> <span class="pre">*</span> <span class="pre">history_length)</span></code>. If False,
 shape is <code class="docutils literal notranslate"><span class="pre">(num_envs,</span> <span class="pre">history_length,</span> <span class="pre">obs_dim)</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.managers.ObservationGroupCfg.nan_policy">
+<span class="sig-name descname"><span class="pre">nan_policy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'disabled'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warn'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'sanitize'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'disabled'</span></em><a class="headerlink" href="#mjlab.managers.ObservationGroupCfg.nan_policy" title="Link to this definition">#</a></dt>
+<dd><p>NaN/Inf handling policy for observations in this group.</p>
+<ul class="simple">
+<li><p>‘disabled’: No checks (default, fastest)</p></li>
+<li><p>‘warn’: Log warning with term name and env IDs, then sanitize (debugging)</p></li>
+<li><p>‘sanitize’: Silent sanitization to 0.0 like reward manager (safe for production)</p></li>
+<li><p>‘error’: Raise ValueError on NaN/Inf (strict development mode)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.ObservationGroupCfg.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#mjlab.managers.ObservationTermCfg" title="mjlab.managers.observation_manager.ObservationTermCfg"><span class="pre">ObservationTermCfg</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concatenate_terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concatenate_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_corruption</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flatten_history_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nan_policy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'disabled'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warn'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'sanitize'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'disabled'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nan_check_per_term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.managers.ObservationGroupCfg.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.managers.ObservationGroupCfg.nan_check_per_term">
+<span class="sig-name descname"><span class="pre">nan_check_per_term</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#mjlab.managers.ObservationGroupCfg.nan_check_per_term" title="Link to this definition">#</a></dt>
+<dd><p>If True, check each observation term individually to identify NaN source.
+If False, check only the final concatenated output (faster but less informative).
+Only applies when nan_policy != ‘disabled’.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2142,7 +2341,7 @@ synchronized resampling.</p>
 <dd><p>Whether to flatten the history dimension into observation.</p>
 <p>When True and concatenate_terms=True, uses term-major ordering:
 [A_t0, A_t1, …, A_tH-1, B_t0, B_t1, …, B_tH-1, …]
-See docs/api/observation_history_delay.md for details on ordering.</p>
+See docs/source/observation.rst for details on ordering.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2669,7 +2868,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager"><code class="docutils literal notranslate"><span class="pre">ActionManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager"><code class="docutils literal notranslate"><span class="pre">ActionManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.__init__"><code class="docutils literal notranslate"><span class="pre">ActionManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.total_action_dim"><code class="docutils literal notranslate"><span class="pre">ActionManager.total_action_dim</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.action_term_dim"><code class="docutils literal notranslate"><span class="pre">ActionManager.action_term_dim</span></code></a></li>
@@ -2684,7 +2883,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">ActionManager.get_active_iterable_terms()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm"><code class="docutils literal notranslate"><span class="pre">ActionTerm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm"><code class="docutils literal notranslate"><span class="pre">ActionTerm</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.__init__"><code class="docutils literal notranslate"><span class="pre">ActionTerm.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.action_dim"><code class="docutils literal notranslate"><span class="pre">ActionTerm.action_dim</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.process_actions"><code class="docutils literal notranslate"><span class="pre">ActionTerm.process_actions()</span></code></a></li>
@@ -2692,14 +2891,14 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTerm.raw_action"><code class="docutils literal notranslate"><span class="pre">ActionTerm.raw_action</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.entity_name"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.entity_name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.clip"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.clip</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.build"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.build()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ActionTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ActionTermCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager"><code class="docutils literal notranslate"><span class="pre">CommandManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager"><code class="docutils literal notranslate"><span class="pre">CommandManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.__init__"><code class="docutils literal notranslate"><span class="pre">CommandManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">CommandManager.debug_vis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.active_terms"><code class="docutils literal notranslate"><span class="pre">CommandManager.active_terms</span></code></a></li>
@@ -2711,7 +2910,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">CommandManager.get_term_cfg()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm"><code class="docutils literal notranslate"><span class="pre">CommandTerm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm"><code class="docutils literal notranslate"><span class="pre">CommandTerm</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.__init__"><code class="docutils literal notranslate"><span class="pre">CommandTerm.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.debug_vis"><code class="docutils literal notranslate"><span class="pre">CommandTerm.debug_vis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.command"><code class="docutils literal notranslate"><span class="pre">CommandTerm.command</span></code></a></li>
@@ -2719,14 +2918,14 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.compute"><code class="docutils literal notranslate"><span class="pre">CommandTerm.compute()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.resampling_time_range"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.resampling_time_range</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.debug_vis"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.debug_vis</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.build"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.build()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">CommandTermCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager"><code class="docutils literal notranslate"><span class="pre">NullCommandManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager"><code class="docutils literal notranslate"><span class="pre">NullCommandManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.debug_vis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.get_active_iterable_terms()</span></code></a></li>
@@ -2737,7 +2936,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCommandManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">NullCommandManager.get_term_cfg()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager"><code class="docutils literal notranslate"><span class="pre">CurriculumManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager"><code class="docutils literal notranslate"><span class="pre">CurriculumManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.__init__"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.active_terms"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.get_term_cfg()</span></code></a></li>
@@ -2746,18 +2945,18 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumManager.compute"><code class="docutils literal notranslate"><span class="pre">CurriculumManager.compute()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumTermCfg"><code class="docutils literal notranslate"><span class="pre">CurriculumTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumTermCfg"><code class="docutils literal notranslate"><span class="pre">CurriculumTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CurriculumTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">CurriculumTermCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.get_active_iterable_terms()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.reset"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.reset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullCurriculumManager.compute"><code class="docutils literal notranslate"><span class="pre">NullCurriculumManager.compute()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager"><code class="docutils literal notranslate"><span class="pre">EventManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager"><code class="docutils literal notranslate"><span class="pre">EventManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.__init__"><code class="docutils literal notranslate"><span class="pre">EventManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.active_terms"><code class="docutils literal notranslate"><span class="pre">EventManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.available_modes"><code class="docutils literal notranslate"><span class="pre">EventManager.available_modes</span></code></a></li>
@@ -2767,7 +2966,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.apply"><code class="docutils literal notranslate"><span class="pre">EventManager.apply()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg"><code class="docutils literal notranslate"><span class="pre">EventTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg"><code class="docutils literal notranslate"><span class="pre">EventTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.mode"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.mode</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.interval_range_s"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.interval_range_s</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.is_global_time"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.is_global_time</span></code></a></li>
@@ -2778,7 +2977,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventTermCfg.params"><code class="docutils literal notranslate"><span class="pre">EventTermCfg.params</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase"><code class="docutils literal notranslate"><span class="pre">ManagerBase</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase"><code class="docutils literal notranslate"><span class="pre">ManagerBase</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerBase.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.num_envs"><code class="docutils literal notranslate"><span class="pre">ManagerBase.num_envs</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.device"><code class="docutils literal notranslate"><span class="pre">ManagerBase.device</span></code></a></li>
@@ -2787,7 +2986,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerBase.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">ManagerBase.get_active_iterable_terms()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.num_envs"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.num_envs</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.device"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.device</span></code></a></li>
@@ -2795,23 +2994,44 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBase.reset"><code class="docutils literal notranslate"><span class="pre">ManagerTermBase.reset()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg.func"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg.func</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg.params"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg.params</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ManagerTermBaseCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerTermBaseCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager"><code class="docutils literal notranslate"><span class="pre">MetricsManager</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">MetricsManager.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.active_terms"><code class="docutils literal notranslate"><span class="pre">MetricsManager.active_terms</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.reset"><code class="docutils literal notranslate"><span class="pre">MetricsManager.reset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.compute"><code class="docutils literal notranslate"><span class="pre">MetricsManager.compute()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">MetricsManager.get_active_iterable_terms()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.get_active_iterable_terms()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.reset"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.reset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.compute"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.compute()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.terms"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.concatenate_terms"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.concatenate_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.concatenate_dim"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.concatenate_dim</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.enable_corruption"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.enable_corruption</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.history_length"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.history_length</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.flatten_history_dim"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.flatten_history_dim</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.nan_policy"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.nan_policy</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationGroupCfg.nan_check_per_term"><code class="docutils literal notranslate"><span class="pre">ObservationGroupCfg.nan_check_per_term</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager"><code class="docutils literal notranslate"><span class="pre">ObservationManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager"><code class="docutils literal notranslate"><span class="pre">ObservationManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.__init__"><code class="docutils literal notranslate"><span class="pre">ObservationManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">ObservationManager.get_active_iterable_terms()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.active_terms"><code class="docutils literal notranslate"><span class="pre">ObservationManager.active_terms</span></code></a></li>
@@ -2824,7 +3044,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationManager.compute_group"><code class="docutils literal notranslate"><span class="pre">ObservationManager.compute_group()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.noise"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.clip"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.clip</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.scale"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.scale</span></code></a></li>
@@ -2841,7 +3061,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.ObservationTermCfg.params"><code class="docutils literal notranslate"><span class="pre">ObservationTermCfg.params</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager"><code class="docutils literal notranslate"><span class="pre">RewardManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager"><code class="docutils literal notranslate"><span class="pre">RewardManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.__init__"><code class="docutils literal notranslate"><span class="pre">RewardManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.active_terms"><code class="docutils literal notranslate"><span class="pre">RewardManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.reset"><code class="docutils literal notranslate"><span class="pre">RewardManager.reset()</span></code></a></li>
@@ -2850,14 +3070,14 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">RewardManager.get_term_cfg()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.func"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.func</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.weight"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.weight</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg.params"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg.params</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.name"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.joint_names"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.joint_names</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.joint_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.joint_ids</span></code></a></li>
@@ -2874,7 +3094,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.resolve"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.resolve()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager"><code class="docutils literal notranslate"><span class="pre">TerminationManager</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager"><code class="docutils literal notranslate"><span class="pre">TerminationManager</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.__init__"><code class="docutils literal notranslate"><span class="pre">TerminationManager.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.active_terms"><code class="docutils literal notranslate"><span class="pre">TerminationManager.active_terms</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.dones"><code class="docutils literal notranslate"><span class="pre">TerminationManager.dones</span></code></a></li>
@@ -2887,7 +3107,7 @@ Classes are auto-instantiated with <code class="docutils literal notranslate"><s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationManager.get_active_iterable_terms"><code class="docutils literal notranslate"><span class="pre">TerminationManager.get_active_iterable_terms()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg.time_out"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg.time_out</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg.__init__"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.TerminationTermCfg.func"><code class="docutils literal notranslate"><span class="pre">TerminationTermCfg.func</span></code></a></li>
@@ -2927,7 +3147,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Feb 03, 2026.
+  Last updated on Feb 13, 2026.
   <br/>
 </p>
   </div>

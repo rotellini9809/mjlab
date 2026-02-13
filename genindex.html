@@ -51,11 +51,12 @@
     <script src="_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'genindex';</script>
+    <link rel="icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Feb 03, 2026"/>
+    <meta name="docbuild:last-update" content="Feb 13, 2026"/>
   </head>
   
   
@@ -169,7 +170,18 @@
           
           
           
-          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-0.1.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-1.0.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://mujocolab.github.io/mjlab/nightly/" title="Benchmarks" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/Nightly-Benchmarks-blue" class="icon-link-image" alt="Benchmarks"/></a>
         </li>
         <li class="nav-item">
           
@@ -211,6 +223,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="source/motivation.html">Why mjlab?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="source/faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="source/changelog.html">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -412,6 +425,8 @@ document.write(`
  | <a href="#V"><strong>V</strong></a>
  | <a href="#W"><strong>W</strong></a>
  | <a href="#X"><strong>X</strong></a>
+ | <a href="#Y"><strong>Y</strong></a>
+ | <a href="#Z"><strong>Z</strong></a>
  
 </div>
 <h2 id="_">_</h2>
@@ -508,9 +523,15 @@ document.write(`
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ManagerTermBaseCfg.__init__">(mjlab.managers.ManagerTermBaseCfg method)</a>
 </li>
+        <li><a href="source/api/managers.html#mjlab.managers.MetricsManager.__init__">(mjlab.managers.MetricsManager method)</a>
+</li>
+        <li><a href="source/api/managers.html#mjlab.managers.MetricsTermCfg.__init__">(mjlab.managers.MetricsTermCfg method)</a>
+</li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCommandManager.__init__">(mjlab.managers.NullCommandManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCurriculumManager.__init__">(mjlab.managers.NullCurriculumManager method)</a>
+</li>
+        <li><a href="source/api/managers.html#mjlab.managers.NullMetricsManager.__init__">(mjlab.managers.NullMetricsManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg.__init__">(mjlab.managers.ObservationGroupCfg method)</a>
 </li>
@@ -536,6 +557,12 @@ document.write(`
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensorCfg.__init__">(mjlab.sensor.BuiltinSensorCfg method)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.__init__">(mjlab.sensor.CameraSensor method)</a>
+</li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.__init__">(mjlab.sensor.CameraSensorCfg method)</a>
+</li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorData.__init__">(mjlab.sensor.CameraSensorData method)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactData.__init__">(mjlab.sensor.ContactData method)</a>
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactMatch.__init__">(mjlab.sensor.ContactMatch method)</a>
@@ -558,7 +585,11 @@ document.write(`
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.VizCfg.__init__">(mjlab.sensor.RayCastSensorCfg.VizCfg method)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.Sensor.__init__">(mjlab.sensor.Sensor method)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.SensorCfg.__init__">(mjlab.sensor.SensorCfg method)</a>
+</li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.__init__">(mjlab.sensor.SensorContext method)</a>
 </li>
         <li><a href="source/api/sim.html#mjlab.sim.MujocoCfg.__init__">(mjlab.sim.MujocoCfg method)</a>
 </li>
@@ -574,9 +605,29 @@ document.write(`
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxInvertedPyramidStairsTerrainCfg.__init__">(mjlab.terrains.BoxInvertedPyramidStairsTerrainCfg method)</a>
 </li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.__init__">(mjlab.terrains.BoxNarrowBeamsTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.__init__">(mjlab.terrains.BoxNestedRingsTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.__init__">(mjlab.terrains.BoxOpenStairsTerrainCfg method)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.__init__">(mjlab.terrains.BoxPyramidStairsTerrainCfg method)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.__init__">(mjlab.terrains.BoxRandomGridTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.__init__">(mjlab.terrains.BoxRandomSpreadTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg.__init__">(mjlab.terrains.BoxRandomStairsTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.__init__">(mjlab.terrains.BoxSteppingStonesTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.__init__">(mjlab.terrains.BoxTiltedGridTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.__init__">(mjlab.terrains.FlatPatchSamplingCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.__init__">(mjlab.terrains.HfDiscreteObstaclesTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.__init__">(mjlab.terrains.HfPerlinNoiseTerrainCfg method)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.__init__">(mjlab.terrains.HfPyramidSlopedTerrainCfg method)</a>
 </li>
@@ -626,6 +677,8 @@ document.write(`
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ManagerBase.active_terms">(mjlab.managers.ManagerBase property)</a>
 </li>
+        <li><a href="source/api/managers.html#mjlab.managers.MetricsManager.active_terms">(mjlab.managers.MetricsManager property)</a>
+</li>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationManager.active_terms">(mjlab.managers.ObservationManager property)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.RewardManager.active_terms">(mjlab.managers.RewardManager property)</a>
@@ -659,6 +712,8 @@ document.write(`
         <li><a href="source/api/entity.html#mjlab.entity.EntityIndexing.actuators">(mjlab.entity.EntityIndexing attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.add_floor">add_floor (mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.add_lights">add_lights (mjlab.terrains.TerrainGeneratorCfg attribute)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.all_joint_names">all_joint_names (mjlab.entity.Entity property)</a>
@@ -697,14 +752,22 @@ document.write(`
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.DelayedActuatorCfg.base_cfg">base_cfg (mjlab.actuator.DelayedActuatorCfg attribute)</a>
 </li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.base_thickness_ratio">base_thickness_ratio (mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.base_thickness_ratio">base_thickness_ratio (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
 
       <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.base_thickness_ratio">(mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.base_thickness_ratio">(mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfRandomUniformTerrainCfg.base_thickness_ratio">(mjlab.terrains.HfRandomUniformTerrainCfg attribute)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfWaveTerrainCfg.base_thickness_ratio">(mjlab.terrains.HfWaveTerrainCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.beam_height">beam_height (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.beam_width_range">beam_width_range (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityIndexing.bodies">bodies (mjlab.entity.EntityIndexing attribute)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.body_com_ang_vel_w">body_com_ang_vel_w (mjlab.entity.EntityData property)</a>
@@ -751,9 +814,29 @@ document.write(`
       </ul></li>
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.border_height">border_height (mjlab.terrains.TerrainGeneratorCfg attribute)</a>
 </li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.border_width">border_width (mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.border_width">border_width (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
 
       <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.border_width">(mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.border_width">(mjlab.terrains.BoxOpenStairsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.border_width">(mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.border_width">(mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.border_width">(mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg.border_width">(mjlab.terrains.BoxRandomStairsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.border_width">(mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.border_width">(mjlab.terrains.BoxTiltedGridTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.border_width">(mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.border_width">(mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.border_width">(mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfRandomUniformTerrainCfg.border_width">(mjlab.terrains.HfRandomUniformTerrainCfg attribute)</a>
@@ -763,15 +846,37 @@ document.write(`
         <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.border_width">(mjlab.terrains.TerrainGeneratorCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.box_height_range">box_height_range (mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.box_length_range">box_length_range (mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.box_width_range">box_width_range (mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.box_yaw_range">box_yaw_range (mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxFlatTerrainCfg">BoxFlatTerrainCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxInvertedPyramidStairsTerrainCfg">BoxInvertedPyramidStairsTerrainCfg (class in mjlab.terrains)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg">BoxNarrowBeamsTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg">BoxNestedRingsTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg">BoxOpenStairsTerrainCfg (class in mjlab.terrains)</a>
+</li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg">BoxPyramidStairsTerrainCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg">BoxRandomGridTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg">BoxRandomSpreadTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg">BoxRandomStairsTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg">BoxSteppingStonesTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg">BoxTiltedGridTerrainCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.ActuatorCfg.build">build() (mjlab.actuator.ActuatorCfg method)</a>
 
@@ -808,6 +913,8 @@ document.write(`
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensorCfg.build">(mjlab.sensor.BuiltinSensorCfg method)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.build">(mjlab.sensor.CameraSensorCfg method)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensorCfg.build">(mjlab.sensor.ContactSensorCfg method)</a>
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.build">(mjlab.sensor.RayCastSensorCfg method)</a>
@@ -843,7 +950,21 @@ document.write(`
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.camera_idx">camera_idx (mjlab.sensor.CameraSensor property)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.camera_name">camera_name (mjlab.sensor.CameraSensor property)</a>
+
+      <ul>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.camera_name">(mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
+      </ul></li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.cameras">cameras (mjlab.entity.EntityCfg attribute)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor">CameraSensor (class in mjlab.sensor)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg">CameraSensorCfg (class in mjlab.sensor)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorData">CameraSensorData (class in mjlab.sensor)</a>
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.MujocoCfg.ccd_iterations">ccd_iterations (mjlab.sim.MujocoCfg attribute)</a>
 </li>
@@ -863,6 +984,8 @@ document.write(`
         <li><a href="source/api/managers.html#mjlab.managers.ObservationTermCfg.clip">(mjlab.managers.ObservationTermCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.clone_data">clone_data (mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.close">close() (mjlab.envs.ManagerBasedRlEnv method)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.collisions">collisions (mjlab.entity.EntityCfg attribute)</a>
@@ -920,9 +1043,13 @@ document.write(`
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.CurriculumManager.compute">(mjlab.managers.CurriculumManager method)</a>
 </li>
+        <li><a href="source/api/managers.html#mjlab.managers.MetricsManager.compute">(mjlab.managers.MetricsManager method)</a>
+</li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCommandManager.compute">(mjlab.managers.NullCommandManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCurriculumManager.compute">(mjlab.managers.NullCurriculumManager method)</a>
+</li>
+        <li><a href="source/api/managers.html#mjlab.managers.NullMetricsManager.compute">(mjlab.managers.NullMetricsManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationManager.compute">(mjlab.managers.ObservationManager method)</a>
 </li>
@@ -1004,17 +1131,13 @@ document.write(`
       <ul>
         <li><a href="source/api/entity.html#mjlab.entity.EntityData.data">(mjlab.entity.EntityData attribute)</a>
 </li>
-        <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensor.data">(mjlab.sensor.BuiltinSensor property)</a>
-</li>
-        <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensor.data">(mjlab.sensor.ContactSensor property)</a>
-</li>
-        <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.data">(mjlab.sensor.RayCastSensor property)</a>
-</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.Sensor.data">(mjlab.sensor.Sensor property)</a>
 </li>
         <li><a href="source/api/sim.html#mjlab.sim.Simulation.data">(mjlab.sim.Simulation property)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.data_types">data_types (mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
       <li><a href="source/api/actuator.html#mjlab.actuator.DcMotorActuator">DcMotorActuator (class in mjlab.actuator)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.DcMotorActuatorCfg">DcMotorActuatorCfg (class in mjlab.actuator)</a>
@@ -1051,14 +1174,14 @@ document.write(`
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.default_root_state">default_root_state (mjlab.entity.EntityData attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/actuator.html#mjlab.actuator.DelayedActuatorCfg.delay_hold_prob">delay_hold_prob (mjlab.actuator.DelayedActuatorCfg attribute)</a>
 
       <ul>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationTermCfg.delay_hold_prob">(mjlab.managers.ObservationTermCfg attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/actuator.html#mjlab.actuator.DelayedActuatorCfg.delay_max_lag">delay_max_lag (mjlab.actuator.DelayedActuatorCfg attribute)</a>
 
       <ul>
@@ -1091,6 +1214,8 @@ document.write(`
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.DelayedActuatorCfg">DelayedActuatorCfg (class in mjlab.actuator)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorData.depth">depth (mjlab.sensor.CameraSensorData attribute)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.device">device (mjlab.entity.EntityData attribute)</a>
 
       <ul>
@@ -1106,6 +1231,8 @@ document.write(`
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.difficulty_range">difficulty_range (mjlab.terrains.TerrainGeneratorCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.GridPatternCfg.direction">direction (mjlab.sensor.GridPatternCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.displacement_range">displacement_range (mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactData.dist">dist (mjlab.sensor.ContactData attribute)</a>
 </li>
@@ -1144,6 +1271,8 @@ document.write(`
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensor.edit_spec">(mjlab.sensor.BuiltinSensor method)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.edit_spec">(mjlab.sensor.CameraSensor method)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensor.edit_spec">(mjlab.sensor.ContactSensor method)</a>
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.edit_spec">(mjlab.sensor.RayCastSensor method)</a>
@@ -1164,6 +1293,8 @@ document.write(`
       <li><a href="source/api/actuator.html#mjlab.actuator.ActuatorCmd.effort_target">effort_target (mjlab.actuator.ActuatorCmd attribute)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg.enable_corruption">enable_corruption (mjlab.managers.ObservationGroupCfg attribute)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.enabled_geom_groups">enabled_geom_groups (mjlab.sensor.CameraSensorCfg attribute)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.encoder_bias">encoder_bias (mjlab.entity.EntityData attribute)</a>
 </li>
@@ -1229,6 +1360,8 @@ document.write(`
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensorCfg.fields">fields (mjlab.sensor.ContactSensorCfg attribute)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.finalize">finalize() (mjlab.sensor.SensorContext method)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.find_actuators">find_actuators() (mjlab.entity.Entity method)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.find_bodies">find_bodies() (mjlab.entity.Entity method)</a>
@@ -1243,10 +1376,26 @@ document.write(`
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.find_tendons">find_tendons() (mjlab.entity.Entity method)</a>
 </li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.SubTerrainCfg.flat_patch_sampling">flat_patch_sampling (mjlab.terrains.SubTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.TerrainImporter.flat_patches">flat_patches (mjlab.terrains.TerrainImporter property)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg">FlatPatchSamplingCfg (class in mjlab.terrains)</a>
+</li>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg.flatten_history_dim">flatten_history_dim (mjlab.managers.ObservationGroupCfg attribute)</a>
 
       <ul>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationTermCfg.flatten_history_dim">(mjlab.managers.ObservationTermCfg attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.floor_depth">floor_depth (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.floor_depth">(mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.floor_depth">(mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.floor_depth">(mjlab.terrains.BoxTiltedGridTerrainCfg attribute)</a>
 </li>
       </ul></li>
       <li><a href="source/api/actuator.html#mjlab.actuator.BuiltinMuscleActuatorCfg.force">force (mjlab.actuator.BuiltinMuscleActuatorCfg attribute)</a>
@@ -1263,8 +1412,12 @@ document.write(`
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactData.found">found (mjlab.sensor.ContactData attribute)</a>
 </li>
-      <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg.fovy">fovy (mjlab.sensor.PinholeCameraPatternCfg attribute)</a>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.fovy">fovy (mjlab.sensor.CameraSensorCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg.fovy">(mjlab.sensor.PinholeCameraPatternCfg attribute)</a>
 </li>
+      </ul></li>
       <li><a href="source/api/actuator.html#mjlab.actuator.BuiltinMuscleActuatorCfg.fpmax">fpmax (mjlab.actuator.BuiltinMuscleActuatorCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.frame">frame (mjlab.sensor.RayCastSensorCfg attribute)</a>
@@ -1300,9 +1453,27 @@ document.write(`
       <ul>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxInvertedPyramidStairsTerrainCfg.function">(mjlab.terrains.BoxInvertedPyramidStairsTerrainCfg method)</a>
 </li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.function">(mjlab.terrains.BoxNarrowBeamsTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.function">(mjlab.terrains.BoxNestedRingsTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.function">(mjlab.terrains.BoxOpenStairsTerrainCfg method)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.function">(mjlab.terrains.BoxPyramidStairsTerrainCfg method)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.function">(mjlab.terrains.BoxRandomGridTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.function">(mjlab.terrains.BoxRandomSpreadTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg.function">(mjlab.terrains.BoxRandomStairsTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.function">(mjlab.terrains.BoxSteppingStonesTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.function">(mjlab.terrains.BoxTiltedGridTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.function">(mjlab.terrains.HfDiscreteObstaclesTerrainCfg method)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.function">(mjlab.terrains.HfPerlinNoiseTerrainCfg method)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.function">(mjlab.terrains.HfPyramidSlopedTerrainCfg method)</a>
 </li>
@@ -1321,6 +1492,8 @@ document.write(`
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.gap_range">gap_range (mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/actuator.html#mjlab.actuator.BuiltinMotorActuatorCfg.gear">gear (mjlab.actuator.BuiltinMotorActuatorCfg attribute)</a>
 
       <ul>
@@ -1370,9 +1543,13 @@ document.write(`
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ManagerBase.get_active_iterable_terms">(mjlab.managers.ManagerBase method)</a>
 </li>
+        <li><a href="source/api/managers.html#mjlab.managers.MetricsManager.get_active_iterable_terms">(mjlab.managers.MetricsManager method)</a>
+</li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCommandManager.get_active_iterable_terms">(mjlab.managers.NullCommandManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCurriculumManager.get_active_iterable_terms">(mjlab.managers.NullCurriculumManager method)</a>
+</li>
+        <li><a href="source/api/managers.html#mjlab.managers.NullMetricsManager.get_active_iterable_terms">(mjlab.managers.NullMetricsManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationManager.get_active_iterable_terms">(mjlab.managers.ObservationManager method)</a>
 </li>
@@ -1392,6 +1569,10 @@ document.write(`
 </li>
       </ul></li>
       <li><a href="source/api/sim.html#mjlab.sim.Simulation.get_default_field">get_default_field() (mjlab.sim.Simulation method)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.get_depth">get_depth() (mjlab.sensor.SensorContext method)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.get_rgb">get_rgb() (mjlab.sensor.SensorContext method)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.ActionManager.get_term">get_term() (mjlab.managers.ActionManager method)</a>
 
@@ -1419,6 +1600,8 @@ document.write(`
         <li><a href="source/api/managers.html#mjlab.managers.TerminationManager.get_term_cfg">(mjlab.managers.TerminationManager method)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/actuator.html#mjlab.actuator.Actuator.global_ctrl_ids">global_ctrl_ids (mjlab.actuator.Actuator property)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensorCfg.global_frame">global_frame (mjlab.sensor.ContactSensorCfg attribute)</a>
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.MujocoCfg.gravity">gravity (mjlab.sim.MujocoCfg attribute)</a>
@@ -1427,8 +1610,14 @@ document.write(`
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.grid_height_range">grid_height_range (mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
 </li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.grid_width">grid_width (mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.grid_resolution">grid_resolution (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
 </li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.grid_width">grid_width (mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.grid_width">(mjlab.terrains.BoxTiltedGridTerrainCfg attribute)</a>
+</li>
+      </ul></li>
       <li><a href="source/api/sensor.html#mjlab.sensor.GridPatternCfg">GridPatternCfg (class in mjlab.sensor)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationManager.group_obs_concatenate">group_obs_concatenate (mjlab.managers.ObservationManager property)</a>
@@ -1443,20 +1632,42 @@ document.write(`
 <h2 id="H">H</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.has_cameras">has_cameras (mjlab.sensor.SensorContext property)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.has_raycasts">has_raycasts (mjlab.sensor.SensorContext property)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.has_site_actuators">has_site_actuators (mjlab.entity.Entity property)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.has_tendon_actuators">has_tendon_actuators (mjlab.entity.Entity property)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.heading_w">heading_w (mjlab.entity.EntityData property)</a>
 </li>
-      <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg.height">height (mjlab.sensor.PinholeCameraPatternCfg attribute)</a>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.height">height (mjlab.sensor.CameraSensorCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg.height">(mjlab.sensor.PinholeCameraPatternCfg attribute)</a>
 </li>
+      </ul></li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.height_merge_threshold">height_merge_threshold (mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.height_range">height_range (mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.height_range">(mjlab.terrains.BoxTiltedGridTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.height_range">(mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg">HfDiscreteObstaclesTerrainCfg (class in mjlab.terrains)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg">HfPerlinNoiseTerrainCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg">HfPyramidSlopedTerrainCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.HfRandomUniformTerrainCfg">HfRandomUniformTerrainCfg (class in mjlab.terrains)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/terrains.html#mjlab.terrains.HfWaveTerrainCfg">HfWaveTerrainCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.LearnedMlpActuatorCfg.history_length">history_length (mjlab.actuator.LearnedMlpActuatorCfg attribute)</a>
@@ -1469,8 +1680,6 @@ document.write(`
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensorCfg.history_length">(mjlab.sensor.ContactSensorCfg attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.VizCfg.hit_color">hit_color (mjlab.sensor.RayCastSensorCfg.VizCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastData.hit_pos_w">hit_pos_w (mjlab.sensor.RayCastData attribute)</a>
@@ -1485,9 +1694,13 @@ document.write(`
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.holes">(mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
 </li>
       </ul></li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.horizontal_scale">horizontal_scale (mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.horizontal_scale">horizontal_scale (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
 
       <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.horizontal_scale">(mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.horizontal_scale">(mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfRandomUniformTerrainCfg.horizontal_scale">(mjlab.terrains.HfRandomUniformTerrainCfg attribute)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfWaveTerrainCfg.horizontal_scale">(mjlab.terrains.HfWaveTerrainCfg attribute)</a>
@@ -1530,6 +1743,8 @@ document.write(`
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensor.initialize">(mjlab.sensor.BuiltinSensor method)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.initialize">(mjlab.sensor.CameraSensor method)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensor.initialize">(mjlab.sensor.ContactSensor method)</a>
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.initialize">(mjlab.sensor.RayCastSensor method)</a>
@@ -1545,8 +1760,12 @@ document.write(`
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.EventTermCfg.interval_range_s">interval_range_s (mjlab.managers.EventTermCfg attribute)</a>
 </li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.inverted">inverted (mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.inverted">inverted (mjlab.terrains.BoxOpenStairsTerrainCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.inverted">(mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
 </li>
+      </ul></li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.is_actuated">is_actuated (mjlab.entity.Entity property)</a>
 
       <ul>
@@ -1635,6 +1854,8 @@ document.write(`
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.lacunarity">lacunarity (mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactData.last_air_time">last_air_time (mjlab.sensor.ContactData attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactData.last_contact_time">last_contact_time (mjlab.sensor.ContactData attribute)</a>
@@ -1647,10 +1868,10 @@ document.write(`
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.lights">lights (mjlab.entity.EntityCfg attribute)</a>
 </li>
-      <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.InitialStateCfg.lin_vel">lin_vel (mjlab.entity.EntityCfg.InitialStateCfg attribute)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.InitialStateCfg.lin_vel">lin_vel (mjlab.entity.EntityCfg.InitialStateCfg attribute)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.LIN_VEL_DIM">LIN_VEL_DIM (mjlab.entity.EntityData attribute)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.BuiltinMuscleActuatorCfg.lmax">lmax (mjlab.actuator.BuiltinMuscleActuatorCfg attribute)</a>
@@ -1689,6 +1910,8 @@ document.write(`
 </li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.max_episode_length_s">max_episode_length_s (mjlab.envs.ManagerBasedRlEnv property)</a>
 </li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.max_height_diff">max_height_diff (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
+</li>
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainImporterCfg.max_init_terrain_level">max_init_terrain_level (mjlab.terrains.TerrainImporterCfg attribute)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.max_merge_distance">max_merge_distance (mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
@@ -1696,6 +1919,12 @@ document.write(`
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.merge_similar_heights">merge_similar_heights (mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.metadata">metadata (mjlab.envs.ManagerBasedRlEnv attribute)</a>
+</li>
+      <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnvCfg.metrics">metrics (mjlab.envs.ManagerBasedRlEnvCfg attribute)</a>
+</li>
+      <li><a href="source/api/managers.html#mjlab.managers.MetricsManager">MetricsManager (class in mjlab.managers)</a>
+</li>
+      <li><a href="source/api/managers.html#mjlab.managers.MetricsTermCfg">MetricsTermCfg (class in mjlab.managers)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.EventTermCfg.min_step_count_between_reset">min_step_count_between_reset (mjlab.managers.EventTermCfg attribute)</a>
 </li>
@@ -1726,6 +1955,8 @@ document.write(`
         <li><a href="source/api/envs.html#module-mjlab.envs">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     mjlab.managers
 
@@ -1733,8 +1964,6 @@ document.write(`
         <li><a href="source/api/managers.html#module-mjlab.managers">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     mjlab.scene
 
@@ -1802,6 +2031,8 @@ document.write(`
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.MujocoCfg">MujocoCfg (class in mjlab.sim)</a>
 </li>
+      <li><a href="source/api/sim.html#mjlab.sim.MujocoCfg.multiccd">multiccd (mjlab.sim.MujocoCfg attribute)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -1815,6 +2046,8 @@ document.write(`
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensorCfg.name">(mjlab.sensor.BuiltinSensorCfg attribute)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.name">(mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensorCfg.name">(mjlab.sensor.ContactSensorCfg attribute)</a>
 </li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ObjRef.name">(mjlab.sensor.ObjRef attribute)</a>
@@ -1824,7 +2057,11 @@ document.write(`
         <li><a href="source/api/sensor.html#mjlab.sensor.SensorCfg.name">(mjlab.sensor.SensorCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg.nan_check_per_term">nan_check_per_term (mjlab.managers.ObservationGroupCfg attribute)</a>
+</li>
       <li><a href="source/api/sim.html#mjlab.sim.SimulationCfg.nan_guard">nan_guard (mjlab.sim.SimulationCfg attribute)</a>
+</li>
+      <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg.nan_policy">nan_policy (mjlab.managers.ObservationGroupCfg attribute)</a>
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.SimulationCfg.nconmax">nconmax (mjlab.sim.SimulationCfg attribute)</a>
 </li>
@@ -1846,15 +2083,21 @@ document.write(`
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastData.normals_w">normals_w (mjlab.sensor.RayCastData attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/managers.html#mjlab.managers.NullCommandManager">NullCommandManager (class in mjlab.managers)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/managers.html#mjlab.managers.NullCurriculumManager">NullCurriculumManager (class in mjlab.managers)</a>
+</li>
+      <li><a href="source/api/managers.html#mjlab.managers.NullMetricsManager">NullMetricsManager (class in mjlab.managers)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.num_actuators">num_actuators (mjlab.entity.Entity property)</a>
 </li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.num_beams">num_beams (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.num_bodies">num_bodies (mjlab.entity.Entity property)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.num_boxes">num_boxes (mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.num_cols">num_cols (mjlab.terrains.TerrainGeneratorCfg attribute)</a>
 </li>
@@ -1876,7 +2119,13 @@ document.write(`
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.num_joints">num_joints (mjlab.entity.Entity property)</a>
 </li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.num_obstacles">num_obstacles (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.num_patches">num_patches (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.num_rays">num_rays (mjlab.sensor.RayCastSensor property)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.num_rings">num_rings (mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.num_rows">num_rows (mjlab.terrains.TerrainGeneratorCfg attribute)</a>
 </li>
@@ -1898,13 +2147,25 @@ document.write(`
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg">ObservationGroupCfg (class in mjlab.managers)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationManager">ObservationManager (class in mjlab.managers)</a>
 </li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnvCfg.observations">observations (mjlab.envs.ManagerBasedRlEnvCfg attribute)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationTermCfg">ObservationTermCfg (class in mjlab.managers)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.obstacle_height_mode">obstacle_height_mode (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.obstacle_height_range">obstacle_height_range (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.obstacle_width_range">obstacle_width_range (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.octaves">octaves (mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.origin_z_offset">origin_z_offset (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.orthographic">orthographic (mjlab.sensor.CameraSensorCfg attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1924,34 +2185,58 @@ document.write(`
         <li><a href="source/api/managers.html#mjlab.managers.TerminationTermCfg.params">(mjlab.managers.TerminationTermCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.parent_body">parent_body (mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.patch_radius">patch_radius (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactMatch.pattern">pattern (mjlab.sensor.ContactMatch attribute)</a>
 
       <ul>
         <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.pattern">(mjlab.sensor.RayCastSensorCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.persistence">persistence (mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.physics_dt">physics_dt (mjlab.envs.ManagerBasedRlEnv property)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg">PinholeCameraPatternCfg (class in mjlab.sensor)</a>
 </li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.platform_width">platform_width (mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.platform_width">platform_width (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
 
       <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.platform_width">(mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.platform_width">(mjlab.terrains.BoxOpenStairsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.platform_width">(mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomGridTerrainCfg.platform_width">(mjlab.terrains.BoxRandomGridTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomSpreadTerrainCfg.platform_width">(mjlab.terrains.BoxRandomSpreadTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg.platform_width">(mjlab.terrains.BoxRandomStairsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.platform_width">(mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.platform_width">(mjlab.terrains.BoxTiltedGridTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.platform_width">(mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.platform_width">(mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/actuator.html#mjlab.actuator.ActuatorCmd.pos">pos (mjlab.actuator.ActuatorCmd attribute)</a>
 
       <ul>
         <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.InitialStateCfg.pos">(mjlab.entity.EntityCfg.InitialStateCfg attribute)</a>
 </li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.pos">(mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
         <li><a href="source/api/sensor.html#mjlab.sensor.ContactData.pos">(mjlab.sensor.ContactData attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.POS_DIM">POS_DIM (mjlab.entity.EntityData attribute)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.LearnedMlpActuatorCfg.pos_scale">pos_scale (mjlab.actuator.LearnedMlpActuatorCfg attribute)</a>
@@ -1960,7 +2245,13 @@ document.write(`
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.ActuatorCmd.position_target">position_target (mjlab.actuator.ActuatorCmd attribute)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.postprocess_rays">postprocess_rays() (mjlab.sensor.RayCastSensor method)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ObjRef.prefixed_name">prefixed_name() (mjlab.sensor.ObjRef method)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.prepare">prepare() (mjlab.sensor.SensorContext method)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.prepare_rays">prepare_rays() (mjlab.sensor.RayCastSensor method)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.SceneEntityCfg.preserve_order">preserve_order (mjlab.managers.SceneEntityCfg attribute)</a>
 </li>
@@ -1986,10 +2277,12 @@ document.write(`
 <h2 id="Q">Q</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="source/api/entity.html#mjlab.entity.EntityData.QUAT_DIM">QUAT_DIM (mjlab.entity.EntityData attribute)</a>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.quat">quat (mjlab.sensor.CameraSensorCfg attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/entity.html#mjlab.entity.EntityData.QUAT_DIM">QUAT_DIM (mjlab.entity.EntityData attribute)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastData.quat_w">quat_w (mjlab.sensor.RayCastData attribute)</a>
 </li>
   </ul></td>
@@ -2006,6 +2299,8 @@ document.write(`
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.ray_alignment">ray_alignment (mjlab.sensor.RayCastSensorCfg attribute)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.raycast_kernel">raycast_kernel() (mjlab.sensor.RayCastSensor method)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastData">RayCastData (class in mjlab.sensor)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor">RayCastSensor (class in mjlab.sensor)</a>
@@ -2014,12 +2309,24 @@ document.write(`
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.VizCfg">RayCastSensorCfg.VizCfg (class in mjlab.sensor)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.recreate">recreate() (mjlab.sensor.SensorContext method)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.ContactSensorCfg.reduce">reduce (mjlab.sensor.ContactSensorCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensorCfg.ref">ref (mjlab.sensor.BuiltinSensorCfg attribute)</a>
 </li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.render">render() (mjlab.envs.ManagerBasedRlEnv method)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.render_context">render_context (mjlab.sensor.SensorContext property)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.requires_sensor_context">requires_sensor_context (mjlab.sensor.CameraSensor attribute)</a>
+
+      <ul>
+        <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.requires_sensor_context">(mjlab.sensor.RayCastSensor attribute)</a>
+</li>
+        <li><a href="source/api/sensor.html#mjlab.sensor.Sensor.requires_sensor_context">(mjlab.sensor.Sensor attribute)</a>
+</li>
+      </ul></li>
       <li><a href="source/api/managers.html#mjlab.managers.CommandTermCfg.resampling_time_range">resampling_time_range (mjlab.managers.CommandTermCfg attribute)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.Actuator.reset">reset() (mjlab.actuator.Actuator method)</a>
@@ -2047,9 +2354,13 @@ document.write(`
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ManagerTermBase.reset">(mjlab.managers.ManagerTermBase method)</a>
 </li>
+        <li><a href="source/api/managers.html#mjlab.managers.MetricsManager.reset">(mjlab.managers.MetricsManager method)</a>
+</li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCommandManager.reset">(mjlab.managers.NullCommandManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.NullCurriculumManager.reset">(mjlab.managers.NullCurriculumManager method)</a>
+</li>
+        <li><a href="source/api/managers.html#mjlab.managers.NullMetricsManager.reset">(mjlab.managers.NullMetricsManager method)</a>
 </li>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationManager.reset">(mjlab.managers.ObservationManager method)</a>
 </li>
@@ -2069,7 +2380,11 @@ document.write(`
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/sensor.html#mjlab.sensor.GridPatternCfg.resolution">resolution (mjlab.sensor.GridPatternCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.resolution">(mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
 </li>
+      </ul></li>
       <li><a href="source/api/managers.html#mjlab.managers.SceneEntityCfg.resolve">resolve() (mjlab.managers.SceneEntityCfg method)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.RewardManager">RewardManager (class in mjlab.managers)</a>
@@ -2077,6 +2392,10 @@ document.write(`
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnvCfg.rewards">rewards (mjlab.envs.ManagerBasedRlEnvCfg attribute)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.RewardTermCfg">RewardTermCfg (class in mjlab.managers)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorData.rgb">rgb (mjlab.sensor.CameraSensorData attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNestedRingsTerrainCfg.ring_width_range">ring_width_range (mjlab.terrains.BoxNestedRingsTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.root_body">root_body (mjlab.entity.Entity property)</a>
 </li>
@@ -2139,6 +2458,8 @@ document.write(`
       <ul>
         <li><a href="source/api/managers.html#mjlab.managers.ObservationTermCfg.scale">(mjlab.managers.ObservationTermCfg attribute)</a>
 </li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPerlinNoiseTerrainCfg.scale">(mjlab.terrains.HfPerlinNoiseTerrainCfg attribute)</a>
+</li>
       </ul></li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt">scale_rewards_by_dt (mjlab.envs.ManagerBasedRlEnvCfg attribute)</a>
 </li>
@@ -2162,16 +2483,28 @@ document.write(`
       </ul></li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.seed">seed() (mjlab.envs.ManagerBasedRlEnv static method)</a>
 </li>
+      <li><a href="source/api/sim.html#mjlab.sim.Simulation.sense">sense() (mjlab.sim.Simulation method)</a>
+</li>
       <li><a href="source/api/sensor.html#mjlab.sensor.Sensor">Sensor (class in mjlab.sensor)</a>
+</li>
+      <li><a href="source/api/scene.html#mjlab.scene.Scene.sensor_context">sensor_context (mjlab.scene.Scene property)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.BuiltinSensorCfg.sensor_type">sensor_type (mjlab.sensor.BuiltinSensorCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.SensorCfg">SensorCfg (class in mjlab.sensor)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext">SensorContext (class in mjlab.sensor)</a>
+</li>
       <li><a href="source/api/scene.html#mjlab.scene.Scene.sensors">sensors (mjlab.scene.Scene property)</a>
 
       <ul>
         <li><a href="source/api/scene.html#mjlab.scene.SceneCfg.sensors">(mjlab.scene.SceneCfg attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensor.set_context">set_context() (mjlab.sensor.CameraSensor method)</a>
+
+      <ul>
+        <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensor.set_context">(mjlab.sensor.RayCastSensor method)</a>
 </li>
       </ul></li>
       <li><a href="source/api/actuator.html#mjlab.actuator.IdealPdActuator.set_effort_limit">set_effort_limit() (mjlab.actuator.IdealPdActuator method)</a>
@@ -2185,6 +2518,8 @@ document.write(`
       <li><a href="source/api/entity.html#mjlab.entity.Entity.set_joint_velocity_target">set_joint_velocity_target() (mjlab.entity.Entity method)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.DelayedActuator.set_lags">set_lags() (mjlab.actuator.DelayedActuator method)</a>
+</li>
+      <li><a href="source/api/sim.html#mjlab.sim.Simulation.set_sensor_context">set_sensor_context() (mjlab.sim.Simulation method)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.set_site_effort_target">set_site_effort_target() (mjlab.entity.Entity method)</a>
 </li>
@@ -2206,8 +2541,6 @@ document.write(`
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.SimulationCfg">SimulationCfg (class in mjlab.sim)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.site_ang_vel_w">site_ang_vel_w (mjlab.entity.EntityData property)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.site_effort_target">site_effort_target (mjlab.entity.EntityData attribute)</a>
@@ -2218,6 +2551,8 @@ document.write(`
         <li><a href="source/api/managers.html#mjlab.managers.SceneEntityCfg.site_ids">(mjlab.managers.SceneEntityCfg attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.site_lin_vel_w">site_lin_vel_w (mjlab.entity.EntityData property)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.site_names">site_names (mjlab.entity.Entity property)</a>
@@ -2252,6 +2587,8 @@ document.write(`
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.MujocoCfg.solver">solver (mjlab.sim.MujocoCfg attribute)</a>
 </li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxNarrowBeamsTerrainCfg.spacing">spacing (mjlab.terrains.BoxNarrowBeamsTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.spec">spec (mjlab.entity.Entity property)</a>
 
       <ul>
@@ -2266,6 +2603,8 @@ document.write(`
         <li><a href="source/api/scene.html#mjlab.scene.SceneCfg.spec_fn">(mjlab.scene.SceneCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.square_obstacles">square_obstacles (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.step">step() (mjlab.envs.ManagerBasedRlEnv method)</a>
 
       <ul>
@@ -2274,9 +2613,23 @@ document.write(`
       </ul></li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.step_dt">step_dt (mjlab.envs.ManagerBasedRlEnv property)</a>
 </li>
-      <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.step_height_range">step_height_range (mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.step_height_range">step_height_range (mjlab.terrains.BoxOpenStairsTerrainCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.step_height_range">(mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+</li>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg.step_height_range">(mjlab.terrains.BoxRandomStairsTerrainCfg attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.step_thickness">step_thickness (mjlab.terrains.BoxOpenStairsTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.BoxPyramidStairsTerrainCfg.step_width">step_width (mjlab.terrains.BoxPyramidStairsTerrainCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.BoxRandomStairsTerrainCfg.step_width">(mjlab.terrains.BoxRandomStairsTerrainCfg attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxOpenStairsTerrainCfg.step_width_range">step_width_range (mjlab.terrains.BoxOpenStairsTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.BuiltinPositionActuatorCfg.stiffness">stiffness (mjlab.actuator.BuiltinPositionActuatorCfg attribute)</a>
 
@@ -2288,6 +2641,16 @@ document.write(`
         <li><a href="source/api/actuator.html#mjlab.actuator.LearnedMlpActuatorCfg.stiffness">(mjlab.actuator.LearnedMlpActuatorCfg attribute)</a>
 </li>
       </ul></li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.stone_distance_range">stone_distance_range (mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.stone_height">stone_height (mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.stone_height_variation">stone_height_variation (mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.stone_size_range">stone_size_range (mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxSteppingStonesTerrainCfg.stone_size_variation">stone_size_variation (mjlab.terrains.BoxSteppingStonesTerrainCfg attribute)</a>
+</li>
       <li><a href="source/api/sim.html#mjlab.sim.WarpBridge.struct">struct (mjlab.sim.WarpBridge property)</a>
 </li>
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainGeneratorCfg.sub_terrains">sub_terrains (mjlab.terrains.TerrainGeneratorCfg attribute)</a>
@@ -2352,10 +2715,10 @@ document.write(`
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.TerminationTermCfg">TerminationTermCfg (class in mjlab.managers)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/managers.html#mjlab.managers.ObservationGroupCfg.terms">terms (mjlab.managers.ObservationGroupCfg attribute)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/scene.html#mjlab.scene.Scene.terrain">terrain (mjlab.scene.Scene property)</a>
 
       <ul>
@@ -2375,6 +2738,8 @@ document.write(`
       <li><a href="source/api/terrains.html#mjlab.terrains.TerrainImporterCfg">TerrainImporterCfg (class in mjlab.terrains)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityCfg.textures">textures (mjlab.entity.EntityCfg attribute)</a>
+</li>
+      <li><a href="source/api/terrains.html#mjlab.terrains.BoxTiltedGridTerrainCfg.tilt_range_deg">tilt_range_deg (mjlab.terrains.BoxTiltedGridTerrainCfg attribute)</a>
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.TerminationTermCfg.time_out">time_out (mjlab.managers.TerminationTermCfg attribute)</a>
 </li>
@@ -2418,6 +2783,8 @@ document.write(`
 <h2 id="U">U</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/sensor.html#mjlab.sensor.SensorContext.unpack_rgb">unpack_rgb() (mjlab.sensor.SensorContext method)</a>
+</li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.unwrapped">unwrapped (mjlab.envs.ManagerBasedRlEnv property)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.Actuator.update">update() (mjlab.actuator.Actuator method)</a>
@@ -2440,6 +2807,10 @@ document.write(`
 </li>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnv.update_visualizers">update_visualizers() (mjlab.envs.ManagerBasedRlEnv method)</a>
 </li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.use_shadows">use_shadows (mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.use_textures">use_textures (mjlab.sensor.CameraSensorCfg attribute)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -2458,16 +2829,18 @@ document.write(`
       </ul></li>
       <li><a href="source/api/actuator.html#mjlab.actuator.ActuatorCmd.velocity_target">velocity_target (mjlab.actuator.ActuatorCmd attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.vertical_scale">vertical_scale (mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+      <li><a href="source/api/terrains.html#mjlab.terrains.HfDiscreteObstaclesTerrainCfg.vertical_scale">vertical_scale (mjlab.terrains.HfDiscreteObstaclesTerrainCfg attribute)</a>
 
       <ul>
+        <li><a href="source/api/terrains.html#mjlab.terrains.HfPyramidSlopedTerrainCfg.vertical_scale">(mjlab.terrains.HfPyramidSlopedTerrainCfg attribute)</a>
+</li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfRandomUniformTerrainCfg.vertical_scale">(mjlab.terrains.HfRandomUniformTerrainCfg attribute)</a>
 </li>
         <li><a href="source/api/terrains.html#mjlab.terrains.HfWaveTerrainCfg.vertical_scale">(mjlab.terrains.HfWaveTerrainCfg attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/envs.html#mjlab.envs.ManagerBasedRlEnvCfg.viewer">viewer (mjlab.envs.ManagerBasedRlEnvCfg attribute)</a>
 </li>
       <li><a href="source/api/sensor.html#mjlab.sensor.RayCastSensorCfg.viz">viz (mjlab.sensor.RayCastSensorCfg attribute)</a>
@@ -2484,8 +2857,12 @@ document.write(`
 </li>
       <li><a href="source/api/managers.html#mjlab.managers.RewardTermCfg.weight">weight (mjlab.managers.RewardTermCfg attribute)</a>
 </li>
-      <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg.width">width (mjlab.sensor.PinholeCameraPatternCfg attribute)</a>
+      <li><a href="source/api/sensor.html#mjlab.sensor.CameraSensorCfg.width">width (mjlab.sensor.CameraSensorCfg attribute)</a>
+
+      <ul>
+        <li><a href="source/api/sensor.html#mjlab.sensor.PinholeCameraPatternCfg.width">(mjlab.sensor.PinholeCameraPatternCfg attribute)</a>
 </li>
+      </ul></li>
       <li><a href="source/api/sim.html#mjlab.sim.TorchArray.wp_array">wp_array (mjlab.sim.TorchArray property)</a>
 </li>
       <li><a href="source/api/sim.html#mjlab.sim.Simulation.wp_data">wp_data (mjlab.sim.Simulation property)</a>
@@ -2508,10 +2885,10 @@ document.write(`
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.write_joint_position">write_joint_position() (mjlab.entity.EntityData method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.write_joint_position_to_sim">write_joint_position_to_sim() (mjlab.entity.Entity method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.write_joint_state">write_joint_state() (mjlab.entity.EntityData method)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.write_joint_state_to_sim">write_joint_state_to_sim() (mjlab.entity.Entity method)</a>
@@ -2523,6 +2900,10 @@ document.write(`
       <li><a href="source/api/entity.html#mjlab.entity.EntityData.write_mocap_pose">write_mocap_pose() (mjlab.entity.EntityData method)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.write_mocap_pose_to_sim">write_mocap_pose_to_sim() (mjlab.entity.Entity method)</a>
+</li>
+      <li><a href="source/api/entity.html#mjlab.entity.EntityData.write_root_com_velocity">write_root_com_velocity() (mjlab.entity.EntityData method)</a>
+</li>
+      <li><a href="source/api/entity.html#mjlab.entity.Entity.write_root_com_velocity_to_sim">write_root_com_velocity_to_sim() (mjlab.entity.Entity method)</a>
 </li>
       <li><a href="source/api/entity.html#mjlab.entity.Entity.write_root_link_pose_to_sim">write_root_link_pose_to_sim() (mjlab.entity.Entity method)</a>
 </li>
@@ -2544,16 +2925,18 @@ document.write(`
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.x_range">x_range (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
+</li>
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlMotorActuator">XmlMotorActuator (class in mjlab.actuator)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlMotorActuatorCfg">XmlMotorActuatorCfg (class in mjlab.actuator)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlMuscleActuator">XmlMuscleActuator (class in mjlab.actuator)</a>
 </li>
-      <li><a href="source/api/actuator.html#mjlab.actuator.XmlMuscleActuatorCfg">XmlMuscleActuatorCfg (class in mjlab.actuator)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/actuator.html#mjlab.actuator.XmlMuscleActuatorCfg">XmlMuscleActuatorCfg (class in mjlab.actuator)</a>
+</li>
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlPositionActuator">XmlPositionActuator (class in mjlab.actuator)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlPositionActuatorCfg">XmlPositionActuatorCfg (class in mjlab.actuator)</a>
@@ -2561,6 +2944,22 @@ document.write(`
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlVelocityActuator">XmlVelocityActuator (class in mjlab.actuator)</a>
 </li>
       <li><a href="source/api/actuator.html#mjlab.actuator.XmlVelocityActuatorCfg">XmlVelocityActuatorCfg (class in mjlab.actuator)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="Y">Y</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.y_range">y_range (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="Z">Z</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="source/api/terrains.html#mjlab.terrains.FlatPatchSamplingCfg.z_range">z_range (mjlab.terrains.FlatPatchSamplingCfg attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -2612,7 +3011,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Feb 03, 2026.
+  Last updated on Feb 13, 2026.
   <br/>
 </p>
   </div>

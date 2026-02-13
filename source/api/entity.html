@@ -52,13 +52,14 @@
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'source/api/entity';</script>
+    <link rel="icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="mjlab.actuator" href="actuator.html" />
     <link rel="prev" title="mjlab.sim" href="sim.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Feb 03, 2026"/>
+    <meta name="docbuild:last-update" content="Feb 13, 2026"/>
   </head>
   
   
@@ -170,7 +171,18 @@
           
           
           
-          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-0.1.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-1.0.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://mujocolab.github.io/mjlab/nightly/" title="Benchmarks" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/Nightly-Benchmarks-blue" class="icon-link-image" alt="Benchmarks"/></a>
         </li>
         <li class="nav-item">
           
@@ -212,6 +224,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../motivation.html">Why mjlab?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -448,7 +461,7 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData"><code class="docutils literal notranslate"><span class="pre">EntityData</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData"><code class="docutils literal notranslate"><span class="pre">EntityData</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.indexing"><code class="docutils literal notranslate"><span class="pre">EntityData.indexing</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.data"><code class="docutils literal notranslate"><span class="pre">EntityData.data</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.model"><code class="docutils literal notranslate"><span class="pre">EntityData.model</span></code></a></li>
@@ -482,6 +495,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_state"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_state()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_pose"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_pose()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_velocity"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_velocity()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_com_velocity"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_com_velocity()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_joint_state"><code class="docutils literal notranslate"><span class="pre">EntityData.write_joint_state()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_joint_position"><code class="docutils literal notranslate"><span class="pre">EntityData.write_joint_position()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_joint_velocity"><code class="docutils literal notranslate"><span class="pre">EntityData.write_joint_velocity()</span></code></a></li>
@@ -546,7 +560,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.__init__"><code class="docutils literal notranslate"><span class="pre">EntityData.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity"><code class="docutils literal notranslate"><span class="pre">Entity</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity"><code class="docutils literal notranslate"><span class="pre">Entity</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.__init__"><code class="docutils literal notranslate"><span class="pre">Entity.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.is_fixed_base"><code class="docutils literal notranslate"><span class="pre">Entity.is_fixed_base</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.is_articulated"><code class="docutils literal notranslate"><span class="pre">Entity.is_articulated</span></code></a></li>
@@ -589,6 +603,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_state_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_state_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_link_pose_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_link_pose_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_link_velocity_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_link_velocity_to_sim()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_com_velocity_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_com_velocity_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_joint_state_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_joint_state_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_joint_position_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_joint_position_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_joint_velocity_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_joint_velocity_to_sim()</span></code></a></li>
@@ -603,13 +618,13 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_mocap_pose_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_mocap_pose_to_sim()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg.actuators"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg.actuators</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg.soft_joint_pos_limit_factor"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg.soft_joint_pos_limit_factor</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg.__init__"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg"><code class="docutils literal notranslate"><span class="pre">EntityCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg"><code class="docutils literal notranslate"><span class="pre">EntityCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.InitialStateCfg"><code class="docutils literal notranslate"><span class="pre">EntityCfg.InitialStateCfg</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.InitialStateCfg.pos"><code class="docutils literal notranslate"><span class="pre">EntityCfg.InitialStateCfg.pos</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.InitialStateCfg.rot"><code class="docutils literal notranslate"><span class="pre">EntityCfg.InitialStateCfg.rot</span></code></a></li>
@@ -632,7 +647,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.__init__"><code class="docutils literal notranslate"><span class="pre">EntityCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing"><code class="docutils literal notranslate"><span class="pre">EntityIndexing</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing"><code class="docutils literal notranslate"><span class="pre">EntityIndexing</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing.bodies"><code class="docutils literal notranslate"><span class="pre">EntityIndexing.bodies</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing.joints"><code class="docutils literal notranslate"><span class="pre">EntityIndexing.joints</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing.geoms"><code class="docutils literal notranslate"><span class="pre">EntityIndexing.geoms</span></code></a></li>
@@ -792,43 +807,43 @@ All inputs/outputs use world frame.</p>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.root_link_pose_w" title="mjlab.entity.EntityData.root_link_pose_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">root_link_pose_w</span></code></a></p></td>
-<td><p>Root link pose in simulation world frame.</p></td>
+<td><p>Root link pose in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.root_link_vel_w" title="mjlab.entity.EntityData.root_link_vel_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">root_link_vel_w</span></code></a></p></td>
-<td><p>Root link velocity in simulation world frame.</p></td>
+<td><p>Root link velocity in world frame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.root_com_pose_w" title="mjlab.entity.EntityData.root_com_pose_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">root_com_pose_w</span></code></a></p></td>
-<td><p>Root center-of-mass pose in simulation world frame.</p></td>
+<td><p>Root center-of-mass pose in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.root_com_vel_w" title="mjlab.entity.EntityData.root_com_vel_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">root_com_vel_w</span></code></a></p></td>
 <td><p>Root center-of-mass velocity in world frame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.body_link_pose_w" title="mjlab.entity.EntityData.body_link_pose_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">body_link_pose_w</span></code></a></p></td>
-<td><p>Body link pose in simulation world frame.</p></td>
+<td><p>Body link pose in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.body_link_vel_w" title="mjlab.entity.EntityData.body_link_vel_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">body_link_vel_w</span></code></a></p></td>
-<td><p>Body link velocity in simulation world frame.</p></td>
+<td><p>Body link velocity in world frame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.body_com_pose_w" title="mjlab.entity.EntityData.body_com_pose_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">body_com_pose_w</span></code></a></p></td>
-<td><p>Body center-of-mass pose in simulation world frame.</p></td>
+<td><p>Body center-of-mass pose in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.body_com_vel_w" title="mjlab.entity.EntityData.body_com_vel_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">body_com_vel_w</span></code></a></p></td>
-<td><p>Body center-of-mass velocity in simulation world frame.</p></td>
+<td><p>Body center-of-mass velocity in world frame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.body_external_wrench" title="mjlab.entity.EntityData.body_external_wrench"><code class="xref py py-obj docutils literal notranslate"><span class="pre">body_external_wrench</span></code></a></p></td>
 <td><p>Body external wrench in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.geom_pose_w" title="mjlab.entity.EntityData.geom_pose_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geom_pose_w</span></code></a></p></td>
-<td><p>Geom pose in simulation world frame.</p></td>
+<td><p>Geom pose in world frame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.geom_vel_w" title="mjlab.entity.EntityData.geom_vel_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geom_vel_w</span></code></a></p></td>
-<td><p>Geom velocity in simulation world frame.</p></td>
+<td><p>Geom velocity in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.site_pose_w" title="mjlab.entity.EntityData.site_pose_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">site_pose_w</span></code></a></p></td>
-<td><p>Site pose in simulation world frame.</p></td>
+<td><p>Site pose in world frame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.site_vel_w" title="mjlab.entity.EntityData.site_vel_w"><code class="xref py py-obj docutils literal notranslate"><span class="pre">site_vel_w</span></code></a></p></td>
-<td><p>Site velocity in simulation world frame.</p></td>
+<td><p>Site velocity in world frame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.joint_pos" title="mjlab.entity.EntityData.joint_pos"><code class="xref py py-obj docutils literal notranslate"><span class="pre">joint_pos</span></code></a></p></td>
 <td><p>Joint positions.</p></td>
@@ -968,28 +983,31 @@ All inputs/outputs use world frame.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_root_velocity" title="mjlab.entity.EntityData.write_root_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_root_velocity</span></code></a>(velocity[, env_ids])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_joint_state" title="mjlab.entity.EntityData.write_joint_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_state</span></code></a>(position, velocity[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_root_com_velocity" title="mjlab.entity.EntityData.write_root_com_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_root_com_velocity</span></code></a>(velocity[, env_ids])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_joint_position" title="mjlab.entity.EntityData.write_joint_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_position</span></code></a>(position[, joint_ids, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_joint_state" title="mjlab.entity.EntityData.write_joint_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_state</span></code></a>(position, velocity[, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_joint_velocity" title="mjlab.entity.EntityData.write_joint_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_velocity</span></code></a>(velocity[, joint_ids, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_joint_position" title="mjlab.entity.EntityData.write_joint_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_position</span></code></a>(position[, joint_ids, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_external_wrench" title="mjlab.entity.EntityData.write_external_wrench"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_external_wrench</span></code></a>(force, torque[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_joint_velocity" title="mjlab.entity.EntityData.write_joint_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_velocity</span></code></a>(velocity[, joint_ids, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_ctrl" title="mjlab.entity.EntityData.write_ctrl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_ctrl</span></code></a>(ctrl[, ctrl_ids, env_ids])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_external_wrench" title="mjlab.entity.EntityData.write_external_wrench"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_external_wrench</span></code></a>(force, torque[, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_mocap_pose" title="mjlab.entity.EntityData.write_mocap_pose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_mocap_pose</span></code></a>(pose[, env_ids])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_ctrl" title="mjlab.entity.EntityData.write_ctrl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_ctrl</span></code></a>(ctrl[, ctrl_ids, env_ids])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.clear_state" title="mjlab.entity.EntityData.clear_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_state</span></code></a>([env_ids])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.write_mocap_pose" title="mjlab.entity.EntityData.write_mocap_pose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_mocap_pose</span></code></a>(pose[, env_ids])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.__init__" title="mjlab.entity.EntityData.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(indexing, data, model, device, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.clear_state" title="mjlab.entity.EntityData.clear_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_state</span></code></a>([env_ids])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.EntityData.__init__" title="mjlab.entity.EntityData.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(indexing, data, model, device, ...)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1161,6 +1179,11 @@ All inputs/outputs use world frame.</p>
 <dd></dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.EntityData.write_root_com_velocity">
+<span class="sig-name descname"><span class="pre">write_root_com_velocity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">velocity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/data.html#EntityData.write_root_com_velocity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.EntityData.write_root_com_velocity" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.write_joint_state">
 <span class="sig-name descname"><span class="pre">write_joint_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">velocity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/data.html#EntityData.write_joint_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.EntityData.write_joint_state" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1198,19 +1221,19 @@ All inputs/outputs use world frame.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.root_link_pose_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root_link_pose_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.root_link_pose_w" title="Link to this definition">#</a></dt>
-<dd><p>Root link pose in simulation world frame. Shape (num_envs, 7).</p>
+<dd><p>Root link pose in world frame. Shape (num_envs, 7).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.root_link_vel_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root_link_vel_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.root_link_vel_w" title="Link to this definition">#</a></dt>
-<dd><p>Root link velocity in simulation world frame. Shape (num_envs, 6).</p>
+<dd><p>Root link velocity in world frame. Shape (num_envs, 6).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.root_com_pose_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root_com_pose_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.root_com_pose_w" title="Link to this definition">#</a></dt>
-<dd><p>Root center-of-mass pose in simulation world frame. Shape (num_envs, 7).</p>
+<dd><p>Root center-of-mass pose in world frame. Shape (num_envs, 7).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1222,25 +1245,25 @@ All inputs/outputs use world frame.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.body_link_pose_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">body_link_pose_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.body_link_pose_w" title="Link to this definition">#</a></dt>
-<dd><p>Body link pose in simulation world frame. Shape (num_envs, num_bodies, 7).</p>
+<dd><p>Body link pose in world frame. Shape (num_envs, num_bodies, 7).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.body_link_vel_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">body_link_vel_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.body_link_vel_w" title="Link to this definition">#</a></dt>
-<dd><p>Body link velocity in simulation world frame. Shape (num_envs, num_bodies, 6).</p>
+<dd><p>Body link velocity in world frame. Shape (num_envs, num_bodies, 6).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.body_com_pose_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">body_com_pose_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.body_com_pose_w" title="Link to this definition">#</a></dt>
-<dd><p>Body center-of-mass pose in simulation world frame. Shape (num_envs, num_bodies, 7).</p>
+<dd><p>Body center-of-mass pose in world frame. Shape (num_envs, num_bodies, 7).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.body_com_vel_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">body_com_vel_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.body_com_vel_w" title="Link to this definition">#</a></dt>
-<dd><p>Body center-of-mass velocity in simulation world frame. Shape (num_envs, num_bodies, 6).</p>
+<dd><p>Body center-of-mass velocity in world frame. Shape (num_envs, num_bodies, 6).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1252,25 +1275,25 @@ All inputs/outputs use world frame.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.geom_pose_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geom_pose_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.geom_pose_w" title="Link to this definition">#</a></dt>
-<dd><p>Geom pose in simulation world frame. Shape (num_envs, num_geoms, 7).</p>
+<dd><p>Geom pose in world frame. Shape (num_envs, num_geoms, 7).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.geom_vel_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geom_vel_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.geom_vel_w" title="Link to this definition">#</a></dt>
-<dd><p>Geom velocity in simulation world frame. Shape (num_envs, num_geoms, 6).</p>
+<dd><p>Geom velocity in world frame. Shape (num_envs, num_geoms, 6).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.site_pose_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">site_pose_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.site_pose_w" title="Link to this definition">#</a></dt>
-<dd><p>Site pose in simulation world frame. Shape (num_envs, num_sites, 7).</p>
+<dd><p>Site pose in world frame. Shape (num_envs, num_sites, 7).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.site_vel_w">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">site_vel_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.site_vel_w" title="Link to this definition">#</a></dt>
-<dd><p>Site velocity in simulation world frame. Shape (num_envs, num_sites, 6).</p>
+<dd><p>Site velocity in world frame. Shape (num_envs, num_sites, 6).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1617,7 +1640,7 @@ adjustable position and orientation.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.clear_state" title="mjlab.entity.Entity.clear_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_state</span></code></a>([env_ids])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_ctrl_to_sim" title="mjlab.entity.Entity.write_ctrl_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_ctrl_to_sim</span></code></a>(ctrl[, ctrl_ids])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_ctrl_to_sim" title="mjlab.entity.Entity.write_ctrl_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_ctrl_to_sim</span></code></a>(ctrl[, ctrl_ids, env_ids])</p></td>
 <td><p>Write control inputs to the simulation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_root_state_to_sim" title="mjlab.entity.Entity.write_root_state_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_root_state_to_sim</span></code></a>(root_state[, env_ids])</p></td>
@@ -1627,42 +1650,45 @@ adjustable position and orientation.</p>
 <td><p>Set the root pose into the simulation.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_root_link_velocity_to_sim" title="mjlab.entity.Entity.write_root_link_velocity_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_root_link_velocity_to_sim</span></code></a>(root_velocity)</p></td>
-<td><p>Set the root velocity into the simulation.</p></td>
+<td><p>Set the root link (body origin) velocity into the simulation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_joint_state_to_sim" title="mjlab.entity.Entity.write_joint_state_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_state_to_sim</span></code></a>(position, velocity)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_root_com_velocity_to_sim" title="mjlab.entity.Entity.write_root_com_velocity_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_root_com_velocity_to_sim</span></code></a>(root_velocity)</p></td>
+<td><p>Set the root COM velocity into the simulation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_joint_state_to_sim" title="mjlab.entity.Entity.write_joint_state_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_state_to_sim</span></code></a>(position, velocity)</p></td>
 <td><p>Set the joint state into the simulation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_joint_position_to_sim" title="mjlab.entity.Entity.write_joint_position_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_position_to_sim</span></code></a>(position[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_joint_position_to_sim" title="mjlab.entity.Entity.write_joint_position_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_position_to_sim</span></code></a>(position[, ...])</p></td>
 <td><p>Set the joint positions into the simulation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_joint_velocity_to_sim" title="mjlab.entity.Entity.write_joint_velocity_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_velocity_to_sim</span></code></a>(velocity[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_joint_velocity_to_sim" title="mjlab.entity.Entity.write_joint_velocity_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_joint_velocity_to_sim</span></code></a>(velocity[, ...])</p></td>
 <td><p>Set the joint velocities into the simulation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_joint_position_target" title="mjlab.entity.Entity.set_joint_position_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_joint_position_target</span></code></a>(position[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_joint_position_target" title="mjlab.entity.Entity.set_joint_position_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_joint_position_target</span></code></a>(position[, ...])</p></td>
 <td><p>Set joint position targets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_joint_velocity_target" title="mjlab.entity.Entity.set_joint_velocity_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_joint_velocity_target</span></code></a>(velocity[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_joint_velocity_target" title="mjlab.entity.Entity.set_joint_velocity_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_joint_velocity_target</span></code></a>(velocity[, ...])</p></td>
 <td><p>Set joint velocity targets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_joint_effort_target" title="mjlab.entity.Entity.set_joint_effort_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_joint_effort_target</span></code></a>(effort[, joint_ids, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_joint_effort_target" title="mjlab.entity.Entity.set_joint_effort_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_joint_effort_target</span></code></a>(effort[, joint_ids, ...])</p></td>
 <td><p>Set joint effort targets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_tendon_len_target" title="mjlab.entity.Entity.set_tendon_len_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_tendon_len_target</span></code></a>(length[, tendon_ids, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_tendon_len_target" title="mjlab.entity.Entity.set_tendon_len_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_tendon_len_target</span></code></a>(length[, tendon_ids, ...])</p></td>
 <td><p>Set tendon length targets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_tendon_vel_target" title="mjlab.entity.Entity.set_tendon_vel_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_tendon_vel_target</span></code></a>(velocity[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_tendon_vel_target" title="mjlab.entity.Entity.set_tendon_vel_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_tendon_vel_target</span></code></a>(velocity[, ...])</p></td>
 <td><p>Set tendon velocity targets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_tendon_effort_target" title="mjlab.entity.Entity.set_tendon_effort_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_tendon_effort_target</span></code></a>(effort[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_tendon_effort_target" title="mjlab.entity.Entity.set_tendon_effort_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_tendon_effort_target</span></code></a>(effort[, ...])</p></td>
 <td><p>Set tendon effort targets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_site_effort_target" title="mjlab.entity.Entity.set_site_effort_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_site_effort_target</span></code></a>(effort[, site_ids, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.set_site_effort_target" title="mjlab.entity.Entity.set_site_effort_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_site_effort_target</span></code></a>(effort[, site_ids, ...])</p></td>
 <td><p>Set site effort targets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_external_wrench_to_sim" title="mjlab.entity.Entity.write_external_wrench_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_external_wrench_to_sim</span></code></a>(forces, torques)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_external_wrench_to_sim" title="mjlab.entity.Entity.write_external_wrench_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_external_wrench_to_sim</span></code></a>(forces, torques)</p></td>
 <td><p>Apply external wrenches to bodies in the simulation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_mocap_pose_to_sim" title="mjlab.entity.Entity.write_mocap_pose_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_mocap_pose_to_sim</span></code></a>(mocap_pose[, env_ids])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.entity.Entity.write_mocap_pose_to_sim" title="mjlab.entity.Entity.write_mocap_pose_to_sim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_mocap_pose_to_sim</span></code></a>(mocap_pose[, env_ids])</p></td>
 <td><p>Set the pose of a mocap body into the simulation.</p></td>
 </tr>
 </tbody>
@@ -1941,13 +1967,15 @@ adjustable position and orientation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.entity.Entity.write_ctrl_to_sim">
-<span class="sig-name descname"><span class="pre">write_ctrl_to_sim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctrl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ctrl_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.write_ctrl_to_sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.write_ctrl_to_sim" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">write_ctrl_to_sim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctrl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ctrl_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.write_ctrl_to_sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.write_ctrl_to_sim" title="Link to this definition">#</a></dt>
 <dd><p>Write control inputs to the simulation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>ctrl</strong> – A tensor of control inputs.</p></li>
 <li><p><strong>ctrl_ids</strong> – A tensor of control indices.</p></li>
+<li><p><strong>env_ids</strong> – Optional tensor or slice specifying which environments to set.
+If None, all environments are set.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1990,13 +2018,31 @@ None, all environments are set.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.entity.Entity.write_root_link_velocity_to_sim">
 <span class="sig-name descname"><span class="pre">write_root_link_velocity_to_sim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_velocity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.write_root_link_velocity_to_sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.write_root_link_velocity_to_sim" title="Link to this definition">#</a></dt>
-<dd><p>Set the root velocity into the simulation. Like <cite>write_root_state_to_sim()</cite>
-but only sets linear and angular velocity.</p>
+<dd><p>Set the root link (body origin) velocity into the simulation. Like
+<cite>write_root_state_to_sim()</cite> but only sets linear and angular velocity.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>root_velocity</strong> – Tensor of shape (N, 6) where N is the number of environments.
-Contains linear velocity (3) and angular velocity (3), both in world frame.</p></li>
+Contains linear velocity (3) at body origin and angular velocity (3),
+both in world frame.</p></li>
+<li><p><strong>env_ids</strong> – Optional tensor or slice specifying which environments to set. If
+None, all environments are set.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.Entity.write_root_com_velocity_to_sim">
+<span class="sig-name descname"><span class="pre">write_root_com_velocity_to_sim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_velocity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.write_root_com_velocity_to_sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.write_root_com_velocity_to_sim" title="Link to this definition">#</a></dt>
+<dd><p>Set the root COM velocity into the simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root_velocity</strong> – Tensor of shape (N, 6) where N is the number of environments.
+Contains linear velocity (3) at COM and angular velocity (3),
+both in world frame.</p></li>
 <li><p><strong>env_ids</strong> – Optional tensor or slice specifying which environments to set. If
 None, all environments are set.</p></li>
 </ul>
@@ -2654,7 +2700,7 @@ None, all environments are set.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData"><code class="docutils literal notranslate"><span class="pre">EntityData</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData"><code class="docutils literal notranslate"><span class="pre">EntityData</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.indexing"><code class="docutils literal notranslate"><span class="pre">EntityData.indexing</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.data"><code class="docutils literal notranslate"><span class="pre">EntityData.data</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.model"><code class="docutils literal notranslate"><span class="pre">EntityData.model</span></code></a></li>
@@ -2688,6 +2734,7 @@ None, all environments are set.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_state"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_state()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_pose"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_pose()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_velocity"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_velocity()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_root_com_velocity"><code class="docutils literal notranslate"><span class="pre">EntityData.write_root_com_velocity()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_joint_state"><code class="docutils literal notranslate"><span class="pre">EntityData.write_joint_state()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_joint_position"><code class="docutils literal notranslate"><span class="pre">EntityData.write_joint_position()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.write_joint_velocity"><code class="docutils literal notranslate"><span class="pre">EntityData.write_joint_velocity()</span></code></a></li>
@@ -2752,7 +2799,7 @@ None, all environments are set.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.__init__"><code class="docutils literal notranslate"><span class="pre">EntityData.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity"><code class="docutils literal notranslate"><span class="pre">Entity</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity"><code class="docutils literal notranslate"><span class="pre">Entity</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.__init__"><code class="docutils literal notranslate"><span class="pre">Entity.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.is_fixed_base"><code class="docutils literal notranslate"><span class="pre">Entity.is_fixed_base</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.is_articulated"><code class="docutils literal notranslate"><span class="pre">Entity.is_articulated</span></code></a></li>
@@ -2795,6 +2842,7 @@ None, all environments are set.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_state_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_state_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_link_pose_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_link_pose_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_link_velocity_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_link_velocity_to_sim()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_com_velocity_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_com_velocity_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_joint_state_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_joint_state_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_joint_position_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_joint_position_to_sim()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_joint_velocity_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_joint_velocity_to_sim()</span></code></a></li>
@@ -2809,13 +2857,13 @@ None, all environments are set.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_mocap_pose_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_mocap_pose_to_sim()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg.actuators"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg.actuators</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg.soft_joint_pos_limit_factor"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg.soft_joint_pos_limit_factor</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityArticulationInfoCfg.__init__"><code class="docutils literal notranslate"><span class="pre">EntityArticulationInfoCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg"><code class="docutils literal notranslate"><span class="pre">EntityCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg"><code class="docutils literal notranslate"><span class="pre">EntityCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.InitialStateCfg"><code class="docutils literal notranslate"><span class="pre">EntityCfg.InitialStateCfg</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.InitialStateCfg.pos"><code class="docutils literal notranslate"><span class="pre">EntityCfg.InitialStateCfg.pos</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.InitialStateCfg.rot"><code class="docutils literal notranslate"><span class="pre">EntityCfg.InitialStateCfg.rot</span></code></a></li>
@@ -2838,7 +2886,7 @@ None, all environments are set.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.__init__"><code class="docutils literal notranslate"><span class="pre">EntityCfg.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing"><code class="docutils literal notranslate"><span class="pre">EntityIndexing</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing"><code class="docutils literal notranslate"><span class="pre">EntityIndexing</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing.bodies"><code class="docutils literal notranslate"><span class="pre">EntityIndexing.bodies</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing.joints"><code class="docutils literal notranslate"><span class="pre">EntityIndexing.joints</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityIndexing.geoms"><code class="docutils literal notranslate"><span class="pre">EntityIndexing.geoms</span></code></a></li>
@@ -2893,7 +2941,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Feb 03, 2026.
+  Last updated on Feb 13, 2026.
   <br/>
 </p>
   </div>

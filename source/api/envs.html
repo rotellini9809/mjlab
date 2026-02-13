@@ -52,13 +52,14 @@
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'source/api/envs';</script>
+    <link rel="icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="mjlab.scene" href="scene.html" />
     <link rel="prev" title="API Reference" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Feb 03, 2026"/>
+    <meta name="docbuild:last-update" content="Feb 13, 2026"/>
   </head>
   
   
@@ -170,7 +171,18 @@
           
           
           
-          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-0.1.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+          <a href="https://github.com/mujocolab/mjlab" title="mjlab" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/mjlab-1.0.0-silver.svg" class="icon-link-image" alt="mjlab"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://mujocolab.github.io/mjlab/nightly/" title="Benchmarks" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://img.shields.io/badge/Nightly-Benchmarks-blue" class="icon-link-image" alt="Benchmarks"/></a>
         </li>
         <li class="nav-item">
           
@@ -212,6 +224,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../motivation.html">Why mjlab?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -448,7 +461,7 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.is_vector_env"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.is_vector_env</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.metadata"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.metadata</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.__init__()</span></code></a></li>
@@ -470,7 +483,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.update_visualizers"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.update_visualizers()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.decimation"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.decimation</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.scene"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.scene</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.observations"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.observations</span></code></a></li>
@@ -484,6 +497,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.terminations"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.terminations</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.commands"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.commands</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.curriculum"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.curriculum</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.metrics"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.metrics</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.is_finite_horizon</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.scale_rewards_by_dt</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.__init__()</span></code></a></li>
@@ -572,7 +586,7 @@ document.write(`
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnv.step" title="mjlab.envs.ManagerBasedRlEnv.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">step</span></code></a>(action)</p></td>
-<td><p></p></td>
+<td><p>Run one environment step: apply actions, simulate, compute RL signals.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnv.render" title="mjlab.envs.ManagerBasedRlEnv.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>()</p></td>
 <td><p></p></td>
@@ -672,7 +686,32 @@ then action and observation managers, then other RL managers.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnv.step">
 <span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/envs/manager_based_rl_env.html#ManagerBasedRlEnv.step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnv.step" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Run one environment step: apply actions, simulate, compute RL signals.</p>
+<p><strong>Forward-call placement.</strong> MuJoCo’s <code class="docutils literal notranslate"><span class="pre">mj_step</span></code> runs forward kinematics
+<em>before</em> integration, so after stepping, derived quantities (<code class="docutils literal notranslate"><span class="pre">xpos</span></code>,
+<code class="docutils literal notranslate"><span class="pre">xquat</span></code>, <code class="docutils literal notranslate"><span class="pre">site_xpos</span></code>, <code class="docutils literal notranslate"><span class="pre">cvel</span></code>, <code class="docutils literal notranslate"><span class="pre">sensordata</span></code>) lag <code class="docutils literal notranslate"><span class="pre">qpos</span></code>/<code class="docutils literal notranslate"><span class="pre">qvel</span></code>
+by one physics substep. Rather than calling <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code> twice (once
+after the decimation loop and once after the reset block), this method
+calls it <strong>once</strong>, right before observation computation. This single call
+refreshes derived quantities for <em>all</em> envs: non-reset envs pick up
+post-decimation kinematics, reset envs pick up post-reset kinematics.</p>
+<p>The tradeoff is that termination and reward managers see derived
+quantities that are stale by one physics substep (the last <code class="docutils literal notranslate"><span class="pre">mj_step</span></code>
+ran <code class="docutils literal notranslate"><span class="pre">mj_forward</span></code> from <em>pre</em>-integration <code class="docutils literal notranslate"><span class="pre">qpos</span></code>). In practice, the
+staleness is negligible for reward shaping and termination
+checks. Critically, the staleness is <em>consistent</em>: every env,
+every step, always sees the same lag, so the MDP is well-defined
+and the value function can learn the correct mapping.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Event and command authors do not need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code>
+themselves. This method handles it. The only constraint is: do not
+read derived quantities (<code class="docutils literal notranslate"><span class="pre">root_link_pose_w</span></code>, <code class="docutils literal notranslate"><span class="pre">body_link_vel_w</span></code>,
+etc.) in the same function that writes state
+(<code class="docutils literal notranslate"><span class="pre">write_root_state_to_sim</span></code>, <code class="docutils literal notranslate"><span class="pre">write_joint_state_to_sim</span></code>, etc.).
+See <a class="reference internal" href="../faq.html#faq"><span class="std std-ref">FAQ &amp; Troubleshooting</span></a> for details.</p>
+</div>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnv.render">
@@ -748,10 +787,13 @@ with a 2ms physics timestep and decimation=10, the environment runs at 50Hz.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnvCfg.curriculum" title="mjlab.envs.ManagerBasedRlEnvCfg.curriculum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">curriculum</span></code></a></p></td>
 <td><p>Curriculum terms for adaptive difficulty.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon" title="mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_finite_horizon</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnvCfg.metrics" title="mjlab.envs.ManagerBasedRlEnvCfg.metrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics</span></code></a></p></td>
+<td><p>Custom metric terms for logging per-step values as episode averages.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon" title="mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_finite_horizon</span></code></a></p></td>
 <td><p>Whether the task has a finite or infinite horizon.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt" title="mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scale_rewards_by_dt</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt" title="mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scale_rewards_by_dt</span></code></a></p></td>
 <td><p>Whether to multiply rewards by the environment step duration (dt).</p></td>
 </tr>
 </tbody>
@@ -783,7 +825,7 @@ specifies <code class="docutils literal notranslate"><span class="pre">num_envs<
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.observations">
 <span class="sig-name descname"><span class="pre">observations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="managers.html#mjlab.managers.ObservationGroupCfg" title="mjlab.managers.observation_manager.ObservationGroupCfg"><span class="pre">ObservationGroupCfg</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.observations" title="Link to this definition">#</a></dt>
-<dd><p>Observation groups configuration. Each group (e.g., “policy”, “critic”) contains
+<dd><p>Observation groups configuration. Each group (e.g., “actor”, “critic”) contains
 observation terms that are concatenated. Groups can have different settings for
 noise, history, and delay.</p>
 </dd></dl>
@@ -859,6 +901,12 @@ contact parameters, and NaN guarding.</p>
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.metrics">
+<span class="sig-name descname"><span class="pre">metrics</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="managers.html#mjlab.managers.MetricsTermCfg" title="mjlab.managers.metrics_manager.MetricsTermCfg"><span class="pre">MetricsTermCfg</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.metrics" title="Link to this definition">#</a></dt>
+<dd><p>Custom metric terms for logging per-step values as episode averages.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon">
 <span class="sig-name descname"><span class="pre">is_finite_horizon</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon" title="Link to this definition">#</a></dt>
 <dd><p>Whether the task has a finite or infinite horizon. Defaults to False (infinite).</p>
@@ -882,7 +930,7 @@ algorithms that expect unscaled reward signals (e.g., HER, static reward scaling
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decimation:</span> <span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scene:</span> <span class="pre">~mjlab.scene.scene.SceneCfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.observation_manager.ObservationGroupCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.action_manager.ActionTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.event_manager.EventTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sim:</span> <span class="pre">~mjlab.sim.sim.SimulationCfg</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer:</span> <span class="pre">~mjlab.viewer.viewer_config.ViewerConfig</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">episode_length_s:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rewards:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.reward_manager.RewardTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">terminations:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.termination_manager.TerminationTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commands:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.command_manager.CommandTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curriculum:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.curriculum_manager.CurriculumTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_finite_horizon:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_rewards_by_dt:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decimation:</span> <span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scene:</span> <span class="pre">~mjlab.scene.scene.SceneCfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.observation_manager.ObservationGroupCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.action_manager.ActionTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.event_manager.EventTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sim:</span> <span class="pre">~mjlab.sim.sim.SimulationCfg</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer:</span> <span class="pre">~mjlab.viewer.viewer_config.ViewerConfig</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">episode_length_s:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rewards:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.reward_manager.RewardTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">terminations:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.termination_manager.TerminationTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commands:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.command_manager.CommandTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curriculum:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.curriculum_manager.CurriculumTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~mjlab.managers.metrics_manager.MetricsTermCfg]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_finite_horizon:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_rewards_by_dt:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.__init__" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -934,7 +982,7 @@ algorithms that expect unscaled reward signals (e.g., HER, static reward scaling
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.is_vector_env"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.is_vector_env</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.metadata"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.metadata</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.__init__()</span></code></a></li>
@@ -956,7 +1004,7 @@ algorithms that expect unscaled reward signals (e.g., HER, static reward scaling
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnv.update_visualizers"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnv.update_visualizers()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.decimation"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.decimation</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.scene"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.scene</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.observations"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.observations</span></code></a></li>
@@ -970,6 +1018,7 @@ algorithms that expect unscaled reward signals (e.g., HER, static reward scaling
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.terminations"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.terminations</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.commands"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.commands</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.curriculum"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.curriculum</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.metrics"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.metrics</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.is_finite_horizon</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.scale_rewards_by_dt</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.__init__"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.__init__()</span></code></a></li>
@@ -1008,7 +1057,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Feb 03, 2026.
+  Last updated on Feb 13, 2026.
   <br/>
 </p>
   </div>

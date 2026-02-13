@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Why mjlab? &#8212; mjlab Documentation</title>
+    <title>Changelog &#8212; mjlab Documentation</title>
   
   
   
@@ -51,12 +51,12 @@
     <script src="../_static/copybutton.js?v=f281be69"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'source/motivation';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'source/changelog';</script>
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="FAQ &amp; Troubleshooting" href="faq.html" />
-    <link rel="prev" title="Migrating from Isaac Lab" href="migration_isaac_lab.html" />
+    <link rel="next" title="API Reference" href="api/index.html" />
+    <link rel="prev" title="FAQ &amp; Troubleshooting" href="faq.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
     <meta name="docbuild:last-update" content="Feb 13, 2026"/>
@@ -222,9 +222,9 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">About the Project</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Why mjlab?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="motivation.html">Why mjlab?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ &amp; Troubleshooting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -320,7 +320,7 @@
       
       
       
-      <li><a href="https://github.com/mujocolab/mjlab/edit/main/docs/source/motivation.rst" target="_blank"
+      <li><a href="https://github.com/mujocolab/mjlab/edit/main/docs/source/changelog.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -337,7 +337,7 @@
       
       
       
-      <li><a href="https://github.com/mujocolab/mjlab/issues/new?title=Issue%20on%20page%20%2Fsource/motivation.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/mujocolab/mjlab/issues/new?title=Issue%20on%20page%20%2Fsource/changelog.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -367,7 +367,7 @@
       
       
       
-      <li><a href="../_sources/source/motivation.rst" target="_blank"
+      <li><a href="../_sources/source/changelog.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -451,7 +451,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Why mjlab?</h1>
+    <h1>Changelog</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -461,11 +461,13 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-problem">The Problem</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#our-solution">Our Solution</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#philosophy">Philosophy</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-mjlab">When to Use mjlab</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-bottom-line">The Bottom Line</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#upcoming-version-not-yet-released">Upcoming version (not yet released)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-0-0-january-28-2026">Version 1.0.0 (January 28, 2026)</a></li>
 </ul>
             </nav>
         </div>
@@ -477,122 +479,60 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="why-mjlab">
-<span id="motivation"></span><h1>Why mjlab?<a class="headerlink" href="#why-mjlab" title="Link to this heading">#</a></h1>
-<section id="the-problem">
-<h2>The Problem<a class="headerlink" href="#the-problem" title="Link to this heading">#</a></h2>
-<p>GPU-accelerated robotics simulation has great tools,
-but each has tradeoffs:</p>
-<p><strong>Isaac Lab</strong>: Excellent API and RL abstractions, but
-heavy installation, slow startup, and Omniverse overhead
-make rapid iteration painful.</p>
-<p><strong>MJX</strong>: Fast and lightweight, but JAX’s learning curve
-and poor collision scaling (if using the <code class="docutils literal notranslate"><span class="pre">jax</span></code>
-<a class="reference external" href="https://github.com/google-deepmind/mujoco/blob/32e08f9507c9bdc5a1a5411c6fa9f0346542b038/mjx/mujoco/mjx/_src/types.py#L28-L33">implementation</a>
-rather than the <code class="docutils literal notranslate"><span class="pre">warp</span></code> one) limit adoption.</p>
-<p><strong>Newton</strong>: Brand new generic simulator supporting
-multiple solvers (MuJoCo, VBD, etc.) with USD-based
-format instead of MJCF/XML. Doesn’t yet have the
-ecosystem and community resources that MuJoCo has built
-over the years.</p>
-</section>
-<section id="our-solution">
-<h2>Our Solution<a class="headerlink" href="#our-solution" title="Link to this heading">#</a></h2>
-<p><strong>mjlab = Isaac Lab’s API + MuJoCo’s simplicity +
-GPU acceleration</strong></p>
-<p>We took Isaac Lab’s proven manager-based architecture
-and RL abstractions, then built them directly on MuJoCo
-Warp. No translation layers, no Omniverse overhead.
-Just fast, transparent physics.</p>
-<dl>
-<dt>Why Not Use Isaac Lab with Newton?</dt><dd><p>Isaac Lab recently added
-<a class="reference external" href="https://github.com/isaac-sim/IsaacLab/tree/dev/newton">experimental Newton support</a>,
-which is great for existing Isaac users who want to
-try MuJoCo via Newton’s backend.</p>
-<p>If you want a comprehensive platform (RL, imitation
-learning, photorealistic rendering, etc.), use Isaac
-Lab. If you want a focused tool for RL and sim2real
-with MuJoCo, use mjlab.</p>
-</dd>
-<dt>Why Not Add MuJoCo Warp to Isaac Lab?</dt><dd><p>This would be fantastic for the ecosystem!
-NVIDIA’s team is exploring this with their
-recent <a class="reference external" href="https://github.com/isaac-sim/IsaacLab/tree/dev/newton">experimental Newton integration</a>,
-which is exciting.</p>
-<p>But for us, we wanted to start with something
-more focused that we could realistically
-maintain. Isaac Lab is architected around
-Omniverse/Isaac Sim’s powerful capabilities,
-which makes sense given everything it supports.
-Integrating MuJoCo Warp there would mean working
-within that broader framework and supporting
-use cases beyond our scope.</p>
-<p>Maintaining multi-backend compatibility
-naturally involves tradeoffs in complexity
-and dependency management. By starting fresh, we could:</p>
+  <section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
+<section id="upcoming-version-not-yet-released">
+<h2>Upcoming version (not yet released)<a class="headerlink" href="#upcoming-version-not-yet-released" title="Link to this heading">#</a></h2>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Write a lean codebase optimized specifically for MuJoCo Warp</p></li>
-<li><p>Keep dependencies minimal and installation fast</p></li>
-<li><p>Maintain direct access to native mjModel/mjData structures</p></li>
-<li><p>Iterate quickly without navigating a larger platform’s constraints</p></li>
+<li><p>Added RGB and depth camera sensors and BVH-accelerated raycasting.</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">MetricsManager</span></code> for logging custom metrics during training.</p></li>
+<li><p>Added terrain visualizer. Contribution by
+<a class="reference external" href="https://github.com/mktk1117">&#64;mktk1117</a>.</p></li>
 </ul>
-<p>Think of mjlab as a love letter to Isaac
-Lab’s brilliant API design. We’re bringing
-those manager-based abstractions to researchers
-who want something smaller and MuJoCo-specific.
-It’s complementary, not competitive.</p>
-</dd>
-</dl>
-</section>
-<section id="philosophy">
-<h2>Philosophy<a class="headerlink" href="#philosophy" title="Link to this heading">#</a></h2>
-<p><strong>Bare Metal Performance</strong></p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/terrain_visualizer.jpg"><img alt="../_images/terrain_visualizer.jpg" src="../_images/terrain_visualizer.jpg" style="width: 80%;" />
+</a>
+</figure>
 <ul class="simple">
-<li><p>Direct MuJoCo Warp integration, no translation layers</p></li>
-<li><p>Native mjModel/mjData structures MuJoCo users know and love</p></li>
-<li><p>GPU-accelerated with minimal overhead</p></li>
-</ul>
-<p><strong>Developer Experience First</strong></p>
-<ul class="simple">
-<li><p>One-line installation: <code class="docutils literal notranslate"><span class="pre">uvx</span> <span class="pre">--from</span> <span class="pre">mjlab</span> <span class="pre">demo</span></code></p></li>
-<li><p>Blazing fast startup</p></li>
-<li><p>Standard Python debugging (pdb anywhere!)</p></li>
-<li><p>Fast iteration cycles</p></li>
-</ul>
-<p><strong>Focused Scope</strong></p>
-<ul class="simple">
-<li><p>Rigid-body robotics and RL, not trying to do everything</p></li>
-<li><p>Clean, maintainable codebase over feature bloat</p></li>
-<li><p>MuJoCo-native implementation, not a generic wrapper</p></li>
+<li><p>Added many new terrains including <code class="docutils literal notranslate"><span class="pre">HfDiscreteObstaclesTerrainCfg</span></code>,
+<code class="docutils literal notranslate"><span class="pre">HfPerlinNoiseTerrainCfg</span></code>, <code class="docutils literal notranslate"><span class="pre">BoxSteppingStonesTerrainCfg</span></code>,
+<code class="docutils literal notranslate"><span class="pre">BoxNarrowBeamsTerrainCfg</span></code>, <code class="docutils literal notranslate"><span class="pre">BoxRandomStairsTerrainCfg</span></code>, and
+more. Added flat patch sampling for heightfield terrains.</p></li>
+<li><p>Added site group visualization to the Viser viewer (Geoms and Sites
+tabs unified into a single Groups tab).</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">env_ids</span></code> parameter to <code class="docutils literal notranslate"><span class="pre">Entity.write_ctrl_to_sim</span></code>.</p></li>
 </ul>
 </section>
-<section id="when-to-use-mjlab">
-<h2>When to Use mjlab<a class="headerlink" href="#when-to-use-mjlab" title="Link to this heading">#</a></h2>
-<p><strong>Use mjlab if you want:</strong></p>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Fast iteration and debugging</p></li>
-<li><p>Direct MuJoCo physics control</p></li>
-<li><p>Proven RL abstractions (Isaac Lab-style)</p></li>
-<li><p>GPU acceleration without heavyweight dependencies</p></li>
-<li><p>Simple installation and deployment</p></li>
-</ul>
-<p><strong>Use Isaac Lab if you need:</strong></p>
-<ul class="simple">
-<li><p>Photorealistic rendering</p></li>
-<li><p>USD pipeline integration</p></li>
-<li><p>Omniverse ecosystem features</p></li>
-</ul>
-<p><strong>Use Newton if you need:</strong></p>
-<ul class="simple">
-<li><p>Multi-physics solver support (e.g., deformables)</p></li>
-<li><p>Differentiable simulation</p></li>
+<li><p>Upgraded <code class="docutils literal notranslate"><span class="pre">rsl-rl-lib</span></code> to 4.0.0 and replaced the custom ONNX
+exporter with rsl-rl’s built-in <code class="docutils literal notranslate"><span class="pre">as_onnx()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code> is now called unconditionally after the decimation
+loop. See <a class="reference internal" href="faq.html#faq-sim-forward"><span class="std std-ref">When do I need to call sim.forward()?</span></a> for details.</p></li>
+<li><p>Unnamed freejoints are now automatically named to prevent
+<code class="docutils literal notranslate"><span class="pre">KeyError</span></code> during entity init.</p></li>
 </ul>
 </section>
-<section id="the-bottom-line">
-<h2>The Bottom Line<a class="headerlink" href="#the-bottom-line" title="Link to this heading">#</a></h2>
-<p>mjlab isn’t trying to replace everything. It’s
-built for researchers who love MuJoCo’s simplicity
-and want Isaac Lab’s RL abstractions with GPU acceleration,
-minus the overhead.</p>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">randomize_pd_gains</span></code> crash with <code class="docutils literal notranslate"><span class="pre">num_envs</span> <span class="pre">&gt;</span> <span class="pre">1</span></code>.</p></li>
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">ctrl_ids</span></code> index error with multiple actuated entities.
+Reported by <a class="reference external" href="https://github.com/bwrooney82">&#64;bwrooney82</a>.</p></li>
+<li><p>Fixed Viser viewer rendering textured robots as gray.</p></li>
+<li><p>Fixed Viser plane rendering ignoring MuJoCo size parameter.</p></li>
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">HfDiscreteObstaclesTerrainCfg</span></code> spawn height.</p></li>
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">RaycastSensor</span></code> visualization ignoring the all-envs toggle.
+Contribution by <a class="reference external" href="https://github.com/oxkitsune">&#64;oxkitsune</a>.</p></li>
+</ul>
+</section>
+</section>
+<section id="version-1-0-0-january-28-2026">
+<h2>Version 1.0.0 (January 28, 2026)<a class="headerlink" href="#version-1-0-0-january-28-2026" title="Link to this heading">#</a></h2>
+<p>Initial release of mjlab.</p>
 </section>
 </section>
 
@@ -608,20 +548,20 @@ minus the overhead.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="migration_isaac_lab.html"
+       href="faq.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Migrating from Isaac Lab</p>
+        <p class="prev-next-title">FAQ &amp; Troubleshooting</p>
       </div>
     </a>
     <a class="right-next"
-       href="faq.html"
+       href="api/index.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">FAQ &amp; Troubleshooting</p>
+        <p class="prev-next-title">API Reference</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -641,11 +581,13 @@ minus the overhead.</p>
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-problem">The Problem</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#our-solution">Our Solution</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#philosophy">Philosophy</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-mjlab">When to Use mjlab</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-bottom-line">The Bottom Line</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#upcoming-version-not-yet-released">Upcoming version (not yet released)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-0-0-january-28-2026">Version 1.0.0 (January 28, 2026)</a></li>
 </ul>
   </nav></div>
 
