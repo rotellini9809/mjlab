@@ -242,8 +242,8 @@ def booster_t1_23_push_getup_env_cfg(
     )
   }
 
-  # Observations (policy): proprioceptive student view only (no command/anchors).
-  policy_terms = {
+  # Observations (actor): proprioceptive student view only (no command/anchors).
+  actor_terms = {
     "base_lin_vel": ObservationTermCfg(
       func=mdp.builtin_sensor,
       params={"sensor_name": "robot/imu_lin_vel"},
@@ -278,8 +278,8 @@ def booster_t1_23_push_getup_env_cfg(
   }
 
   cfg.observations = {
-    "policy": ObservationGroupCfg(
-      terms=policy_terms,
+    "actor": ObservationGroupCfg(
+      terms=actor_terms,
       concatenate_terms=True,
       enable_corruption=True,
     ),
@@ -472,6 +472,6 @@ def booster_t1_23_push_getup_env_cfg(
 
   if play:
     cfg.episode_length_s = int(1e9)
-    cfg.observations["policy"].enable_corruption = False
+    cfg.observations["actor"].enable_corruption = False
 
   return cfg

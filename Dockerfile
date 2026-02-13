@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libegl-dev \
+    mesa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 ENV UV_COMPILE_BYTECODE=1
@@ -33,4 +34,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV MUJOCO_GL=egl
 EXPOSE 8080
 
-CMD ["uv", "run", "python", "tests/smoke_test.py"]
+CMD ["sh", "-c", "uv run python tests/smoke_test.py && exec bash"]

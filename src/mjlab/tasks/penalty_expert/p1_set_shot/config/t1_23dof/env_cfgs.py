@@ -182,7 +182,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
     
 
-    policy_terms = {
+    actor_terms = {
     "base_lin_vel": ObservationTermCfg(
         func=mdp.builtin_sensor,
         params={"sensor_name": "robot/imu_lin_vel"},
@@ -257,8 +257,8 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     }
 
     cfg.observations = {
-    "policy": ObservationGroupCfg(
-        terms=policy_terms,
+    "actor": ObservationGroupCfg(
+        terms=actor_terms,
         concatenate_terms=True,
         enable_corruption=not play,
     ),
@@ -390,7 +390,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     if play:
         cfg.scene.num_envs = 1
         cfg.episode_length_s = int(1e9)
-        cfg.observations["policy"].enable_corruption = False
+        cfg.observations["actor"].enable_corruption = False
         cfg.events.pop("push_robot", None)  # se esiste nel base
 
     return cfg

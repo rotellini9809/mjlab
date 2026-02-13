@@ -1,8 +1,8 @@
 """RL configuration for Booster T1 tracking task."""
 
 from mjlab.rl import (
+    RslRlModelCfg,
     RslRlOnPolicyRunnerCfg,
-    RslRlPpoActorCriticCfg,
     RslRlPpoAlgorithmCfg,
 )
 
@@ -10,13 +10,19 @@ from mjlab.rl import (
 def booster_t1_23_tracking_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
     """Create RL runner configuration for Booster T1 tracking task."""
     return RslRlOnPolicyRunnerCfg(
-        policy=RslRlPpoActorCriticCfg(
+        actor=RslRlModelCfg(
             init_noise_std=1.0,
-            actor_obs_normalization=True,
-            critic_obs_normalization=True,
-            actor_hidden_dims=(512, 256, 128),
-            critic_hidden_dims=(512, 256, 128),
+            obs_normalization=True,
+            hidden_dims=(512, 256, 128),
             activation="elu",
+            stochastic=True,
+        ),
+        critic=RslRlModelCfg(
+            init_noise_std=1.0,
+            obs_normalization=True,
+            hidden_dims=(512, 256, 128),
+            activation="elu",
+            stochastic=False,
         ),
         algorithm=RslRlPpoAlgorithmCfg(
             value_loss_coef=1.0,

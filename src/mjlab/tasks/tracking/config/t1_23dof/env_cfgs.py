@@ -80,16 +80,16 @@ def booster_t1_23_flat_tracking_env_cfg(
     # Viewer: segui il tronco
     cfg.viewer.body_name = "Trunk"
 
-    # No state estimation: togli solo motion_anchor_pos_b dalla policy
+    # No state estimation: remove only motion_anchor_pos_b from actor observations.
     if not has_state_estimation:
-        obs_group = cfg.observations["policy"]
-        new_policy_terms = {
+        obs_group = cfg.observations["actor"]
+        new_actor_terms = {
             k: v
             for k, v in obs_group.terms.items()
             if k not in ["motion_anchor_pos_b"]
         }
-        cfg.observations["policy"] = ObservationGroupCfg(
-            terms=new_policy_terms,
+        cfg.observations["actor"] = ObservationGroupCfg(
+            terms=new_actor_terms,
             concatenate_terms=obs_group.concatenate_terms,
             enable_corruption=obs_group.enable_corruption,
         )
@@ -98,7 +98,7 @@ def booster_t1_23_flat_tracking_env_cfg(
     if play:
         cfg.episode_length_s = int(1e9)
 
-        cfg.observations["policy"].enable_corruption = False
+        cfg.observations["actor"].enable_corruption = False
         cfg.events.pop("push_robot", None)
 
         motion_cmd.pose_range = {}

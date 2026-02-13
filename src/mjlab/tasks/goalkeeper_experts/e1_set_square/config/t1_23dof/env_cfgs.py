@@ -129,7 +129,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     )
   }
 
-  policy_terms = {
+  actor_terms = {
     "base_lin_vel": ObservationTermCfg(
       func=mdp.builtin_sensor,
       params={"sensor_name": "robot/imu_lin_vel"},
@@ -188,8 +188,8 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   }
 
   cfg.observations = {
-    "policy": ObservationGroupCfg(
-      terms=policy_terms,
+    "actor": ObservationGroupCfg(
+      terms=actor_terms,
       concatenate_terms=True,
       enable_corruption=False,
     ),
