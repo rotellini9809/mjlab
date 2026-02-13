@@ -66,7 +66,7 @@ def run_evaluate(task_id: str, cfg: EvaluateConfig) -> dict[str, float]:
 
   # Evaluation config.
   motion_cmd.sampling_mode = "start"
-  env_cfg.observations["policy"].enable_corruption = True
+  env_cfg.observations["actor"].enable_corruption = True
   env_cfg.events.pop("push_robot", None)
   env_cfg.scene.num_envs = cfg.num_envs
 
@@ -188,13 +188,14 @@ def main():
     tyro.extras.literal_type_from_choices(tracking_tasks),
     add_help=False,
     return_unknown_args=True,
+    config=mjlab.TYRO_FLAGS,
   )
 
   args = tyro.cli(
     EvaluateConfig,
     args=remaining_args,
     prog=sys.argv[0] + f" {chosen_task}",
-    config=(tyro.conf.AvoidSubcommands, tyro.conf.FlagConversionOff),
+    config=mjlab.TYRO_FLAGS,
   )
 
   run_evaluate(chosen_task, args)

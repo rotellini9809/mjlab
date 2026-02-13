@@ -22,7 +22,7 @@ from mjlab.viewer import ViewerConfig
 def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
   """Create base cube lifting task configuration."""
 
-  policy_terms = {
+  actor_terms = {
     "joint_pos": ObservationTermCfg(
       func=mdp.joint_pos_rel,
       noise=Unoise(n_min=-0.01, n_max=0.01),
@@ -40,7 +40,7 @@ def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
       noise=Unoise(n_min=-0.01, n_max=0.01),
     ),
     "cube_to_goal": ObservationTermCfg(
-      func=manipulation_mdp.object_position_error,
+      func=manipulation_mdp.object_to_goal_distance,
       params={
         "object_name": "cube",
         "command_name": "lift_height",
@@ -50,10 +50,10 @@ def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
     "actions": ObservationTermCfg(func=mdp.last_action),
   }
 
-  critic_terms = {**policy_terms}
+  critic_terms = {**actor_terms}
 
   observations = {
-    "policy": ObservationGroupCfg(policy_terms, enable_corruption=True),
+    "actor": ObservationGroupCfg(actor_terms, enable_corruption=True),
     "critic": ObservationGroupCfg(critic_terms, enable_corruption=False),
   }
 
@@ -207,8 +207,8 @@ def make_lift_cube_env_cfg() -> ManagerBasedRlEnvCfg:
         "reward_name": "joint_vel_hinge",
         "weight_stages": [
           {"step": 0, "weight": -0.01},
-          {"step": 1000 * 24, "weight": -0.1},
-          {"step": 1500 * 24, "weight": -1.0},
+          {"step": 500 * 24, "weight": -0.1},
+          {"step": 1000 * 24, "weight": -1.0},
         ],
       },
     ),

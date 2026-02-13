@@ -21,6 +21,13 @@ def auto_wrap_fixed_base_mocap(
 
   This enables fixed-base entities to be positioned independently per environment.
   Returns original spec unchanged if entity is floating-base or already mocap.
+
+  .. note::
+    Mocap wrapping is automatic, but positioning only happens when you call a
+    reset event (e.g., reset_root_state_uniform). Without a reset event, all
+    fixed-base robots will remain at the world origin.
+
+  See FAQ: "Why are my fixed-base robots all stacked at the origin?"
   """
 
   def wrapper() -> mujoco.MjSpec:
@@ -52,7 +59,7 @@ def auto_wrap_fixed_base_mocap(
 
     # Re-add keyframes to wrapper spec.
     for qpos, ctrl, name in keyframes:
-      wrapper_spec.add_key(name=name, qpos=qpos, ctrl=ctrl)
+      wrapper_spec.add_key(name=name, qpos=qpos.tolist(), ctrl=ctrl.tolist())
 
     return wrapper_spec
 

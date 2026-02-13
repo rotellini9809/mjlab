@@ -1,5 +1,5 @@
 #!/bin/bash
-# Nightly training script for MJLab benchmarks
+# Nightly training script for mjlab benchmarks
 #
 # This script clones mjlab fresh, runs the tracking benchmark, and generates a report.
 # It is designed to be called by a systemd timer or cron job.
@@ -17,7 +17,7 @@ set -euo pipefail
 
 # Configuration
 CUDA_DEVICE="${CUDA_DEVICE:-0}"
-WANDB_TAGS="${WANDB_TAGS:-nightly}"
+WANDB_TAGS="${WANDB_TAGS:-(\"nightly\",)}"
 SKIP_TRAINING="${SKIP_TRAINING:-0}"
 SKIP_THROUGHPUT="${SKIP_THROUGHPUT:-0}"
 

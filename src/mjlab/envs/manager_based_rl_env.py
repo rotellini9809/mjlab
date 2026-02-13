@@ -22,6 +22,11 @@ from mjlab.managers.curriculum_manager import (
   NullCurriculumManager,
 )
 from mjlab.managers.event_manager import EventManager, EventTermCfg
+from mjlab.managers.metrics_manager import (
+  MetricsManager,
+  MetricsTermCfg,
+  NullMetricsManager,
+)
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationManager
 from mjlab.managers.reward_manager import RewardManager, RewardTermCfg
 from mjlab.managers.termination_manager import TerminationManager, TerminationTermCfg
@@ -61,7 +66,7 @@ class ManagerBasedRlEnvCfg:
   specifies ``num_envs``, the number of parallel environments."""
 
   observations: dict[str, ObservationGroupCfg] = field(default_factory=dict)
-  """Observation groups configuration. Each group (e.g., "policy", "critic") contains
+  """Observation groups configuration. Each group (e.g., "actor", "critic") contains
   observation terms that are concatenated. Groups can have different settings for
   noise, history, and delay."""
 
@@ -113,6 +118,9 @@ class ManagerBasedRlEnvCfg:
 
   curriculum: dict[str, CurriculumTermCfg] = field(default_factory=dict)
   """Curriculum terms for adaptive difficulty."""
+
+  metrics: dict[str, MetricsTermCfg] = field(default_factory=dict)
+  """Custom metric terms for logging per-step values as episode averages."""
 
   is_finite_horizon: bool = False
   """Whether the task has a finite or infinite horizon. Defaults to False (infinite).
@@ -174,6 +182,10 @@ class ManagerBasedRlEnv:
       data=self.sim.data,
     )
 
+    # Wire sensor context to simulation for sense_graph.
+    if self.scene.sensor_context is not None:
+      self.sim.set_sensor_context(self.scene.sensor_context)
+
     # Print environment info.
     print_info("")
     table = PrettyTable()
@@ -202,7 +214,7 @@ class ManagerBasedRlEnv:
       )
       renderer.initialize()
       self._offline_renderer = renderer
-    self.metadata["render_fps"] = 1.0 / self.step_dt  # type: ignore
+    self.metadata["render_fps"] = 1.0 / self.step_dt
 
     # Load all managers.
     self.load_managers()
@@ -291,6 +303,11 @@ class ManagerBasedRlEnv:
     else:
       self.curriculum_manager = NullCurriculumManager()
     print_info(f"[INFO] {self.curriculum_manager}")
+    if len(self.cfg.metrics) > 0:
+      self.metrics_manager = MetricsManager(self.cfg.metrics, self)
+    else:
+      self.metrics_manager = NullMetricsManager()
+    print_info(f"[INFO] {self.metrics_manager}")
 
     # Configure spaces for the environment.
     self._configure_gym_env_spaces()
@@ -314,10 +331,39 @@ class ManagerBasedRlEnv:
     self._reset_idx(env_ids)
     self.scene.write_data_to_sim()
     self.sim.forward()
+    self.sim.sense()
     self.obs_buf = self.observation_manager.compute(update_history=True)
     return self.obs_buf, self.extras
 
   def step(self, action: torch.Tensor) -> types.VecEnvStepReturn:
+    """Run one environment step: apply actions, simulate, compute RL signals.
+
+    **Forward-call placement.** MuJoCo's ``mj_step`` runs forward kinematics
+    *before* integration, so after stepping, derived quantities (``xpos``,
+    ``xquat``, ``site_xpos``, ``cvel``, ``sensordata``) lag ``qpos``/``qvel``
+    by one physics substep. Rather than calling ``sim.forward()`` twice (once
+    after the decimation loop and once after the reset block), this method
+    calls it **once**, right before observation computation. This single call
+    refreshes derived quantities for *all* envs: non-reset envs pick up
+    post-decimation kinematics, reset envs pick up post-reset kinematics.
+
+    The tradeoff is that termination and reward managers see derived
+    quantities that are stale by one physics substep (the last ``mj_step``
+    ran ``mj_forward`` from *pre*-integration ``qpos``). In practice, the
+    staleness is negligible for reward shaping and termination
+    checks. Critically, the staleness is *consistent*: every env,
+    every step, always sees the same lag, so the MDP is well-defined
+    and the value function can learn the correct mapping.
+
+    .. note::
+
+      Event and command authors do not need to call ``sim.forward()``
+      themselves. This method handles it. The only constraint is: do not
+      read derived quantities (``root_link_pose_w``, ``body_link_vel_w``,
+      etc.) in the same function that writes state
+      (``write_root_state_to_sim``, ``write_joint_state_to_sim``, etc.).
+      See :ref:`faq` for details.
+    """
     self.action_manager.process_action(action.to(self.device))
 
     for _ in range(self.cfg.decimation):
@@ -331,25 +377,34 @@ class ManagerBasedRlEnv:
     self.episode_length_buf += 1
     self.common_step_counter += 1
 
-    # Check terminations.
+    # Check terminations and compute rewards.
+    # NOTE: Derived quantities (xpos, xquat, ...) are stale by one physics
+    # substep here. See the docstring above for why this is acceptable.
     self.reset_buf = self.termination_manager.compute()
     self.reset_terminated = self.termination_manager.terminated
     self.reset_time_outs = self.termination_manager.time_outs
 
     self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
+    self.metrics_manager.compute()
 
     # Reset envs that terminated/timed-out and log the episode info.
     reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
     if len(reset_env_ids) > 0:
       self._reset_idx(reset_env_ids)
       self.scene.write_data_to_sim()
-      self.sim.forward()
+
+    # Single forward() call: recompute derived quantities from current
+    # qpos/qvel for every env. For non-reset envs this resolves the
+    # one-substep staleness left by mj_step; for reset envs it picks up
+    # the freshly written reset state.
+    self.sim.forward()
 
     self.command_manager.compute(dt=self.step_dt)
 
     if "interval" in self.event_manager.available_modes:
       self.event_manager.apply(mode="interval", dt=self.step_dt)
 
+    self.sim.sense()
     self.obs_buf = self.observation_manager.compute(update_history=True)
 
     return (
@@ -449,6 +504,9 @@ class ManagerBasedRlEnv:
     self.extras["log"].update(info)
     # rewards manager.
     info = self.reward_manager.reset(env_ids)
+    self.extras["log"].update(info)
+    # metrics manager.
+    info = self.metrics_manager.reset(env_ids)
     self.extras["log"].update(info)
     # curriculum manager.
     info = self.curriculum_manager.reset(env_ids)

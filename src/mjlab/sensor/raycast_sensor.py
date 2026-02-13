@@ -174,6 +174,7 @@ from mjlab.sensor.sensor import Sensor, SensorCfg
 from mjlab.utils.lab_api.math import quat_from_matrix
 
 if TYPE_CHECKING:
+  from mjlab.sensor.sensor_context import SensorContext
   from mjlab.viewer.debug_visualizer import DebugVisualizer
 
 
@@ -353,7 +354,12 @@ PatternCfg = GridPatternCfg | PinholeCameraPatternCfg
 
 @dataclass
 class RayCastData:
-  """Raycast sensor output data."""
+  """Raycast sensor output data.
+
+  Note:
+    Fields are views into GPU buffers and are valid until the next
+    ``sense()`` call.
+  """
 
   distances: torch.Tensor
   """[B, N] Distance to hit point. -1 if no hit."""
@@ -362,7 +368,7 @@ class RayCastData:
   """[B, N, 3] Surface normal at hit point (world frame). Zero if no hit."""
 
   hit_pos_w: torch.Tensor
-  """[B, N, 3] Hit position in world frame. Zero if no hit."""
+  """[B, N, 3] Hit position in world frame. Ray origin if no hit."""
 
   pos_w: torch.Tensor
   """[B, 3] Frame position in world coordinates."""
@@ -426,8 +432,11 @@ class RayCastSensorCfg(SensorCfg):
   exclude_parent_body: bool = True
   """Exclude parent body from ray intersection tests."""
 
-  include_geom_groups: tuple[int, ...] | None = None
-  """Geom groups (0-5) to include in raycasting. None means all groups."""
+  include_geom_groups: tuple[int, ...] | None = (0, 1, 2)
+  """Geom groups (0-5) to include in raycasting.
+
+  Defaults to (0, 1, 2). Set to None to include all groups.
+  """
 
   debug_vis: bool = False
   """Enable debug visualization."""
@@ -442,7 +451,10 @@ class RayCastSensorCfg(SensorCfg):
 class RayCastSensor(Sensor[RayCastData]):
   """Raycast sensor for terrain and obstacle detection."""
 
+  requires_sensor_context = True
+
   def __init__(self, cfg: RayCastSensorCfg) -> None:
+    super().__init__()
     self.cfg = cfg
     self._data: mjwarp.Data | None = None
     self._model: mjwarp.Model | None = None
@@ -473,8 +485,12 @@ class RayCastSensor(Sensor[RayCastData]):
     self._pos_w: torch.Tensor | None = None
     self._quat_w: torch.Tensor | None = None
 
-    self._raycast_graph: wp.Graph | None = None
-    self._use_cuda_graph: bool = False
+    self._cached_world_origins: torch.Tensor | None = None
+    self._cached_world_rays: torch.Tensor | None = None
+    self._cached_frame_pos: torch.Tensor | None = None
+    self._cached_frame_mat: torch.Tensor | None = None
+
+    self._ctx: SensorContext | None = None
 
   def edit_spec(
     self,
@@ -541,7 +557,7 @@ class RayCastSensor(Sensor[RayCastData]):
     self._ray_bodyexclude = wp.full(
       (self._num_rays,),
       body_exclude,
-      dtype=int,  # type: ignore
+      dtype=int,  # pyright: ignore[reportArgumentType]
       device=device,
     )
 
@@ -555,16 +571,27 @@ class RayCastSensor(Sensor[RayCastData]):
     else:
       self._geomgroup = vec6(-1, -1, -1, -1, -1, -1)  # All groups
 
-    assert self._wp_device is not None
-    self._use_cuda_graph = self._wp_device.is_cuda and wp.is_mempool_enabled(
-      self._wp_device
-    )
-    if self._use_cuda_graph:
-      self._create_graph()
+    # Pre-allocate output tensors so shape inference works before
+    # the first sense() call.
+    self._distances = torch.zeros(num_envs, self._num_rays, device=device)
+    self._normals_w = torch.zeros(num_envs, self._num_rays, 3, device=device)
+    self._hit_pos_w = torch.zeros(num_envs, self._num_rays, 3, device=device)
+    self._pos_w = torch.zeros(num_envs, 3, device=device)
+    self._quat_w = torch.zeros(num_envs, 4, device=device)
 
-  @property
-  def data(self) -> RayCastData:
-    self._perform_raycast()
+    assert self._wp_device is not None
+
+  def set_context(self, ctx: SensorContext) -> None:
+    """Wire this sensor to a SensorContext for BVH-accelerated raycasting."""
+    self._ctx = ctx
+
+  def _compute_data(self) -> RayCastData:
+    if self._ctx is None:
+      raise RuntimeError(
+        "RayCastSensor requires a SensorContext. "
+        "Ensure the sensor is part of a scene with "
+        "sim.sense() calls."
+      )
     assert self._distances is not None and self._normals_w is not None
     assert self._hit_pos_w is not None
     assert self._pos_w is not None and self._quat_w is not None
@@ -587,99 +614,87 @@ class RayCastSensor(Sensor[RayCastData]):
     assert self._local_offsets is not None
     assert self._local_directions is not None
 
-    env_idx = visualizer.env_idx
     data = self.data
+    env_indices = list(visualizer.get_env_indices(data.distances.shape[0]))
+    if not env_indices:
+      return
 
+    # Gather frame poses for selected environments only.
     if self._frame_type == "body":
-      frame_pos = self._data.xpos[env_idx, self._frame_body_id].cpu().numpy()
-      frame_mat_tensor = self._data.xmat[env_idx, self._frame_body_id].view(3, 3)
+      frame_pos = self._data.xpos[env_indices, self._frame_body_id]
+      frame_mat = self._data.xmat[env_indices, self._frame_body_id]
     elif self._frame_type == "site":
-      frame_pos = self._data.site_xpos[env_idx, self._frame_site_id].cpu().numpy()
-      frame_mat_tensor = self._data.site_xmat[env_idx, self._frame_site_id].view(3, 3)
+      frame_pos = self._data.site_xpos[env_indices, self._frame_site_id]
+      frame_mat = self._data.site_xmat[env_indices, self._frame_site_id]
     else:  # geom
-      frame_pos = self._data.geom_xpos[env_idx, self._frame_geom_id].cpu().numpy()
-      frame_mat_tensor = self._data.geom_xmat[env_idx, self._frame_geom_id].view(3, 3)
+      frame_pos = self._data.geom_xpos[env_indices, self._frame_geom_id]
+      frame_mat = self._data.geom_xmat[env_indices, self._frame_geom_id]
 
-    # Apply ray alignment for visualization.
-    rot_mat_tensor = self._compute_alignment_rotation(frame_mat_tensor.unsqueeze(0))[0]
-    rot_mat = rot_mat_tensor.cpu().numpy()
-
-    local_offsets_np = self._local_offsets.cpu().numpy()
-    local_dirs_np = self._local_directions.cpu().numpy()
-    hit_positions_np = data.hit_pos_w[env_idx].cpu().numpy()
-    distances_np = data.distances[env_idx].cpu().numpy()
-    normals_np = data.normals_w[env_idx].cpu().numpy()
+    rot_mats = self._compute_alignment_rotation(frame_mat.view(-1, 3, 3)).cpu().numpy()
+    origins = frame_pos.cpu().numpy()
+    offsets = self._local_offsets.cpu().numpy()
+    directions = self._local_directions.cpu().numpy()
+    hit_positions = data.hit_pos_w[env_indices].cpu().numpy()
+    distances = data.distances[env_indices].cpu().numpy()
+    normals = data.normals_w[env_indices].cpu().numpy()
 
     meansize = visualizer.meansize
     ray_width = 0.1 * meansize
     sphere_radius = self.cfg.viz.hit_sphere_radius * meansize
     normal_length = self.cfg.viz.normal_length * meansize
     normal_width = 0.1 * meansize
+    miss_extent = min(0.5, self.cfg.max_distance * 0.05)
+    name = self.cfg.name
 
-    for i in range(self._num_rays):
-      origin = frame_pos + rot_mat @ local_offsets_np[i]
-      hit = distances_np[i] >= 0
+    for k in range(len(env_indices)):
+      rot = rot_mats[k]
 
-      if hit:
-        end = hit_positions_np[i]
-        color = self.cfg.viz.hit_color
-      else:
-        direction = rot_mat @ local_dirs_np[i]
-        end = origin + direction * min(0.5, self.cfg.max_distance * 0.05)
-        color = self.cfg.viz.miss_color
+      for i in range(self._num_rays):
+        origin = origins[k] + rot @ offsets[i]
+        hit = distances[k, i] >= 0
 
-      if self.cfg.viz.show_rays:
-        visualizer.add_arrow(
-          start=origin,
-          end=end,
-          color=color,
-          width=ray_width,
-          label=f"{self.cfg.name}_ray_{i}",
-        )
+        if hit:
+          end = hit_positions[k, i]
+          color = self.cfg.viz.hit_color
+        else:
+          end = origin + rot @ directions[i] * miss_extent
+          color = self.cfg.viz.miss_color
 
-      if hit:
-        visualizer.add_sphere(
-          center=end,
-          radius=sphere_radius,
-          color=self.cfg.viz.hit_sphere_color,
-          label=f"{self.cfg.name}_hit_{i}",
-        )
-        if self.cfg.viz.show_normals:
-          normal_end = end + normals_np[i] * normal_length
+        if self.cfg.viz.show_rays:
           visualizer.add_arrow(
-            start=end,
-            end=normal_end,
-            color=self.cfg.viz.normal_color,
-            width=normal_width,
-            label=f"{self.cfg.name}_normal_{i}",
+            start=origin,
+            end=end,
+            color=color,
+            width=ray_width,
+            label=f"{name}_ray_{i}",
           )
+
+        if hit:
+          visualizer.add_sphere(
+            center=end,
+            radius=sphere_radius,
+            color=self.cfg.viz.hit_sphere_color,
+            label=f"{name}_hit_{i}",
+          )
+          if self.cfg.viz.show_normals:
+            normal_end = end + normals[k, i] * normal_length
+            visualizer.add_arrow(
+              start=end,
+              end=normal_end,
+              color=self.cfg.viz.normal_color,
+              width=normal_width,
+              label=f"{name}_normal_{i}",
+            )
 
   # Private methods.
 
-  def _create_graph(self) -> None:
-    """Capture CUDA graph for raycast operation."""
-    assert self._wp_device is not None and self._wp_device.is_cuda
-    with wp.ScopedDevice(self._wp_device):
-      with wp.ScopedCapture() as capture:
-        self._raycast_direct()
-      self._raycast_graph = capture.graph
+  def prepare_rays(self) -> None:
+    """PRE-GRAPH: Transform local rays to world frame.
 
-  def _raycast_direct(self) -> None:
-    """Execute raycast kernel directly."""
-    rays(
-      m=self._model.struct,  # type: ignore[attr-defined]
-      d=self._data.struct,  # type: ignore[attr-defined]
-      pnt=self._ray_pnt,
-      vec=self._ray_vec,
-      geomgroup=self._geomgroup,  # type: ignore[arg-type]
-      flg_static=True,
-      bodyexclude=self._ray_bodyexclude,
-      dist=self._ray_dist,
-      geomid=self._ray_geomid,
-      normal=self._ray_normal,
-    )
-
-  def _perform_raycast(self) -> None:
+    Reads body/site/geom poses via PyTorch and writes world-frame ray
+    origins and directions into Warp arrays. Caches the frame pose and
+    world-frame tensors for postprocess_rays().
+    """
     assert self._data is not None and self._model is not None
     assert self._local_offsets is not None and self._local_directions is not None
 
@@ -694,44 +709,66 @@ class RayCastSensor(Sensor[RayCastData]):
       frame_mat = self._data.geom_xmat[:, self._frame_geom_id].view(-1, 3, 3)
 
     num_envs = frame_pos.shape[0]
-
-    # Apply ray alignment.
     rot_mat = self._compute_alignment_rotation(frame_mat)
 
-    # Transform ray origins.
     world_offsets = torch.einsum("bij,nj->bni", rot_mat, self._local_offsets)
     world_origins = frame_pos.unsqueeze(1) + world_offsets
-
-    # Transform ray directions (per-ray).
     world_rays = torch.einsum("bij,nj->bni", rot_mat, self._local_directions)
 
+    assert self._ray_pnt is not None and self._ray_vec is not None
     pnt_torch = wp.to_torch(self._ray_pnt).view(num_envs, self._num_rays, 3)
     vec_torch = wp.to_torch(self._ray_vec).view(num_envs, self._num_rays, 3)
     pnt_torch.copy_(world_origins)
     vec_torch.copy_(world_rays)
 
-    if self._use_cuda_graph and self._raycast_graph is not None:
-      with wp.ScopedDevice(self._wp_device):
-        wp.capture_launch(self._raycast_graph)
-    else:
-      self._raycast_direct()
+    # Cache for postprocess_rays().
+    self._cached_world_origins = world_origins
+    self._cached_world_rays = world_rays
+    self._cached_frame_pos = frame_pos
+    self._cached_frame_mat = frame_mat
 
+  def raycast_kernel(self, rc: mjwarp.RenderContext) -> None:
+    """IN-GRAPH: Execute BVH-accelerated raycast kernel."""
+    rays(
+      m=self._model.struct,  # type: ignore[attr-defined]
+      d=self._data.struct,  # type: ignore[attr-defined]
+      pnt=self._ray_pnt,
+      vec=self._ray_vec,
+      geomgroup=self._geomgroup,  # pyright: ignore[reportArgumentType]
+      flg_static=True,
+      bodyexclude=self._ray_bodyexclude,
+      dist=self._ray_dist,
+      geomid=self._ray_geomid,
+      normal=self._ray_normal,
+      rc=rc,
+    )
+
+  def postprocess_rays(self) -> None:
+    """POST-GRAPH: Convert Warp outputs to PyTorch, compute hit positions."""
+    assert self._cached_world_origins is not None
+    assert self._cached_world_rays is not None
+    assert self._cached_frame_pos is not None
+    assert self._cached_frame_mat is not None
+
+    num_envs = self._cached_frame_pos.shape[0]
+
+    assert self._ray_dist is not None and self._ray_normal is not None
     self._distances = wp.to_torch(self._ray_dist)
     self._normals_w = wp.to_torch(self._ray_normal).view(num_envs, self._num_rays, 3)
     self._distances[self._distances > self.cfg.max_distance] = -1.0
 
-    # Compute hit positions: origin + direction * distance.
-    # For misses (distance = -1), hit_pos_w will be invalid (but normals_w are zero).
-    assert self._distances is not None
     hit_mask = self._distances >= 0
-    hit_pos_w = world_origins.clone()
-    hit_pos_w[hit_mask] = world_origins[hit_mask] + world_rays[
+    hit_pos_w = self._cached_world_origins.clone()
+    hit_pos_w[hit_mask] = self._cached_world_origins[
       hit_mask
-    ] * self._distances[hit_mask].unsqueeze(-1)
+    ] + self._cached_world_rays[hit_mask] * self._distances[hit_mask].unsqueeze(-1)
     self._hit_pos_w = hit_pos_w
 
-    self._pos_w = frame_pos.clone()
-    self._quat_w = quat_from_matrix(frame_mat)
+    # Zero out normals for misses.
+    self._normals_w[~hit_mask] = 0.0
+
+    self._pos_w = self._cached_frame_pos.clone()
+    self._quat_w = quat_from_matrix(self._cached_frame_mat)
 
   def _compute_alignment_rotation(self, frame_mat: torch.Tensor) -> torch.Tensor:
     """Compute rotation matrix based on ray_alignment setting."""

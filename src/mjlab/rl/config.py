@@ -1,29 +1,33 @@
 """RSL-RL configuration."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Tuple
+from typing import Any, Literal, Tuple
 
 
 @dataclass
-class RslRlPpoActorCriticCfg:
-  """Config for the PPO actor-critic networks."""
+class RslRlModelCfg:
+  """Config for a single neural network model (Actor or Critic)."""
 
-  init_noise_std: float = 1.0
-  """The initial noise standard deviation of the policy."""
-  noise_std_type: Literal["scalar", "log"] = "scalar"
-  """The type of noise standard deviation for the policy. Default is scalar."""
-  actor_obs_normalization: bool = False
-  """Whether to normalize the observation for the actor network. Default is False."""
-  critic_obs_normalization: bool = False
-  """Whether to normalize the observation for the critic network. Default is False."""
-  actor_hidden_dims: Tuple[int, ...] = (128, 128, 128)
-  """The hidden dimensions of the actor network."""
-  critic_hidden_dims: Tuple[int, ...] = (128, 128, 128)
-  """The hidden dimensions of the critic network."""
+  hidden_dims: Tuple[int, ...] = (128, 128, 128)
+  """The hidden dimensions of the network."""
   activation: str = "elu"
-  """The activation function to use in the actor and critic networks."""
-  class_name: str = "ActorCritic"
-  """Ignore, required by RSL-RL."""
+  """The activation function."""
+  obs_normalization: bool = False
+  """Whether to normalize the observations. Default is False."""
+  init_noise_std: float = 1.0
+  """The initial noise standard deviation."""
+  noise_std_type: Literal["scalar", "log"] = "scalar"
+  """The type of noise standard deviation."""
+  stochastic: bool = False
+  """Whether the model output is stochastic."""
+  cnn_cfg: dict[str, Any] | None = None
+  """CNN encoder config. When set, class_name should be "CNNModel".
+
+  Passed to ``rsl_rl.modules.CNN``. Common keys: output_channels,
+  kernel_size, stride, padding, activation, global_pool, max_pool.
+  """
+  class_name: str = "MLPModel"
+  """Model class name resolved by RSL-RL (MLPModel or CNNModel)."""
 
 
 @dataclass
@@ -61,8 +65,12 @@ class RslRlPpoAlgorithmCfg:
   advantage is normalized over the mini-batches only. Otherwise, the advantage is
   normalized over the entire collected trajectories.
   """
+  optimizer: Literal["adam", "adamw", "sgd", "rmsprop"] = "adam"
+  """The optimizer to use."""
+  share_cnn_encoders: bool = False
+  """Share CNN encoders between actor and critic."""
   class_name: str = "PPO"
-  """Ignore, required by RSL-RL."""
+  """Algorithm class name resolved by RSL-RL."""
 
 
 @dataclass
@@ -74,14 +82,17 @@ class RslRlBaseRunnerCfg:
   max_iterations: int = 300
   """The maximum number of iterations."""
   obs_groups: dict[str, tuple[str, ...]] = field(
-    default_factory=lambda: {"policy": ("policy",), "critic": ("critic",)},
+    default_factory=lambda: {"actor": ("actor",), "critic": ("critic",)},
   )
   save_interval: int = 50
   """The number of iterations between saves."""
   experiment_name: str = "exp1"
-  """The experiment name."""
+  """Directory name used to group runs under
+  ``logs/rsl_rl/{experiment_name}/``."""
   run_name: str = ""
-  """The run name. Default is empty string."""
+  """Optional label appended to the timestamped run directory
+  (e.g. ``2025-01-27_14-30-00_{run_name}``). Also becomes the
+  display name for the run in wandb."""
   logger: Literal["wandb", "tensorboard"] = "wandb"
   """The logger to use. Default is wandb."""
   wandb_project: str = "mjlab"
@@ -106,7 +117,9 @@ class RslRlBaseRunnerCfg:
 class RslRlOnPolicyRunnerCfg(RslRlBaseRunnerCfg):
   class_name: str = "OnPolicyRunner"
   """The runner class name. Default is OnPolicyRunner."""
-  policy: RslRlPpoActorCriticCfg = field(default_factory=RslRlPpoActorCriticCfg)
-  """The policy configuration."""
+  actor: RslRlModelCfg = field(default_factory=lambda: RslRlModelCfg(stochastic=True))
+  """The actor configuration."""
+  critic: RslRlModelCfg = field(default_factory=lambda: RslRlModelCfg(stochastic=False))
+  """The critic configuration."""
   algorithm: RslRlPpoAlgorithmCfg = field(default_factory=RslRlPpoAlgorithmCfg)
   """The algorithm configuration."""

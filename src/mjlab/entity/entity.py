@@ -134,6 +134,8 @@ class Entity:
     self._non_free_joints = tuple(self._all_joints)
     if self._all_joints and self._all_joints[0].type == mujoco.mjtJoint.mjJNT_FREE:
       self._free_joint = self._all_joints[0]
+      if not self._free_joint.name:
+        self._free_joint.name = "floating_base_joint"
       self._non_free_joints = tuple(self._all_joints[1:])
     self._actuators: list[actuator.Actuator] = []
 
@@ -204,7 +206,7 @@ class Entity:
       qpos_components.append(joint_pos)
 
     key_qpos = np.hstack(qpos_components) if qpos_components else np.array([])
-    key = self._spec.add_key(name="init_state", qpos=key_qpos)
+    key = self._spec.add_key(name="init_state", qpos=key_qpos.tolist())
 
     if self.is_actuated and joint_pos is not None:
       name_to_pos = {name: joint_pos[i] for i, name in enumerate(self.joint_names)}
@@ -597,15 +599,20 @@ class Entity:
     self._data.clear_state(env_ids)
 
   def write_ctrl_to_sim(
-    self, ctrl: torch.Tensor, ctrl_ids: torch.Tensor | slice | None = None
+    self,
+    ctrl: torch.Tensor,
+    ctrl_ids: torch.Tensor | slice | None = None,
+    env_ids: torch.Tensor | slice | None = None,
   ) -> None:
     """Write control inputs to the simulation.
 
     Args:
       ctrl: A tensor of control inputs.
       ctrl_ids: A tensor of control indices.
+      env_ids: Optional tensor or slice specifying which environments to set.
+        If None, all environments are set.
     """
-    self._data.write_ctrl(ctrl, ctrl_ids)
+    self._data.write_ctrl(ctrl, ctrl_ids, env_ids)
 
   def write_root_state_to_sim(
     self, root_state: torch.Tensor, env_ids: torch.Tensor | slice | None = None
@@ -643,16 +650,33 @@ class Entity:
     root_velocity: torch.Tensor,
     env_ids: torch.Tensor | slice | None = None,
   ):
-    """Set the root velocity into the simulation. Like `write_root_state_to_sim()`
-    but only sets linear and angular velocity.
+    """Set the root link (body origin) velocity into the simulation. Like
+    `write_root_state_to_sim()` but only sets linear and angular velocity.
 
     Args:
       root_velocity: Tensor of shape (N, 6) where N is the number of environments.
-        Contains linear velocity (3) and angular velocity (3), both in world frame.
+        Contains linear velocity (3) at body origin and angular velocity (3),
+        both in world frame.
       env_ids: Optional tensor or slice specifying which environments to set. If
         None, all environments are set.
     """
     self._data.write_root_velocity(root_velocity, env_ids)
+
+  def write_root_com_velocity_to_sim(
+    self,
+    root_velocity: torch.Tensor,
+    env_ids: torch.Tensor | slice | None = None,
+  ):
+    """Set the root COM velocity into the simulation.
+
+    Args:
+      root_velocity: Tensor of shape (N, 6) where N is the number of environments.
+        Contains linear velocity (3) at COM and angular velocity (3),
+        both in world frame.
+      env_ids: Optional tensor or slice specifying which environments to set. If
+        None, all environments are set.
+    """
+    self._data.write_root_com_velocity(root_velocity, env_ids)
 
   def write_joint_state_to_sim(
     self,
