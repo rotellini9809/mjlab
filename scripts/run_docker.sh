@@ -29,6 +29,7 @@ docker run \
     --rm \
     --runtime=nvidia \
     --gpus all \
+    --env WANDB_CACHE_DIR=/app/logs/wandb_cache \
     --volume .:/app \
     --volume /app/.venv \
     --publish 8080:8080 \

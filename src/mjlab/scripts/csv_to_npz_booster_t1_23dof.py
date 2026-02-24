@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+import time
 from typing import Any
 
 import numpy as np
@@ -24,6 +24,108 @@ from mjlab.utils.lab_api.math import (
 )
 from mjlab.viewer.offscreen_renderer import OffscreenRenderer
 from mjlab.viewer.viewer_config import ViewerConfig
+
+
+def _is_timeout_error(exc: BaseException) -> bool:
+  """Return True for timeout-like exceptions (including wrapped causes)."""
+  if isinstance(exc, TimeoutError):
+    return True
+
+  try:
+    import requests
+
+    if isinstance(exc, requests.exceptions.Timeout):
+      return True
+  except Exception:
+    pass
+
+  msg = str(exc).lower()
+  if "timed out" in msg or "read timeout" in msg or "timeout=" in msg:
+    return True
+
+  cause = getattr(exc, "__cause__", None)
+  if cause is not None and cause is not exc and _is_timeout_error(cause):
+    return True
+  context = getattr(exc, "__context__", None)
+  if context is not None and context is not exc and _is_timeout_error(context):
+    return True
+  return False
+
+
+def _is_retryable_link_error(exc: BaseException) -> bool:
+  """Return True for transient link errors that should be retried."""
+  if _is_timeout_error(exc):
+    return True
+
+  try:
+    import requests
+
+    if isinstance(exc, requests.exceptions.HTTPError):
+      status_code = (
+        exc.response.status_code if getattr(exc, "response", None) is not None else None
+      )
+      if status_code in {429, 500, 502, 503, 504}:
+        return True
+  except Exception:
+    pass
+
+  msg = str(exc).lower()
+  transient_markers = (
+    "http 429",
+    "http 500",
+    "http 502",
+    "http 503",
+    "http 504",
+    "service unavailable",
+    "bad gateway",
+    "gateway timeout",
+    "too many requests",
+    "rate limit",
+    "temporarily unavailable",
+    "internal server error",
+  )
+  if any(marker in msg for marker in transient_markers):
+    return True
+
+  cause = getattr(exc, "__cause__", None)
+  if cause is not None and cause is not exc and _is_retryable_link_error(cause):
+    return True
+  context = getattr(exc, "__context__", None)
+  if context is not None and context is not exc and _is_retryable_link_error(context):
+    return True
+  return False
+
+
+def _link_artifact_with_retry(
+  run: Any,
+  artifact: Any,
+  target_path: str,
+  *,
+  max_attempts: int = 5,
+  base_sleep_s: float = 2.0,
+) -> bool:
+  for attempt in range(1, max_attempts + 1):
+    try:
+      run.link_artifact(artifact=artifact, target_path=target_path)
+      return True
+    except Exception as exc:
+      retryable = _is_retryable_link_error(exc)
+      is_last = attempt == max_attempts
+      if not retryable:
+        raise
+      if is_last:
+        print(
+          f"[ERROR] Failed to link artifact to registry after {max_attempts} retries "
+          f"due to transient API errors: {exc}"
+        )
+        return False
+      wait_s = base_sleep_s * (2 ** (attempt - 1))
+      print(
+        f"[WARN] link_artifact transient error on attempt {attempt}/{max_attempts}. "
+        f"Retrying in {wait_s:.1f}s..."
+      )
+      time.sleep(wait_s)
+  return False
 
 
 class MotionLoader:
@@ -376,11 +478,17 @@ def run_sim(
         logged_artifact = run.log_artifact(
           artifact_or_path=str(motion_npz_path), name=COLLECTION, type=REGISTRY
         )
-        run.link_artifact(
+        linked = _link_artifact_with_retry(
+          run=run,
           artifact=logged_artifact,
           target_path=f"wandb-registry-{REGISTRY}/{COLLECTION}",
         )
-        print(f"[INFO]: Motion saved to wandb registry: {REGISTRY}/{COLLECTION}")
+        if linked:
+          print(f"[INFO]: Motion saved to wandb registry: {REGISTRY}/{COLLECTION}")
+        else:
+          print(
+            f"[WARN]: Artifact logged but not linked to registry: {REGISTRY}/{COLLECTION}"
+          )
 
         if render:
           from moviepy import ImageSequenceClip
@@ -394,34 +502,6 @@ def run_sim(
           wandb.log({"motion_video": wandb.Video(str(motion_video_path), format="mp4")})
 
         wandb.finish()
-
-
-def _resolve_wandb_entity(wandb_entity: str | None) -> str | None:
-  return wandb_entity or os.environ.get("WANDB_ENTITY")
-
-
-def _artifact_exists(
-  output_name: str,
-  wandb_project: str,
-  wandb_entity: str | None,
-) -> bool:
-  import wandb
-
-  entity = _resolve_wandb_entity(wandb_entity)
-  artifact_path = (
-    f"{entity}/{wandb_project}/{output_name}:latest"
-    if entity
-    else f"{wandb_project}/{output_name}:latest"
-  )
-
-  try:
-    wandb.Api().artifact(artifact_path)
-    return True
-  except Exception as exc:  # WandB raises CommError for missing artifacts.
-    err = str(exc).lower()
-    if "not found" in err or "404" in err or "could not find" in err:
-      return False
-    raise
 
 
 def _run_single_csv(
@@ -530,7 +610,7 @@ def main(
     render: Whether to render the simulation and save a video.
       Default is True; disable with `--no-render`.
     line_range: Range of lines to process from the CSV file.
-    wandb_project: W&B project name used for upload/check.
+    wandb_project: W&B project name used for upload.
     wandb_entity: Optional W&B entity. If unset, WANDB_ENTITY env var is used.
   """
   if (input_file is None) == (root_dir is None):
@@ -549,16 +629,10 @@ def main(
 
     print(f"[INFO] Found {len(csv_files)} CSV file(s) under {root_dir}")
     uploaded = 0
-    skipped = 0
 
     for csv_path in csv_files:
       collection_name = csv_path.stem
       print(f"\n[INFO] Processing: {csv_path} -> {collection_name}")
-
-      if _artifact_exists(collection_name, wandb_project, wandb_entity):
-        print(f"[SKIP] Artifact already exists: {collection_name}")
-        skipped += 1
-        continue
 
       _run_single_csv(
         input_file=str(csv_path),
@@ -573,9 +647,7 @@ def main(
       )
       uploaded += 1
 
-    print(
-      f"\n[INFO] Done. uploaded={uploaded}, skipped_existing={skipped}, total={len(csv_files)}"
-    )
+    print(f"\n[INFO] Done. uploaded={uploaded}, total={len(csv_files)}")
     return
 
   assert input_file is not None
@@ -585,10 +657,6 @@ def main(
 
   collection_name = output_name or input_path.stem
   print(f"[INFO] Processing: {input_path} -> {collection_name}")
-
-  if _artifact_exists(collection_name, wandb_project, wandb_entity):
-    print(f"[SKIP] Artifact already exists: {collection_name}")
-    return
 
   _run_single_csv(
     input_file=str(input_path),

@@ -54,6 +54,69 @@ class MotionLoader:
     self.body_lin_vel_w = self._body_lin_vel_w[:, self._body_indexes]
     self.body_ang_vel_w = self._body_ang_vel_w[:, self._body_indexes]
     self.time_step_total = self.joint_pos.shape[0]
+    (
+      clip_ids,
+      clip_start_steps,
+      clip_end_steps,
+      step_clip_index,
+    ) = self._build_clip_layout(data, self.time_step_total)
+    self.clip_ids = torch.tensor(clip_ids, dtype=torch.long, device=device)
+    self.clip_start_steps = torch.tensor(
+      clip_start_steps, dtype=torch.long, device=device
+    )
+    self.clip_end_steps = torch.tensor(clip_end_steps, dtype=torch.long, device=device)
+    self.clip_len_steps = self.clip_end_steps - self.clip_start_steps
+    self.step_clip_index = torch.tensor(
+      step_clip_index, dtype=torch.long, device=device
+    )
+    step_ids = torch.arange(self.time_step_total, dtype=torch.long, device=device)
+    self.step_phase_idx = step_ids - self.clip_start_steps[self.step_clip_index]
+
+  @property
+  def clip_count(self) -> int:
+    return int(self.clip_ids.numel())
+
+  @staticmethod
+  def _build_clip_layout(
+    data: np.lib.npyio.NpzFile, time_step_total: int
+  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if time_step_total <= 0:
+      raise ValueError("Motion file has no timesteps.")
+
+    clip_ids: np.ndarray
+    clip_start_steps: np.ndarray
+    clip_end_steps: np.ndarray
+
+    if "clip_id" in data and np.asarray(data["clip_id"]).ndim == 1:
+      clip_id_per_step = np.asarray(data["clip_id"], dtype=np.int64).reshape(-1)
+      if clip_id_per_step.shape[0] == time_step_total:
+        change_points = np.where(np.diff(clip_id_per_step) != 0)[0] + 1
+        clip_start_steps = np.concatenate(
+          [np.asarray([0], dtype=np.int64), change_points.astype(np.int64)]
+        )
+        clip_end_steps = np.concatenate(
+          [change_points.astype(np.int64), np.asarray([time_step_total], dtype=np.int64)]
+        )
+        clip_ids = clip_id_per_step[clip_start_steps]
+      else:
+        clip_ids = np.asarray([0], dtype=np.int64)
+        clip_start_steps = np.asarray([0], dtype=np.int64)
+        clip_end_steps = np.asarray([time_step_total], dtype=np.int64)
+    else:
+      clip_ids = np.asarray([0], dtype=np.int64)
+      clip_start_steps = np.asarray([0], dtype=np.int64)
+      clip_end_steps = np.asarray([time_step_total], dtype=np.int64)
+
+    if np.any(clip_end_steps <= clip_start_steps):
+      raise ValueError("Invalid clip layout in motion file.")
+    if int(clip_start_steps[0]) != 0 or int(clip_end_steps[-1]) != time_step_total:
+      raise ValueError("Clip layout must cover the full motion timeline.")
+
+    step_clip_index = np.searchsorted(
+      clip_start_steps, np.arange(time_step_total), side="right"
+    ) - 1
+    step_clip_index = np.clip(step_clip_index, 0, len(clip_ids) - 1).astype(np.int64)
+    return clip_ids, clip_start_steps, clip_end_steps, step_clip_index
 
 
 class MotionCommand(CommandTerm):
@@ -294,53 +357,50 @@ class MotionCommand(CommandTerm):
     self.metrics["sampling_top1_prob"][:] = 1.0 / self.bin_count
     self.metrics["sampling_top1_bin"][:] = 0.5  # No specific bin preference.
 
-  def _resample_command(self, env_ids: torch.Tensor):
-    if self.cfg.sampling_mode == "start":
-      self.time_steps[env_ids] = 0
-    elif self.cfg.sampling_mode == "uniform":
-      self._uniform_sampling(env_ids)
-    else:
-      assert self.cfg.sampling_mode == "adaptive"
-      self._adaptive_sampling(env_ids)
-
+  def _write_reference_state(
+    self, env_ids: torch.Tensor, *, apply_randomization: bool
+  ) -> None:
     root_pos = self.body_pos_w[:, 0].clone()
     root_ori = self.body_quat_w[:, 0].clone()
     root_lin_vel = self.body_lin_vel_w[:, 0].clone()
     root_ang_vel = self.body_ang_vel_w[:, 0].clone()
 
-    range_list = [
-      self.cfg.pose_range.get(key, (0.0, 0.0))
-      for key in ["x", "y", "z", "roll", "pitch", "yaw"]
-    ]
-    ranges = torch.tensor(range_list, device=self.device)
-    rand_samples = sample_uniform(
-      ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=self.device
-    )
-    root_pos[env_ids] += rand_samples[:, 0:3]
-    orientations_delta = quat_from_euler_xyz(
-      rand_samples[:, 3], rand_samples[:, 4], rand_samples[:, 5]
-    )
-    root_ori[env_ids] = quat_mul(orientations_delta, root_ori[env_ids])
-    range_list = [
-      self.cfg.velocity_range.get(key, (0.0, 0.0))
-      for key in ["x", "y", "z", "roll", "pitch", "yaw"]
-    ]
-    ranges = torch.tensor(range_list, device=self.device)
-    rand_samples = sample_uniform(
-      ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=self.device
-    )
-    root_lin_vel[env_ids] += rand_samples[:, :3]
-    root_ang_vel[env_ids] += rand_samples[:, 3:]
-
     joint_pos = self.joint_pos.clone()
     joint_vel = self.joint_vel.clone()
 
-    joint_pos += sample_uniform(
-      lower=self.cfg.joint_position_range[0],
-      upper=self.cfg.joint_position_range[1],
-      size=joint_pos.shape,
-      device=joint_pos.device,  # type: ignore
-    )
+    if apply_randomization:
+      range_list = [
+        self.cfg.pose_range.get(key, (0.0, 0.0))
+        for key in ["x", "y", "z", "roll", "pitch", "yaw"]
+      ]
+      ranges = torch.tensor(range_list, device=self.device)
+      rand_samples = sample_uniform(
+        ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=self.device
+      )
+      root_pos[env_ids] += rand_samples[:, 0:3]
+      orientations_delta = quat_from_euler_xyz(
+        rand_samples[:, 3], rand_samples[:, 4], rand_samples[:, 5]
+      )
+      root_ori[env_ids] = quat_mul(orientations_delta, root_ori[env_ids])
+
+      range_list = [
+        self.cfg.velocity_range.get(key, (0.0, 0.0))
+        for key in ["x", "y", "z", "roll", "pitch", "yaw"]
+      ]
+      ranges = torch.tensor(range_list, device=self.device)
+      rand_samples = sample_uniform(
+        ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=self.device
+      )
+      root_lin_vel[env_ids] += rand_samples[:, :3]
+      root_ang_vel[env_ids] += rand_samples[:, 3:]
+
+      joint_pos += sample_uniform(
+        lower=self.cfg.joint_position_range[0],
+        upper=self.cfg.joint_position_range[1],
+        size=joint_pos.shape,
+        device=joint_pos.device,  # type: ignore
+      )
+
     soft_joint_pos_limits = self.robot.data.soft_joint_pos_limits[env_ids]
     joint_pos[env_ids] = torch.clip(
       joint_pos[env_ids], soft_joint_pos_limits[:, :, 0], soft_joint_pos_limits[:, :, 1]
@@ -359,15 +419,31 @@ class MotionCommand(CommandTerm):
       dim=-1,
     )
     self.robot.write_root_state_to_sim(root_state, env_ids=env_ids)
-
     self.robot.clear_state(env_ids=env_ids)
 
-  def _update_command(self):
-    self.time_steps += 1
-    env_ids = torch.where(self.time_steps >= self.motion.time_step_total)[0]
-    if env_ids.numel() > 0:
-      self._resample_command(env_ids)
+  def set_time_steps(
+    self,
+    env_ids: torch.Tensor,
+    time_steps: torch.Tensor,
+    *,
+    apply_randomization: bool = False,
+  ) -> None:
+    if env_ids.numel() == 0:
+      return
+    self.time_steps[env_ids] = time_steps.long()
+    self._write_reference_state(env_ids, apply_randomization=apply_randomization)
 
+  def _resample_command(self, env_ids: torch.Tensor):
+    if self.cfg.sampling_mode == "start":
+      self.time_steps[env_ids] = 0
+    elif self.cfg.sampling_mode == "uniform":
+      self._uniform_sampling(env_ids)
+    else:
+      assert self.cfg.sampling_mode == "adaptive"
+      self._adaptive_sampling(env_ids)
+    self._write_reference_state(env_ids, apply_randomization=True)
+
+  def _sync_body_targets(self) -> None:
     anchor_pos_w_repeat = self.anchor_pos_w[:, None, :].repeat(
       1, len(self.cfg.body_names), 1
     )
@@ -391,6 +467,14 @@ class MotionCommand(CommandTerm):
     self.body_pos_relative_w = delta_pos_w + quat_apply(
       delta_ori_w, self.body_pos_w - anchor_pos_w_repeat
     )
+
+  def _update_command(self):
+    self.time_steps += 1
+    env_ids = torch.where(self.time_steps >= self.motion.time_step_total)[0]
+    if env_ids.numel() > 0:
+      self._resample_command(env_ids)
+
+    self._sync_body_targets()
 
     if self.cfg.sampling_mode == "adaptive":
       self.bin_failed_count = (

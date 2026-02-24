@@ -6,7 +6,7 @@ from typing import Literal
 
 import numpy as np
 
-_REQUIRED_KEYS = ("a_clean", "done")
+_REQUIRED_KEYS = ("a_clean", "terminated", "truncated")
 _OBS_KEYS = ("obs_student", "obs")
 
 
@@ -16,6 +16,8 @@ class RolloutShard:
   run_name: str
   obs: np.ndarray
   a_clean: np.ndarray
+  terminated: np.ndarray
+  truncated: np.ndarray
   done: np.ndarray
   episode_id: np.ndarray
   env_id: np.ndarray | None
@@ -196,7 +198,9 @@ class RolloutDataset:
 
       obs = np.asarray(data[obs_key], dtype=np.float32)
       a_clean = np.asarray(data["a_clean"], dtype=np.float32)
-      done = np.asarray(data["done"], dtype=np.bool_)
+      terminated = np.asarray(data["terminated"], dtype=np.bool_)
+      truncated = np.asarray(data["truncated"], dtype=np.bool_)
+      done = np.asarray(terminated | truncated, dtype=np.bool_)
 
       extras = {}
       ignore_keys = {
@@ -223,8 +227,12 @@ class RolloutDataset:
       raise ValueError(
         f"Shard {path} a_clean must be [T, act_dim], got {a_clean.shape}"
       )
-    if done.ndim != 1:
-      raise ValueError(f"Shard {path} done must be [T], got {done.shape}")
+    if terminated.ndim != 1:
+      raise ValueError(
+        f"Shard {path} terminated must be [T], got {terminated.shape}"
+      )
+    if truncated.ndim != 1:
+      raise ValueError(f"Shard {path} truncated must be [T], got {truncated.shape}")
     if obs.shape[0] != a_clean.shape[0] or obs.shape[0] != done.shape[0]:
       raise ValueError(
         f"Shard {path} length mismatch: obs={obs.shape[0]}, "
@@ -251,6 +259,8 @@ class RolloutDataset:
       run_name=run_name,
       obs=obs,
       a_clean=a_clean,
+      terminated=terminated,
+      truncated=truncated,
       done=done,
       episode_id=episode_id,
       env_id=env_id,
@@ -451,6 +461,8 @@ class RolloutDataset:
     sample_shapes = {
       "obs": sample.obs.shape,
       "a_clean": sample.a_clean.shape,
+      "terminated": sample.terminated.shape,
+      "truncated": sample.truncated.shape,
       "done": sample.done.shape,
     }
 

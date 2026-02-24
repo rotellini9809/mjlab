@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import cast
 
-import mujoco
 import torch
 
 from mjlab.asset_zoo.robocup_assets.ball import get_robocup_ball_cfg
@@ -20,7 +19,6 @@ from mjlab.utils.lab_api.math import (
   quat_from_euler_xyz,
   quat_mul,
 )
-from mjlab.utils.spec import disable_collision, get_free_joint
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
@@ -85,48 +83,17 @@ def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
 
 
 def get_target_ball_cfg() -> EntityCfg:
-  """Create a visual-only target ball entity for E1.
-
-  Reuses RoboCup ball asset and removes physics interaction:
-  - free joint removed (fixed-base entity, auto-wrapped as mocap),
-  - collisions disabled on all geoms.
-  """
-
-  base_ball_cfg = get_robocup_ball_cfg()
-  base_spec_fn = base_ball_cfg.spec_fn
-
-  def _get_spec() -> mujoco.MjSpec:
-    spec = base_spec_fn()
-
-    # Make the ball fixed-base so we can place it kinematically per environment.
-    free_joint = get_free_joint(spec)
-    if free_joint is not None:
-      spec.delete(free_joint)
-
-    # Remove the original XML body z-offset (ball body is authored at z=0.11
-    # for freejoint use). For fixed-base mocap placement we need zero local
-    # offset so commanded z directly controls world center height.
-    if len(spec.bodies) > 1:
-      spec.bodies[1].pos[:] = (0.0, 0.0, 0.0)
-
-    # Visual-only: disable any collision interaction.
-    for geom in spec.geoms:
-      disable_collision(geom)
-
-    return spec
-
-  return EntityCfg(
-    init_state=base_ball_cfg.init_state,
-    spec_fn=_get_spec,
-  )
+  """Return the physical colliding RoboCup ball for E1."""
+  return get_robocup_ball_cfg()
 
 
 @dataclass(kw_only=True)
 class SetSquareCommandCfg(CommandTermCfg):
-  """Command term for E1 spawn/target sampling and marker placement."""
+  """Command term for E1 keeper reset + physical ball launcher."""
 
   entity_name: str = "robot"
-  marker_entity_name: str = "target_ball"
+  ball_entity_name: str = "soccer_ball"
+  ball_curb_sensor_name: str | None = None
 
   # Motor-controller command vector dimension (from Stage-1 obs layout).
   command_dim: int = 46
@@ -139,7 +106,7 @@ class SetSquareCommandCfg(CommandTermCfg):
   keeper_area_bounds: tuple[float, float, float, float]
   hard_area_margin: float = 0.8
 
-  # Target marker sampling relative to keeper spawn.
+  # Ball spawn sampling relative to keeper spawn.
   target_forward_range: tuple[float, float] = (1.0, 2.5)
   target_lateral_range: tuple[float, float] = (-1.2, 1.2)
   target_height_min: float = 0.11
@@ -149,6 +116,25 @@ class SetSquareCommandCfg(CommandTermCfg):
   # Temporary debug override: force constant z for target ball.
   debug_force_target_ground_z: bool = False
   debug_target_ground_z: float = 0.11
+
+  # Kick sampler for E1-only in-play ball behavior.
+  dead_ball_prob: float = 0.35
+  lateral_roll_prob: float = 0.45
+  dead_ball_tiny_drift_prob: float = 0.20
+  dead_ball_drift_speed_range: tuple[float, float] = (0.02, 0.10)
+
+  kick_speed_range: tuple[float, float] = (0.4, 1.6)
+  kick_angle_noise_deg: float = 20.0
+
+  dribble_num_taps_range: tuple[int, int] = (2, 5)
+  dribble_tap_time_range: tuple[float, float] = (0.6, 1.8)
+  dribble_tap_interval_range: tuple[float, float] = (0.2, 0.8)
+  dribble_tap_speed_range: tuple[float, float] = (0.2, 0.6)
+
+  # Anti-shot clamp: limit component toward defended goal.
+  # If goal is at +x, keep vx <= max_toward_goal_speed.
+  goal_toward_positive_x: bool = True
+  max_toward_goal_speed: float = 0.25
 
   # Reset curriculum hook.
   p_ready: float = 0.0
@@ -181,15 +167,24 @@ class SetSquareCommand(CommandTerm):
   def __init__(self, cfg: SetSquareCommandCfg, env):
     super().__init__(cfg, env)
     self._robot: Entity = env.scene[cfg.entity_name]
-    self._marker: Entity = env.scene[cfg.marker_entity_name]
+    self._ball: Entity = env.scene[cfg.ball_entity_name]
 
     self._command = torch.zeros(env.num_envs, cfg.command_dim, device=self.device)
     self._spawn_pos_w = torch.zeros(env.num_envs, 3, device=self.device)
     self._target_pos_w = torch.zeros(env.num_envs, 3, device=self.device)
+    self._kick_time_s = torch.zeros(env.num_envs, device=self.device)
+    self._kick_applied = torch.ones(env.num_envs, device=self.device, dtype=torch.bool)
+    self._kick_vel_w = torch.zeros(env.num_envs, 3, device=self.device)
+    self._tap_enabled = torch.zeros(env.num_envs, device=self.device, dtype=torch.bool)
+    self._next_tap_time_s = torch.zeros(env.num_envs, device=self.device)
+    self._remaining_taps = torch.zeros(env.num_envs, device=self.device, dtype=torch.long)
+    self._last_push_dir_xy = torch.zeros(env.num_envs, 2, device=self.device)
+    self._launcher_mode = torch.zeros(env.num_envs, device=self.device, dtype=torch.long)
 
     self.metrics["yaw_error_abs"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["target_distance_xy"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["outside_keeper_area"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["ball_speed_xy"] = torch.zeros(env.num_envs, device=self.device)
 
   @property
   def command(self) -> torch.Tensor:
@@ -214,6 +209,8 @@ class SetSquareCommand(CommandTerm):
     return (x_min - m, x_max + m, y_min - m, y_max + m)
 
   def _update_metrics(self) -> None:
+    self._target_pos_w[:] = self._ball.data.root_link_pos_w
+
     yaw_error = _compute_yaw_error(self._robot, self._target_pos_w)
     self.metrics["yaw_error_abs"] = yaw_error.abs()
 
@@ -224,21 +221,76 @@ class SetSquareCommand(CommandTerm):
     trunk_xy_local = _world_to_env_local_xy(self._env, trunk_xy)
     outside = _outside_area_violation(trunk_xy_local, self.cfg.keeper_area_bounds)
     self.metrics["outside_keeper_area"] = outside
+    self.metrics["ball_speed_xy"] = torch.linalg.norm(
+      self._ball.data.root_link_lin_vel_w[:, :2], dim=1
+    )
 
   def _resample_command(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:
       return
 
     self._reset_robot_pose(env_ids)
-    self._sample_target(env_ids)
-    self._update_marker_pose(env_ids)
+    self._reset_ball_pose(env_ids)
+    self._sample_ball_launcher(env_ids)
 
     # Stage-1 decoder command input. For E1 we keep it deterministic zero.
     self._command[env_ids] = 0.0
 
   def _update_command(self) -> None:
-    # Keep command and target fixed during episode.
-    pass
+    time_s = self._env.episode_length_buf.to(torch.float) * self._env.step_dt
+
+    curb_contact = self._ball_curb_contact_mask()
+    if curb_contact.any():
+      env_ids = curb_contact.nonzero(as_tuple=False).flatten()
+      self._set_ball_velocity_zero(env_ids)
+      # Stop future dribble taps once curb contact happens.
+      self._tap_enabled[env_ids] = False
+      self._remaining_taps[env_ids] = 0
+      self._next_tap_time_s[env_ids] = 1.0e9
+
+    to_kick = (~self._kick_applied) & (time_s >= self._kick_time_s)
+    if to_kick.any():
+      env_ids = to_kick.nonzero(as_tuple=False).flatten()
+      self._set_ball_linear_velocity(env_ids, self._kick_vel_w[env_ids])
+      self._kick_applied[env_ids] = True
+
+    to_tap = (
+      self._tap_enabled
+      & self._kick_applied
+      & (self._remaining_taps > 0)
+      & (time_s >= self._next_tap_time_s)
+    )
+    if to_tap.any():
+      env_ids = to_tap.nonzero(as_tuple=False).flatten()
+      tap_dv = self._sample_velocity_around_mean_direction(
+        len(env_ids),
+        self.cfg.dribble_tap_speed_range,
+        self._last_push_dir_xy[env_ids],
+      )
+      self._add_ball_linear_velocity(env_ids, tap_dv)
+      self._last_push_dir_xy[env_ids] = self._unit_xy(
+        tap_dv[:, :2],
+        fallback_xy=self._last_push_dir_xy[env_ids],
+      )
+      self._remaining_taps[env_ids] -= 1
+
+      remaining = self._remaining_taps[env_ids]
+      still_mask = remaining > 0
+      done_mask = ~still_mask
+
+      if still_mask.any():
+        still_ids = env_ids[still_mask]
+        dt_next = _sample_uniform_range(
+          self.cfg.dribble_tap_interval_range[0],
+          self.cfg.dribble_tap_interval_range[1],
+          len(still_ids),
+          self.device,
+        )
+        self._next_tap_time_s[still_ids] = time_s[still_ids] + dt_next
+      if done_mask.any():
+        done_ids = env_ids[done_mask]
+        self._tap_enabled[done_ids] = False
+        self._next_tap_time_s[done_ids] = 1.0e9
 
   def _reset_robot_pose(self, env_ids: torch.Tensor) -> None:
     default_root_state = self._robot.data.default_root_state
@@ -334,9 +386,12 @@ class SetSquareCommand(CommandTerm):
     # TODO: plug ready-stance reset once ready pose distribution is provided.
     self._reset_to_default_pose(env_ids, spawn_x, spawn_y)
 
-  def _sample_target(self, env_ids: torch.Tensor) -> None:
+  def _reset_ball_pose(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:
       return
+
+    default_root_state = self._ball.data.default_root_state
+    assert default_root_state is not None
 
     forward = _sample_uniform_range(
       self.cfg.target_forward_range[0],
@@ -351,15 +406,12 @@ class SetSquareCommand(CommandTerm):
       self.device,
     )
 
-    spawn_w = self._spawn_pos_w[env_ids]
-    target = spawn_w.clone()
-    # Keep the target on the keeper's front side after rotating the spawn heading by 180 deg.
-    target[:, 0] -= forward
-    target[:, 1] += lateral
+    root_state = default_root_state[env_ids].clone()
+    # Keep the ball on keeper front side after 180-deg spawn heading.
+    root_state[:, 0] = self._spawn_pos_w[env_ids, 0] - forward
+    root_state[:, 1] = self._spawn_pos_w[env_ids, 1] + lateral
     z_min = float(self.cfg.target_height_min)
     scale = max(float(self.cfg.target_height_exp_scale), 1.0e-6)
-    # Exponential tail from z_min:
-    # z = z_min + Exp(scale). High probability near z_min, but occasional high values.
     u = torch.rand(len(env_ids), device=self.device)
     excess = -scale * torch.log(torch.clamp(1.0 - u, min=1.0e-6))
     z = z_min + excess
@@ -370,21 +422,222 @@ class SetSquareCommand(CommandTerm):
     if self.cfg.debug_force_target_ground_z:
       z = torch.full_like(z, float(self.cfg.debug_target_ground_z))
 
-    target[:, 2] = self._env.scene.env_origins[env_ids, 2] + z
-    self._target_pos_w[env_ids] = target
+    root_state[:, 2] = self._env.scene.env_origins[env_ids, 2] + z
+    root_state[:, 3:7] = 0.0
+    root_state[:, 3] = 1.0
+    root_state[:, 7:13] = 0.0
+    self._ball.write_root_state_to_sim(root_state, env_ids=env_ids)
+    self._ball.clear_state(env_ids=env_ids)
+    self._target_pos_w[env_ids] = root_state[:, :3]
 
-  def _update_marker_pose(self, env_ids: torch.Tensor) -> None:
+  def _sample_ball_launcher(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:
       return
 
-    q_identity = torch.zeros((len(env_ids), 4), device=self.device)
-    q_identity[:, 0] = 1.0
-    marker_pose = torch.cat([self._target_pos_w[env_ids], q_identity], dim=-1)
+    n = len(env_ids)
+    dead_prob = max(0.0, min(1.0, float(self.cfg.dead_ball_prob)))
+    lateral_prob = max(0.0, min(1.0 - dead_prob, float(self.cfg.lateral_roll_prob)))
 
-    if self._marker.is_mocap:
-      self._marker.write_mocap_pose_to_sim(marker_pose, env_ids=env_ids)
+    u = torch.rand(n, device=self.device)
+    dead_mask = u < dead_prob
+    lateral_mask = (u >= dead_prob) & (u < (dead_prob + lateral_prob))
+    dribble_mask = ~(dead_mask | lateral_mask)
+
+    self._launcher_mode[env_ids] = 0
+    self._launcher_mode[env_ids[lateral_mask]] = 1
+    self._launcher_mode[env_ids[dribble_mask]] = 2
+
+    self._kick_vel_w[env_ids] = 0.0
+    self._kick_time_s[env_ids] = 1.0e9
+    self._next_tap_time_s[env_ids] = 1.0e9
+    self._kick_applied[env_ids] = True
+    self._tap_enabled[env_ids] = False
+    self._remaining_taps[env_ids] = 0
+    self._last_push_dir_xy[env_ids] = 0.0
+
+    # Dead/dribble modes must start grounded (no exponential-z spawn).
+    grounded_ids = env_ids[dead_mask | dribble_mask]
+    if grounded_ids.numel() > 0:
+      self._force_ball_ground_spawn(grounded_ids)
+
+    dead_ids = env_ids[dead_mask]
+    if dead_ids.numel() > 0:
+      drift_prob = float(self.cfg.dead_ball_tiny_drift_prob)
+      drift_mask = torch.rand(len(dead_ids), device=self.device) < drift_prob
+      drift_ids = dead_ids[drift_mask]
+      if drift_ids.numel() > 0:
+        self._kick_vel_w[drift_ids] = self._sample_lateral_velocity(
+          len(drift_ids),
+          self.cfg.dead_ball_drift_speed_range,
+        )
+        self._kick_time_s[drift_ids] = 0.0
+        self._kick_applied[drift_ids] = False
+
+    moving_ids = env_ids[lateral_mask | dribble_mask]
+    if moving_ids.numel() > 0:
+      self._kick_vel_w[moving_ids] = self._sample_lateral_velocity(
+        len(moving_ids),
+        self.cfg.kick_speed_range,
+      )
+      self._kick_applied[moving_ids] = False
+      self._kick_time_s[moving_ids] = 0.0
+
+    dribble_ids = env_ids[dribble_mask]
+    if dribble_ids.numel() > 0:
+      self._last_push_dir_xy[dribble_ids] = self._unit_xy(
+        self._kick_vel_w[dribble_ids, :2]
+      )
+      taps_low = int(self.cfg.dribble_num_taps_range[0])
+      taps_high = int(self.cfg.dribble_num_taps_range[1])
+      if taps_low < 1:
+        taps_low = 1
+      if taps_high < taps_low:
+        taps_high = taps_low
+
+      num_taps = torch.randint(
+        low=taps_low,
+        high=taps_high + 1,
+        size=(len(dribble_ids),),
+        device=self.device,
+      )
+      self._tap_enabled[dribble_ids] = True
+      self._remaining_taps[dribble_ids] = num_taps
+      self._next_tap_time_s[dribble_ids] = _sample_uniform_range(
+        self.cfg.dribble_tap_time_range[0],
+        self.cfg.dribble_tap_time_range[1],
+        len(dribble_ids),
+        self.device,
+      )
+
+  def _force_ball_ground_spawn(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    pose_w = torch.zeros((len(env_ids), 7), device=self.device)
+    # Use cached freshly-sampled XY from _reset_ball_pose (authoritative during reset).
+    pose_w[:, :2] = self._target_pos_w[env_ids, :2]
+    pose_w[:, 2] = self._env.scene.env_origins[env_ids, 2] + float(self.cfg.target_height_min)
+    pose_w[:, 3] = 1.0
+
+    self._ball.write_root_link_pose_to_sim(pose_w, env_ids=env_ids)
+    self._target_pos_w[env_ids] = pose_w[:, :3]
+
+  def _sample_lateral_velocity(
+    self,
+    num: int,
+    speed_range: tuple[float, float],
+  ) -> torch.Tensor:
+    speed = _sample_uniform_range(
+      speed_range[0],
+      speed_range[1],
+      num,
+      self.device,
+    )
+    side = torch.where(
+      torch.rand(num, device=self.device) < 0.5,
+      torch.ones(num, device=self.device),
+      -torch.ones(num, device=self.device),
+    )
+    noise_deg = _sample_uniform_range(
+      -float(self.cfg.kick_angle_noise_deg),
+      float(self.cfg.kick_angle_noise_deg),
+      num,
+      self.device,
+    )
+    angle = side * (torch.pi / 2.0) + (noise_deg * torch.pi / 180.0)
+    v_x = speed * torch.cos(angle)
+    v_y = speed * torch.sin(angle)
+    vel = torch.stack([v_x, v_y, torch.zeros_like(v_x)], dim=1)
+    return self._clamp_toward_goal_speed(vel)
+
+  def _sample_velocity_around_mean_direction(
+    self,
+    num: int,
+    speed_range: tuple[float, float],
+    mean_dir_xy: torch.Tensor,
+  ) -> torch.Tensor:
+    speed = _sample_uniform_range(
+      speed_range[0],
+      speed_range[1],
+      num,
+      self.device,
+    )
+    mean_dir = self._unit_xy(mean_dir_xy)
+    mean_angle = torch.atan2(mean_dir[:, 1], mean_dir[:, 0])
+    noise_deg = _sample_uniform_range(
+      -float(self.cfg.kick_angle_noise_deg),
+      float(self.cfg.kick_angle_noise_deg),
+      num,
+      self.device,
+    )
+    angle = mean_angle + (noise_deg * torch.pi / 180.0)
+    v_x = speed * torch.cos(angle)
+    v_y = speed * torch.sin(angle)
+    vel = torch.stack([v_x, v_y, torch.zeros_like(v_x)], dim=1)
+    return self._clamp_toward_goal_speed(vel)
+
+  def _unit_xy(
+    self,
+    vec_xy: torch.Tensor,
+    fallback_xy: torch.Tensor | None = None,
+  ) -> torch.Tensor:
+    if fallback_xy is None:
+      fallback_xy = torch.zeros_like(vec_xy)
+      fallback_xy[:, 1] = 1.0
+    fallback_norm = torch.linalg.norm(fallback_xy, dim=1, keepdim=True)
+    safe_fallback = torch.where(
+      fallback_norm > 1.0e-6,
+      fallback_xy / fallback_norm,
+      torch.tensor([0.0, 1.0], device=self.device, dtype=vec_xy.dtype).expand_as(vec_xy),
+    )
+    norm = torch.linalg.norm(vec_xy, dim=1, keepdim=True)
+    return torch.where(norm > 1.0e-6, vec_xy / norm, safe_fallback)
+
+  def _clamp_toward_goal_speed(self, vel_w_xyz: torch.Tensor) -> torch.Tensor:
+    max_goal_speed = float(self.cfg.max_toward_goal_speed)
+    if self.cfg.goal_toward_positive_x:
+      vel_w_xyz[:, 0] = torch.clamp(vel_w_xyz[:, 0], max=max_goal_speed)
     else:
-      self._marker.write_root_link_pose_to_sim(marker_pose, env_ids=env_ids)
+      vel_w_xyz[:, 0] = torch.clamp(vel_w_xyz[:, 0], min=-max_goal_speed)
+    return vel_w_xyz
+
+  def _set_ball_linear_velocity(
+    self,
+    env_ids: torch.Tensor,
+    vel_w_xyz: torch.Tensor,
+  ) -> None:
+    vel_w_xyz = self._clamp_toward_goal_speed(vel_w_xyz.clone())
+    ball_vel = self._ball.data.root_link_vel_w[env_ids].clone()
+    ball_vel[:, :3] = vel_w_xyz
+    self._ball.write_root_link_velocity_to_sim(ball_vel, env_ids=env_ids)
+
+  def _set_ball_velocity_zero(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+    ball_vel = self._ball.data.root_link_vel_w[env_ids].clone()
+    ball_vel[:] = 0.0
+    self._ball.write_root_link_velocity_to_sim(ball_vel, env_ids=env_ids)
+
+  def _ball_curb_contact_mask(self) -> torch.Tensor:
+    sensor_name = self.cfg.ball_curb_sensor_name
+    if sensor_name is None or sensor_name == "":
+      return torch.zeros(self._env.num_envs, device=self.device, dtype=torch.bool)
+
+    sensor = self._env.scene[sensor_name]
+    found = sensor.data.found
+    if found is None:
+      return torch.zeros(self._env.num_envs, device=self.device, dtype=torch.bool)
+    return torch.any(found > 0.0, dim=1)
+
+  def _add_ball_linear_velocity(
+    self,
+    env_ids: torch.Tensor,
+    delta_v_w_xyz: torch.Tensor,
+  ) -> None:
+    ball_vel = self._ball.data.root_link_vel_w[env_ids].clone()
+    ball_vel[:, :3] += delta_v_w_xyz
+    ball_vel[:, :3] = self._clamp_toward_goal_speed(ball_vel[:, :3])
+    self._ball.write_root_link_velocity_to_sim(ball_vel, env_ids=env_ids)
 
   def _debug_vis_impl(self, visualizer) -> None:
     batch = visualizer.env_idx
@@ -441,7 +694,8 @@ def target_direction_xy(
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  rel_xy = command.target_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  rel_xy = ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
   return _normalize_xy(rel_xy)
 
 
@@ -452,7 +706,8 @@ def target_relative_xy(
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  return command.target_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  return ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
 
 
 def target_position_relative_xyz(
@@ -462,7 +717,19 @@ def target_position_relative_xyz(
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  return command.target_pos_w - robot.data.root_link_pos_w
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  return ball.data.root_link_pos_w - robot.data.root_link_pos_w
+
+
+def ball_velocity_relative_xyz(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  return ball.data.root_link_lin_vel_w - robot.data.root_link_lin_vel_w
 
 
 def yaw_alignment_reward(
@@ -473,7 +740,8 @@ def yaw_alignment_reward(
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  yaw_error = _compute_yaw_error(robot, command.target_pos_w)
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  yaw_error = _compute_yaw_error(robot, ball.data.root_link_pos_w)
   return torch.exp(-k * torch.square(yaw_error))
 
 
