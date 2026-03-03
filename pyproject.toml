@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "mjlab"
-version = "1.0.0"
+version = "1.1.1"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -37,11 +37,12 @@ dependencies = [
   "torch>=2.7.0",
   "torchrunx>=0.3.4",
   "warp-lang>=1.12.0.dev",
-  "mujoco-warp",
-  "mujoco>=3.4.0",
+  "mujoco-warp>=3.5.0",
+  "mujoco>=3.5.0",
   "trimesh>=4.8.3",
-  "viser>=1.0.21",
-  "moviepy",
+  "viser>=1.0.24",
+  "mediapy>=1.2.6",
+  "imageio-ffmpeg",
   "tensordict",
   "rsl-rl-lib==4.0.1",
   "tensorboard>=2.20.0",
@@ -92,8 +93,12 @@ docs = [
 
 [project.optional-dependencies]
 cu128 = ["torch>=2.7.0"]
+cpu = ["torch>=2.7.0"]
 
 [tool.uv]
+conflicts = [
+  [{extra = "cu128"}, {extra = "cpu"}],
+]
 required-environments = [
   "sys_platform == 'darwin' and platform_machine == 'arm64'",
   "sys_platform == 'linux' and platform_machine == 'x86_64'",
@@ -124,9 +129,12 @@ explicit = true
 
 [tool.uv.sources]
 warp-lang = { index = "nvidia", marker = "sys_platform != 'darwin'" }
+torch = [
+  { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform != 'darwin'" },
+  { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform != 'darwin'" },
+]
 mujoco = { index = "mujoco" }
-torch = { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform != 'darwin'" }
-mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "0828fb0b57d7baf734dd71fa164d092cb17e635b" }
+mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "ebdadbf2df521dd5b47463436a8f4b96e6c34977" }
 
 [tool.ruff]
 src = ["src"]  # Helpful for recognizing first-party imports.

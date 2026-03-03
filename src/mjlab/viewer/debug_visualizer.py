@@ -76,6 +76,8 @@ class DebugVisualizer(ABC):
     self,
     qpos: np.ndarray | torch.Tensor,
     model: mujoco.MjModel,
+    mocap_pos: np.ndarray | torch.Tensor | None = None,
+    mocap_quat: np.ndarray | torch.Tensor | None = None,
     alpha: float = 0.5,
     label: str | None = None,
   ) -> None:
@@ -84,6 +86,8 @@ class DebugVisualizer(ABC):
     Args:
       qpos: Joint positions for the ghost pose.
       model: MuJoCo model with pre-configured appearance (geom_rgba for colors).
+      mocap_pos: Optional mocap position(s) for fixed-base entities.
+      mocap_quat: Optional mocap quaternion(s) for fixed-base entities.
       alpha: Transparency override (0=transparent, 1=opaque). May not be supported by
         all implementations.
       label: Optional label for this ghost.
@@ -157,6 +161,26 @@ class DebugVisualizer(ABC):
     ...
 
   @abstractmethod
+  def add_ellipsoid(
+    self,
+    center: np.ndarray | torch.Tensor,
+    size: np.ndarray | torch.Tensor,
+    mat: np.ndarray | torch.Tensor,
+    color: tuple[float, float, float, float],
+    label: str | None = None,
+  ) -> None:
+    """Add an ellipsoid visualization.
+
+    Args:
+      center: Center position (3D vector).
+      size: Semi-axes lengths (3D vector: a, b, c).
+      mat: 3x3 rotation matrix (or flattened 9-element array).
+      color: RGBA color (values 0-1).
+      label: Optional label for this ellipsoid.
+    """
+    ...
+
+  @abstractmethod
   def clear(self) -> None:
     """Clear all debug visualizations."""
     ...
@@ -186,7 +210,16 @@ class NullDebugVisualizer:
   def add_arrow(self, start, end, color, width=0.015, label=None) -> None:
     pass
 
-  def add_ghost_mesh(self, qpos, model, alpha=0.5, label=None) -> None:
+  def add_ghost_mesh(
+    self,
+    qpos,
+    model,
+    mocap_pos=None,
+    mocap_quat=None,
+    alpha=0.5,
+    label=None,
+  ) -> None:
+    del mocap_pos, mocap_quat
     pass
 
   def add_frame(
@@ -205,6 +238,9 @@ class NullDebugVisualizer:
     pass
 
   def add_cylinder(self, start, end, radius, color, label=None) -> None:
+    pass
+
+  def add_ellipsoid(self, center, size, mat, color, label=None) -> None:
     pass
 
   def clear(self) -> None:

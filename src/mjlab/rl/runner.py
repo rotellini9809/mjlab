@@ -1,3 +1,4 @@
+import copy
 import os
 
 import torch
@@ -34,7 +35,9 @@ class MjlabOnPolicyRunner(OnPolicyRunner):
     dynamic_axes being deprecated with the new TorchDynamo export path
     (torch>=2.9 default).
     """
-    onnx_model = self.alg.get_policy().as_onnx(verbose=verbose)
+    # Deep-copy because rsl_rl's _OnnxCNNModel shares CNN modules with the original
+    # policy; without this, .to("cpu") moves the live weights.
+    onnx_model = copy.deepcopy(self.alg.get_policy().as_onnx(verbose=verbose))
     onnx_model.to("cpu")
     onnx_model.eval()
     os.makedirs(path, exist_ok=True)
@@ -54,11 +57,18 @@ class MjlabOnPolicyRunner(OnPolicyRunner):
   def save(self, path: str, infos=None) -> None:
     """Save checkpoint.
 
-    Extends the base implementation to persist the environment's common_step_counter.
+    Extends the base implementation to persist the environment's
+    common_step_counter and to respect the ``upload_model`` config flag.
     """
     env_state = {"common_step_counter": self.env.unwrapped.common_step_counter}
     infos = {**(infos or {}), "env_state": env_state}
-    super().save(path, infos)
+    # Inline base OnPolicyRunner.save() to conditionally gate W&B upload.
+    saved_dict = self.alg.save()
+    saved_dict["iter"] = self.current_learning_iteration
+    saved_dict["infos"] = infos
+    torch.save(saved_dict, path)
+    if self.cfg["upload_model"]:
+      self.logger.save_model(path, self.current_learning_iteration)
 
   def load(
     self,

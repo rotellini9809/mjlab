@@ -11,10 +11,9 @@ from typing import cast
 import torch
 import tyro
 import wandb
-from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
-from mjlab.rl import RslRlVecEnvWrapper
+from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.tasks.tracking.mdp.commands import MotionCommand
@@ -35,6 +34,8 @@ class EvaluateConfig:
 
   wandb_run_path: str
   """W&B run path in format 'entity/project/run_id'."""
+  wandb_checkpoint_name: str | None = None
+  """Optional checkpoint name within the W&B run to load (e.g. 'model_4000.pt')."""
   num_envs: int = 1024
   """Number of parallel environments (= number of episodes to evaluate)."""
   device: str | None = None
@@ -74,10 +75,12 @@ def run_evaluate(task_id: str, cfg: EvaluateConfig) -> dict[str, float]:
   env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
 
   log_root_path = (Path("logs") / "rsl_rl" / agent_cfg.experiment_name).resolve()
-  resume_path, _ = get_wandb_checkpoint_path(log_root_path, Path(cfg.wandb_run_path))
+  resume_path, _ = get_wandb_checkpoint_path(
+    log_root_path, Path(cfg.wandb_run_path), cfg.wandb_checkpoint_name
+  )
   print(f"[INFO] Loading checkpoint: {resume_path}")
 
-  runner_cls = load_runner_cls(task_id) or OnPolicyRunner
+  runner_cls = load_runner_cls(task_id) or MjlabOnPolicyRunner
   runner = runner_cls(env, asdict(agent_cfg), device=device)
   runner.load(str(resume_path), map_location=device)
   policy = runner.get_inference_policy(device=device)

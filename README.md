@@ -1,4 +1,4 @@
-![Project banner](docs/source/_static/mjlab-banner.jpg)
+![Project banner](https://raw.githubusercontent.com/mujocolab/mjlab/main/docs/source/_static/mjlab-banner.jpg)
 
 # mjlab
 
@@ -6,6 +6,7 @@
 [![Documentation](https://github.com/mujocolab/mjlab/actions/workflows/docs.yml/badge.svg)](https://mujocolab.github.io/mjlab/)
 [![License](https://img.shields.io/github/license/mujocolab/mjlab)](https://github.com/mujocolab/mjlab/blob/main/LICENSE)
 [![Nightly Benchmarks](https://img.shields.io/badge/Nightly-Benchmarks-blue)](https://mujocolab.github.io/mjlab/nightly/)
+[![PyPI](https://img.shields.io/pypi/v/mjlab)](https://pypi.org/project/mjlab/)
 
 mjlab combines [Isaac Lab](https://github.com/isaac-sim/IsaacLab)'s manager-based API with [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp), a GPU-accelerated version of [MuJoCo](https://github.com/google-deepmind/mujoco).
 The framework provides composable building blocks for environment design,
@@ -20,9 +21,7 @@ mjlab requires an NVIDIA GPU for training. macOS is supported for evaluation onl
 Run the demo (no installation needed):
 
 ```bash
-uvx --from mjlab --refresh \
-  --with "mujoco-warp @ git+https://github.com/google-deepmind/mujoco_warp@7c20a44bfed722e6415235792a1b247ea6b6a6d3" \
-  demo
+uvx --from mjlab --refresh demo
 ```
 
 Or try in [Google Colab](https://colab.research.google.com/github/mujocolab/mjlab/blob/main/notebooks/demo.ipynb) (no local setup required).
@@ -34,7 +33,7 @@ git clone https://github.com/mujocolab/mjlab.git && cd mjlab
 uv run demo
 ```
 
-For alternative installation methods (PyPI, Docker), see the [Installation Guide](https://mujocolab.github.io/mjlab/source/installation.html).
+For alternative installation methods (PyPI, Docker), see the [Installation Guide](https://mujocolab.github.io/mjlab/main/source/installation.html).
 
 ## Training Examples
 
@@ -54,7 +53,7 @@ uv run train Mjlab-Velocity-Flat-Unitree-G1 \
   --env.scene.num-envs 4096
 ```
 
-See the [Distributed Training guide](https://mujocolab.github.io/mjlab/source/distributed_training.html) for details.
+See the [Distributed Training guide](https://mujocolab.github.io/mjlab/main/source/training/distributed_training.html) for details.
 
 Evaluate a policy while training (fetches latest checkpoint from Weights & Biases):
 
@@ -102,89 +101,6 @@ uv run play Mjlab-Your-Task-Id --agent random  # Sends uniform random actions
 When running motion-tracking tasks, add `--registry-name your-org/motions/motion-name` to the command.
 
 
-## Community Projects
-
-mjlab is used for research and robotics applications around the world. Examples:
-
-<table>
-  <tr>
-    <td>
-      <a href="https://github.com/menloresearch/asimov-mjlab">
-        menloresearch/asimov-mjlab
-        <br /><img
-          alt="GitHub stars"
-          src="https://img.shields.io/github/stars/menloresearch/asimov-mjlab?style=social"
-        />
-      </a>
-    </td>
-    <td>Locomotion fork for the Asimov bipedal robot.</td>
-  </tr>
-  <tr>
-    <td>
-      <a href="http://husky-humanoid.github.io/">
-        HUSKY
-      </a>
-      <br />
-      <a href="https://github.com/mujocolab/mjlab/discussions/572">#572</a>
-      ·
-      <a href="https://arxiv.org/abs/2602.03205">Paper</a>
-    </td>
-    <td>
-      Humanoid skateboarding with dynamic balance control.
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <a href="https://github.com/Nagi-ovo/mjlab-homierl">
-        Nagi-ovo/mjlab-homierl
-        <br /><img
-          alt="GitHub stars"
-          src="https://img.shields.io/github/stars/Nagi-ovo/mjlab-homierl?style=social"
-        />
-      </a>
-    </td>
-    <td>Multi-task H1 locomotion (walk/squat/stand) with upper-body disturbance robustness.</td>
-  </tr>
-  <tr>
-    <td>
-      <a href="https://github.com/MyoHub/mjlab_myosuite">
-        MyoHub/mjlab_myosuite
-        <br /><img
-          alt="GitHub stars"
-          src="https://img.shields.io/github/stars/MyoHub/mjlab_myosuite?style=social"
-        />
-      </a>
-    </td>
-    <td>Musculoskeletal simulation integration with MyoSuite.</td>
-  </tr>
-  <tr>
-    <td>
-      <a href="https://github.com/MarcDcls/mjlab_upkie">
-        MarcDcls/mjlab_upkie
-        <br /><img
-          alt="GitHub stars"
-          src="https://img.shields.io/github/stars/MarcDcls/mjlab_upkie?style=social"
-        />
-      </a>
-    </td>
-    <td>Velocity control for the Upkie wheeled biped.</td>
-  </tr>
-  <tr>
-    <td>
-      <a href="https://github.com/unitreerobotics/unitree_rl_mjlab">
-        unitreerobotics/unitree_rl_mjlab
-        <br /><img
-          alt="GitHub stars"
-          src="https://img.shields.io/github/stars/unitreerobotics/unitree_rl_mjlab?style=social"
-        />
-      </a>
-    </td>
-    <td>Official Unitree RL environments for Go2, G1, and H1_2.</td>
-  </tr>
-</table>
-
-Want to share your project? Post in [Show and Tell](https://github.com/mujocolab/mjlab/discussions/categories/show-and-tell)!
-
 ## Documentation
 
 Full documentation is available at **[mujocolab.github.io/mjlab](https://mujocolab.github.io/mjlab/)**.
@@ -202,7 +118,9 @@ For development setup: `uvx pre-commit install`
 
 ## Citation
 
-If you use mjlab in your research, please cite:
+mjlab is used in published research and open-source robotics projects. See the [Research](https://mujocolab.github.io/mjlab/main/source/research.html) page for publications and projects, or share your own in [Show and Tell](https://github.com/mujocolab/mjlab/discussions/categories/show-and-tell).
+
+If you use mjlab in your research, please consider citing:
 
 ```bibtex
 @misc{zakka2026mjlablightweightframeworkgpuaccelerated,

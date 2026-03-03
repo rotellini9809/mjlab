@@ -1,4 +1,4 @@
-.. _migration-isaaclab:
+.. _migration_isaac_lab:
 
 Migrating from Isaac Lab
 ========================
@@ -57,6 +57,8 @@ mjlab:
 Isaac Lab uses nested ``@configclass`` blocks for manager terms. ``mjlab``
 instead uses **plain dictionaries** mapping names to config objects, which makes
 it easy to construct variants, merge configs, or generate them programmatically.
+For the full context behind this design decision, see
+`PR #292 <https://github.com/mujocolab/mjlab/pull/292>`_.
 
 **Isaac Lab:**
 
@@ -139,7 +141,7 @@ Scene setup is **simpler** in ``mjlab``:
        """Configuration for the terrain scene with a legged robot."""
 
        # ground terrain
-       terrain = TerrainImporterCfg(
+       terrain = TerrainEntityCfg(
            prim_path="/World/ground",
            terrain_type="plane",
            collision_group=-1,
@@ -178,7 +180,7 @@ Scene setup is **simpler** in ``mjlab``:
    from mjlab.scene import SceneCfg
    from mjlab.asset_zoo.robots.unitree_g1.g1_constants import get_g1_robot_cfg
    from mjlab.utils.spec_config import ContactSensorCfg
-   from mjlab.terrains import TerrainImporterCfg
+   from mjlab.terrains import TerrainEntityCfg
 
    # Configure contact sensor
    self_collision_sensor = ContactSensorCfg(
@@ -195,7 +197,7 @@ Scene setup is **simpler** in ``mjlab``:
 
    # Create scene
    SCENE_CFG = SceneCfg(
-       terrain=TerrainImporterCfg(terrain_type="plane"),
+       terrain=TerrainEntityCfg(terrain_type="plane"),
        entities={"robot": g1_cfg},
    )
 

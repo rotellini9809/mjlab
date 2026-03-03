@@ -65,11 +65,7 @@ bibtex_bibfiles = ["source/_static/refs.bib"]
 autosummary_generate = True
 autosummary_generate_overwrite = False
 autodoc_default_options = {
-  "members": True,
-  "undoc-members": True,
-  "show-inheritance": True,
   "member-order": "bysource",
-  "autosummary": True,
 }
 intersphinx_mapping = {
   "python": ("https://docs.python.org/3", None),
@@ -122,7 +118,7 @@ html_show_sphinx = False
 html_last_updated_fmt = ""
 
 html_static_path = ["source/_static"]
-html_css_files = ["custom.css"]
+html_css_files = ["css/custom.css"]
 
 html_theme_options = {
   "path_to_docs": "docs/",
@@ -134,32 +130,14 @@ html_theme_options = {
   "show_toc_level": 2,
   "use_sidenotes": True,
   "logo": {
-    "text": "The mjlab Documentation",
+    "text": "mjlab Documentation",
   },
   "icon_links": [
     {
-      "name": "GitHub",
-      "url": "https://github.com/mujocolab/mjlab",
-      "icon": "fa-brands fa-square-github",
-      "type": "fontawesome",
-    },
-    {
-      "name": "mjlab",
-      "url": "https://github.com/mujocolab/mjlab",
-      "icon": "https://img.shields.io/badge/mjlab-1.0.0-silver.svg",
-      "type": "url",
-    },
-    {
       "name": "Benchmarks",
       "url": "https://mujocolab.github.io/mjlab/nightly/",
-      "icon": "https://img.shields.io/badge/Nightly-Benchmarks-blue",
-      "type": "url",
-    },
-    {
-      "name": "Stars",
-      "url": "https://img.shields.io/github/stars/mujocolab/mjlab?color=fedcba",
-      "icon": "https://img.shields.io/github/stars/mujocolab/mjlab?color=fedcba",
-      "type": "url",
+      "icon": "fa-solid fa-chart-line",
+      "type": "fontawesome",
     },
   ],
   "icon_links_label": "Quick Links",
@@ -176,8 +154,8 @@ smv_tag_whitelist = os.getenv("SMV_TAG_WHITELIST", r"^v[1-9]\d*\.\d+\.\d+$")
 html_sidebars = {
   "**": [
     "navbar-logo.html",
-    "icon-links.html",
     "search-field.html",
+    "versioning.html",
     "sbt-sidebar-nav.html",
   ]
 }
@@ -190,5 +168,24 @@ def skip_member(app, what, name, obj, skip, options):
   return None
 
 
+def process_signature(app, what, name, obj, options, signature, return_annotation):
+  """Suppress the ugly __init__ signature for dataclass Cfg classes."""
+  if what == "class" and "exclude-members" in options:
+    if "__init__" in options["exclude-members"]:
+      return ("", None)
+  return None
+
+
+def process_docstring(app, what, name, obj, options, lines):
+  """Strip auto-generated dataclass docstrings (e.g. 'ClassName(*, ...)')."""
+  import dataclasses
+
+  if what == "class" and dataclasses.is_dataclass(obj):
+    if lines and lines[0].startswith(f"{obj.__name__}("):
+      lines.clear()
+
+
 def setup(app):
   app.connect("autodoc-skip-member", skip_member)
+  app.connect("autodoc-process-signature", process_signature)
+  app.connect("autodoc-process-docstring", process_docstring)

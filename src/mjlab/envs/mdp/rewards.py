@@ -34,7 +34,9 @@ def joint_torques_l2(
 ) -> torch.Tensor:
   """Penalize joint torques applied on the articulation using L2 squared kernel."""
   asset: Entity = env.scene[asset_cfg.name]
-  return torch.sum(torch.square(asset.data.actuator_force), dim=1)
+  return torch.sum(
+    torch.square(asset.data.actuator_force[:, asset_cfg.actuator_ids]), dim=1
+  )
 
 
 def joint_vel_l2(
@@ -54,14 +56,20 @@ def joint_acc_l2(
 
 
 def action_rate_l2(env: ManagerBasedRlEnv) -> torch.Tensor:
-  """Penalize the rate of change of the actions using L2 squared kernel."""
+  """Penalize the rate of change of the actions using L2 squared kernel.
+
+  Operates on raw policy output (before per-term scale/offset).
+  """
   return torch.sum(
     torch.square(env.action_manager.action - env.action_manager.prev_action), dim=1
   )
 
 
 def action_acc_l2(env: ManagerBasedRlEnv) -> torch.Tensor:
-  """Penalize the acceleration of the actions using L2 squared kernel."""
+  """Penalize the acceleration of the actions using L2 squared kernel.
+
+  Operates on raw policy output (before per-term scale/offset).
+  """
   action_acc = (
     env.action_manager.action
     - 2 * env.action_manager.prev_action

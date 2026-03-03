@@ -6,6 +6,7 @@ from dataclasses import dataclass
 class ViewerConfig:
   lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
   distance: float = 5.0
+  fovy: float | None = None
   elevation: float = -45.0
   azimuth: float = 90.0
 
@@ -23,6 +24,8 @@ class ViewerConfig:
   entity_name: str | None = None
   body_name: str | None = None
   env_idx: int = 0
+  max_extra_envs: int = 2
+  """Number of neighboring environments to render around ``env_idx``."""
   enable_reflections: bool = True
   enable_shadows: bool = True
   height: int = 240

@@ -8,10 +8,9 @@ from typing import Literal
 
 import torch
 import tyro
-from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
-from mjlab.rl import RslRlVecEnvWrapper
+from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.utils.os import get_wandb_checkpoint_path
@@ -25,6 +24,8 @@ class PlayConfig:
   agent: Literal["zero", "random", "trained"] = "trained"
   registry_name: str | None = None
   wandb_run_path: str | None = None
+  wandb_checkpoint_name: str | None = None
+  """Optional checkpoint name within the W&B run to load (e.g. 'model_4000.pt')."""
   checkpoint_file: str | None = None
   motion_file: str | None = None
   num_envs: int | None = None
@@ -143,7 +144,7 @@ def run_play(task_id: str, cfg: PlayConfig):
           "`wandb_run_path` is required when `checkpoint_file` is not provided."
         )
       resume_path, was_cached = get_wandb_checkpoint_path(
-        log_root_path, Path(cfg.wandb_run_path)
+        log_root_path, Path(cfg.wandb_run_path), cfg.wandb_checkpoint_name
       )
       # Extract run_id and checkpoint name from path for display.
       run_id = resume_path.parent.name
@@ -199,7 +200,7 @@ def run_play(task_id: str, cfg: PlayConfig):
 
       policy = PolicyRandom()
   else:
-    runner_cls = load_runner_cls(task_id) or OnPolicyRunner
+    runner_cls = load_runner_cls(task_id) or MjlabOnPolicyRunner
     runner = runner_cls(env, asdict(agent_cfg), device=device)
     runner.load(
       str(resume_path), load_cfg={"actor": True}, strict=True, map_location=device

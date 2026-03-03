@@ -65,7 +65,7 @@ Yes, mjlab supports **multi-GPU distributed training** using
 
 - Use ``--gpu-ids 0 1`` (or ``--gpu-ids all``) when running the ``train``
   command.
-- See the :doc:`distributed_training` for configuration details and examples.
+- See the :doc:`training/distributed_training` for configuration details and examples.
 
 Training & Debugging
 --------------------
@@ -92,20 +92,14 @@ Add a ``nan_detection`` termination to reset environments that hit NaN:
 
 .. code-block:: python
 
-   from dataclasses import dataclass, field
-
-   from mjlab.envs.mdp.terminations import nan_detection
+   from mjlab.envs.mdp import terminations as mdp_term
    from mjlab.managers.termination_manager import TerminationTermCfg
 
-   @dataclass
-   class TerminationCfg:
+   # In your ManagerBasedRlEnvCfg subclass:
+   terminations = {
       # Your other terminations...
-      nan_term: TerminationTermCfg = field(
-         default_factory=lambda: TerminationTermCfg(
-               func=nan_detection,
-               time_out=False,
-         )
-      )
+      "nan_term": TerminationTermCfg(func=mdp_term.nan_detection),
+   }
 
 This marks NaN environments as terminated so they can reset while training
 continues. Terminations are logged as
@@ -127,7 +121,7 @@ Enable ``nan_guard`` to capture the simulation state when NaNs occur:
 
    uv run train.py --enable-nan-guard True
 
-See the :doc:`NaN Guard documentation <nan_guard>` for details.
+See the :doc:`NaN Guard documentation <debugging/nan_guard>` for details.
 
 The ``nan_guard`` tool makes it easier to:
 
@@ -137,6 +131,40 @@ The ``nan_guard`` tool makes it easier to:
   `MuJoCo Warp team <https://github.com/google-deepmind/mujoco_warp/issues>`_.
 
 Reporting well-isolated issues helps improve the framework for everyone.
+
+My contact sensor misses collisions when using decimation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With ``decimation > 1`` the physics runs multiple substeps per policy
+step. A brief contact (e.g. a self collision or an illegal ground touch)
+can appear and disappear within the substep loop, so by the time the
+sensor is read, ``found`` is zero and the event is invisible to
+rewards and terminations.
+
+Set ``history_length`` on the ``ContactSensorCfg`` equal to your
+decimation value. The sensor then stores force, torque, and distance
+for the last *N* substeps. Your reward or termination function can
+inspect the history to detect contacts that would otherwise be missed:
+
+.. code-block:: python
+
+    ContactSensorCfg(
+        name="self_collision",
+        ...,
+        fields=("found", "force"),
+        history_length=4,  # matches decimation=4
+    )
+
+    # In the reward/termination function:
+    force_mag = torch.norm(sensor.data.force_history, dim=-1)  # [B, N, H]
+    had_contact = (force_mag > 10.0).any(dim=1).any(dim=-1)    # [B]
+
+See :ref:`contact-sensor-history` for full details.
+
+.. note::
+
+   Feet ground sensors with ``track_air_time=True`` already accumulate
+   contact state across substeps, so they do not need history.
 
 .. _faq-sim-forward:
 
@@ -208,26 +236,17 @@ but this is not yet available.
 As an alternative, mjlab supports **video logging to Weights & Biases
 (W&B)**, so you can monitor rollout videos directly in the experiment dashboard.
 
-What about camera/pixel rendering for vision-based RL?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Camera rendering for **pixel-based agents** is not yet available.
-
-The MuJoCo Warp team is actively developing **camera support**. Once mature, it
-will be integrated into mjlab for vision-based RL workflows.
-
 How many environments can I visualize at once?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Visualizers are **limited to 32 environments maximum** for performance reasons.
+Viewers render a small number of environments for performance reasons.
 
-- **Offscreen renderer** (for video recording): Hard-capped at 32 envs
-  (see ``_MAX_ENVS`` in ``viewer/offscreen_renderer.py:12``)
+- **Offscreen renderer** (for video recording): Renders the tracked
+  environment plus its nearest neighbors. The count is controlled by
+  ``ViewerConfig.max_extra_envs`` (default 2).
 - **Native/Viser viewers**: Limited by MuJoCo's geometry buffer
-  (default 10,000 geoms, configurable via ``max_geom`` parameter)
-
-With thousands of environments, only a subset will be rendered. The viewer
-shows whichever environments fit within the geometry budget.
+  (default 10,000 geoms). The viewer shows whichever environments fit
+  within the geometry budget.
 
 Why are my fixed-base robots all stacked at the origin instead of in a grid?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -261,12 +280,12 @@ their ``env_origins``. If your robots appear stacked at (0, 0, 0):
      # ... other events
    }
 
-This pattern is used in the example manipulation task (see ``lift_cube_env_cfg.py:84-93``).
+This pattern is used in the example manipulation task (see ``lift_cube_env_cfg.py:85-94``).
 
 **Why this is needed**: Fixed-base robots are automatically wrapped in mocap
 bodies by ``auto_wrap_fixed_base_mocap()``, but mocap positioning only happens
 when you explicitly call a reset event. The ``env_origins`` offset is applied
-inside ``reset_root_state_uniform()`` at line 127 of ``envs/mdp/events.py``.
+inside ``reset_root_state_uniform()`` at line 131 of ``envs/mdp/events.py``.
 
 See `issue #560 <https://github.com/mujocolab/mjlab/issues/560>`_ for examples.
 
@@ -456,9 +475,3 @@ being worked on.
 
 If something isn't working or if we've missed something, please
 `file a bug report <https://github.com/mujocolab/mjlab/issues/new>`_.
-
-.. important::
-
-   mjlab has reached v1.0.0! While we strive for stability, please note that
-   MuJoCo Warp (our physics backend) is still in beta. Feedback and
-   contributions are very welcome.
