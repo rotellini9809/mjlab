@@ -15,7 +15,7 @@ from mjlab.motor_controller_stage1.latent_action import (
   MotorLatentActionCfg,
   motor_last_decoded_action,
 )
-from mjlab.sensor import ContactSensor
+from mjlab.sensor import BuiltinSensor, ContactSensor
 from mjlab.utils.lab_api.math import (
   quat_from_euler_xyz,
   quat_mul,
@@ -1225,6 +1225,46 @@ def foot_yaw_slip_contact_pen(
   return penalty
 
 
+def foot_xy_slip_contact_pen(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  left_contact_sensor_name: str = "left_foot_ground_contact",
+  right_contact_sensor_name: str = "right_foot_ground_contact",
+  fz_thresh: float = 40.0,
+  support_sign: str = "neg",
+) -> torch.Tensor:
+  """Penalize xy foot slip while the foot is in support contact."""
+  robot: Entity = env.scene[asset_cfg.name]
+  left_idx, right_idx = _resolve_body_index_pair_cached(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+
+  support_l, _, _ = _foot_support_from_sensor(
+    env, left_contact_sensor_name, fz_thresh, support_sign=support_sign
+  )
+  support_r, _, _ = _foot_support_from_sensor(
+    env, right_contact_sensor_name, fz_thresh, support_sign=support_sign
+  )
+
+  body_lin_vel_w = robot.data.body_link_lin_vel_w
+  slip_l = torch.linalg.norm(body_lin_vel_w[:, left_idx, :2], dim=1)
+  slip_r = torch.linalg.norm(body_lin_vel_w[:, right_idx, :2], dim=1)
+  penalty = 0.5 * (
+    support_l.float() * torch.square(slip_l) + support_r.float() * torch.square(slip_r)
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_foot_xy_slip_contact_pen_raw_mean"] = torch.mean(penalty)
+
+  return penalty
+
+
 def foot_contact_switch_bonus(
   env,
   command_name: str = "set_square",
@@ -1398,6 +1438,23 @@ def xy_drift_deadzone(
   return torch.square(drift_violation)
 
 
+def xy_drift_deadzone_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  r_free: float = 0.10,
+  sigma: float = 0.12,
+) -> torch.Tensor:
+  """Reward staying close to spawn; 1.0 in deadzone, smooth decay outside."""
+  penalty = xy_drift_deadzone(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+    r_free=r_free,
+  )
+  return torch.exp(-penalty / max(float(sigma) * float(sigma), 1.0e-6))
+
+
 def xy_speed_deadzone(
   env,
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
@@ -1408,6 +1465,49 @@ def xy_speed_deadzone(
   speed_mag = torch.linalg.norm(vel_xy, dim=1)
   speed_violation = torch.relu(speed_mag - float(v_free))
   return torch.square(speed_violation)
+
+
+def xy_speed_deadzone_reward(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  v_free: float = 0.12,
+  sigma: float = 0.12,
+) -> torch.Tensor:
+  """Reward low XY speed; 1.0 in deadzone, smooth decay outside."""
+  penalty = xy_speed_deadzone(
+    env,
+    asset_cfg=asset_cfg,
+    v_free=v_free,
+  )
+  return torch.exp(-penalty / max(float(sigma) * float(sigma), 1.0e-6))
+
+
+def body_ang_vel_penalty(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  """Penalize torso XY angular velocity (velocity-style stabilizer)."""
+  robot: Entity = env.scene[asset_cfg.name]
+  ang_vel_xy = robot.data.root_link_ang_vel_w[:, :2]
+  return torch.sum(torch.square(ang_vel_xy), dim=1)
+
+
+def angular_momentum_penalty(
+  env,
+  sensor_name: str = "robot/root_angmom",
+) -> torch.Tensor:
+  """Penalize whole-body angular momentum magnitude (velocity-style stabilizer)."""
+  try:
+    angmom_sensor = cast(BuiltinSensor, env.scene[sensor_name])
+  except KeyError:
+    return torch.zeros(env.num_envs, device=env.device)
+
+  angmom = angmom_sensor.data
+  angmom_magnitude_sq = torch.sum(torch.square(angmom), dim=-1)
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_angular_momentum_mean"] = torch.mean(torch.sqrt(angmom_magnitude_sq))
+  return angmom_magnitude_sq
 
 
 def outside_keeper_area_penalty(

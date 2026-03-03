@@ -13,6 +13,7 @@ from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
+from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.goalkeeper_experts.e1_set_square import mdp
@@ -428,17 +429,17 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
   }
 
-  fallen_weight = -4.0 if not play else -8.0
+  fallen_weight = -4.0
 
   cfg.rewards = {
     "yaw_align_torso": RewardTermCfg(
       func=mdp.yaw_alignment_torso_reward,
-      weight=1.8,
+      weight=0.0,
       params={"command_name": "set_square", "k": 2.5},
     ),
     "yaw_align_waist": RewardTermCfg(
       func=mdp.yaw_alignment_waist_reward,
-      weight=1.2,
+      weight=2.0,
       params={
         "command_name": "set_square",
         "k": 2.5,
@@ -447,7 +448,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "waist_yaw_progress": RewardTermCfg(
       func=mdp.waist_yaw_progress_reward,
-      weight=5.0,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
@@ -458,7 +459,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "waist_yaw_abs_pen": RewardTermCfg(
       func=mdp.waist_yaw_abs_penalty,
-      weight=-1.2,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
@@ -467,7 +468,19 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "foot_yaw_slip_contact_pen": RewardTermCfg(
       func=mdp.foot_yaw_slip_contact_pen,
-      weight=-0.10,
+      weight=-0.35,
+      params={
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+        "left_contact_sensor_name": LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+        "right_contact_sensor_name": RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+        "fz_thresh": 40.0,
+        "support_sign": "neg",
+      },
+    ),
+    "foot_xy_slip_contact_pen": RewardTermCfg(
+      func=mdp.foot_xy_slip_contact_pen,
+      weight=-0.20,
       params={
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
@@ -479,7 +492,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "foot_contact_switch_bonus": RewardTermCfg(
       func=mdp.foot_contact_switch_bonus,
-      weight=0.5,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -495,7 +508,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_ortho_to_ball": RewardTermCfg(
       func=mdp.stance_ortho_to_ball_reward,
-      weight=0.4,
+      weight=0.6,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -509,11 +522,35 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       weight=1.0,
       params={},
     ),
-    "drift_deadzone": None,
-    "xy_speed_deadzone": None,
+    "drift_deadzone": RewardTermCfg(
+      func=mdp.xy_drift_deadzone_reward,
+      weight=0.0,
+      params={"command_name": "set_square"},
+    ),
+    "xy_speed_deadzone": RewardTermCfg(
+      func=mdp.xy_speed_deadzone_reward,
+      weight=0.3,
+      params={},
+    ),
+    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.10),
+    "joint_pos_limits": RewardTermCfg(
+      func=mdp.joint_pos_limits,
+      weight=-0.8,
+      params={"asset_cfg": SceneEntityCfg("robot", joint_names=(".*",))},
+    ),
+    "body_ang_vel": RewardTermCfg(
+      func=mdp.body_ang_vel_penalty,
+      weight=-0.05,
+      params={},
+    ),
+    "angular_momentum": RewardTermCfg(
+      func=mdp.angular_momentum_penalty,
+      weight=-0.02,
+      params={"sensor_name": "robot/root_angmom"},
+    ),
     "twist_pen": RewardTermCfg(
       func=mdp.torso_waist_twist_penalty,
-      weight=-0.05,
+      weight=-0.04,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
