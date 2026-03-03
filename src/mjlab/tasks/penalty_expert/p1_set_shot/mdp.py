@@ -498,3 +498,78 @@ class FallTermination:
       torch.zeros_like(self._counter),
     )
     return self._counter >= int(consecutive_steps)
+  
+class SecondTouchTermination:
+  """
+  Termina l'episodio se il robot tocca la palla più di una volta.
+  Tocchi rilevati come "palla vicina a un piede" con isteresi.
+  """
+
+  def __init__(self, cfg, env):
+    del cfg
+    self._touch_count = torch.zeros(env.num_envs, device=env.device, dtype=torch.long)
+    self._touching = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+
+    robot = env.scene["robot"]
+
+    # Scegli automaticamente quale tensor di posizioni usare + quale lista di nomi
+    if hasattr(robot.data, "body_pos_w") and hasattr(robot.data, "body_names"):
+      self._pos_attr = "body_pos_w"
+      names = list(robot.data.body_names)
+      self._is_state = False
+    elif hasattr(robot.data, "link_pos_w") and hasattr(robot.data, "link_names"):
+      self._pos_attr = "link_pos_w"
+      names = list(robot.data.link_names)
+      self._is_state = False
+    elif hasattr(robot.data, "body_state_w") and hasattr(robot.data, "body_names"):
+      self._pos_attr = "body_state_w"
+      names = list(robot.data.body_names)
+      self._is_state = True
+    elif hasattr(robot.data, "link_state_w") and hasattr(robot.data, "link_names"):
+      self._pos_attr = "link_state_w"
+      names = list(robot.data.link_names)
+      self._is_state = True
+    else:
+      raise RuntimeError(
+        "SecondTouchTermination: can't find body/link positions. "
+        "Expected one of: body_pos_w+body_names, link_pos_w+link_names, "
+        "body_state_w+body_names, link_state_w+link_names."
+      )
+
+    # Indici dei piedi (devono esistere in names)
+    self._lf_i = names.index("left_foot_link")
+    self._rf_i = names.index("right_foot_link")
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    self._touch_count[env_ids] = 0
+    self._touching[env_ids] = False
+
+  def __call__(
+    self,
+    env,
+    command_name: str = "set_shot",  # unused, ma lo lasciamo per coerenza
+    touch_enter: float = 0.16,
+    touch_exit: float = 0.22,
+  ) -> torch.Tensor:
+    robot = env.scene["robot"]
+    ball = env.scene["soccer_ball"]
+
+    ball_xy = ball.data.root_link_pos_w[:, :2]
+
+    pos = getattr(robot.data, self._pos_attr)
+    if self._is_state:
+      pos = pos[..., :3]  # xyz sono i primi 3
+
+    feet_xy = pos[:, [self._lf_i, self._rf_i], :2]  # (N,2,2)
+
+    d_l = torch.linalg.norm(ball_xy - feet_xy[:, 0, :], dim=1)
+    d_r = torch.linalg.norm(ball_xy - feet_xy[:, 1, :], dim=1)
+    d_min = torch.minimum(d_l, d_r)
+
+    touching_now = torch.where(self._touching, d_min < touch_exit, d_min < touch_enter)
+    new_touch = touching_now & (~self._touching)
+
+    self._touch_count = self._touch_count + new_touch.long()
+    self._touching = touching_now
+
+    return self._touch_count > 1

@@ -15,6 +15,7 @@ from mjlab.motor_controller_stage1.latent_action import (
   MotorLatentActionCfg,
   motor_last_decoded_action,
 )
+from mjlab.sensor import ContactSensor
 from mjlab.utils.lab_api.math import (
   quat_from_euler_xyz,
   quat_mul,
@@ -37,31 +38,57 @@ def _normalize_xy(vec_xy: torch.Tensor, eps: float = 1.0e-6) -> torch.Tensor:
   return vec_xy / norm
 
 
-def _compute_yaw_error(
+def _yaw_from_quat_wxyz(quat_wxyz: torch.Tensor) -> torch.Tensor:
+  qw, qx, qy, qz = (
+    quat_wxyz[:, 0],
+    quat_wxyz[:, 1],
+    quat_wxyz[:, 2],
+    quat_wxyz[:, 3],
+  )
+  return torch.atan2(
+    2.0 * (qw * qz + qx * qy),
+    1.0 - 2.0 * (qy * qy + qz * qz),
+  )
+
+
+def _yaw_error_from_heading(
+  source_pos_w_xy: torch.Tensor,
+  source_yaw: torch.Tensor,
+  target_pos_w: torch.Tensor,
+) -> torch.Tensor:
+  target_xy = target_pos_w[:, :2] - source_pos_w_xy
+  target_dir_xy = _normalize_xy(target_xy)
+  forward_xy = torch.stack([torch.cos(source_yaw), torch.sin(source_yaw)], dim=1)
+
+  dot = torch.sum(forward_xy * target_dir_xy, dim=1).clamp(-1.0, 1.0)
+  det = forward_xy[:, 0] * target_dir_xy[:, 1] - forward_xy[:, 1] * target_dir_xy[:, 0]
+  return torch.atan2(det, dot)
+
+
+def _compute_torso_yaw_error(
   robot: Entity,
   target_pos_w: torch.Tensor,
 ) -> torch.Tensor:
   """Signed yaw-only error between torso heading and target direction.
 
-  Uses only torso yaw (rotation around world z). Pitch/roll are ignored.
-  Target direction is projected on the ground plane (xy).
+  In the current T1_23 model, torso frame aligns with root link (Trunk).
   """
-  trunk_pos = robot.data.root_link_pos_w
-  target_xy = target_pos_w[:, :2] - trunk_pos[:, :2]
-  target_dir_xy = _normalize_xy(target_xy)
+  torso_pos_w_xy = robot.data.root_link_pos_w[:, :2]
+  torso_yaw = _yaw_from_quat_wxyz(robot.data.root_link_quat_w)
+  return _yaw_error_from_heading(torso_pos_w_xy, torso_yaw, target_pos_w)
 
-  # Extract yaw from world quaternion (wxyz) and build horizontal forward direction.
-  q = robot.data.root_link_quat_w
-  qw, qx, qy, qz = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
-  yaw = torch.atan2(
-    2.0 * (qw * qz + qx * qy),
-    1.0 - 2.0 * (qy * qy + qz * qz),
-  )
-  forward_xy = torch.stack([torch.cos(yaw), torch.sin(yaw)], dim=1)
 
-  dot = torch.sum(forward_xy * target_dir_xy, dim=1).clamp(-1.0, 1.0)
-  det = forward_xy[:, 0] * target_dir_xy[:, 1] - forward_xy[:, 1] * target_dir_xy[:, 0]
-  return torch.atan2(det, dot)
+def _compute_waist_yaw_error(
+  env,
+  robot: Entity,
+  target_pos_w: torch.Tensor,
+  waist_body_name: str = r"(?i)^waist$",
+) -> torch.Tensor:
+  """Signed yaw-only error between anatomical waist/pelvis heading and target."""
+  waist_idx = _resolve_single_body_index_cached(env, robot, waist_body_name)
+  waist_pos_w_xy = robot.data.body_link_pos_w[:, waist_idx, :2]
+  waist_yaw = _yaw_from_quat_wxyz(robot.data.body_link_quat_w[:, waist_idx, :])
+  return _yaw_error_from_heading(waist_pos_w_xy, waist_yaw, target_pos_w)
 
 
 def _outside_area_violation(
@@ -80,6 +107,188 @@ def _outside_area_violation(
 
 def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
+
+
+def _resolve_body_index_pair_cached(
+  env,
+  robot: Entity,
+  body_name_a: str,
+  body_name_b: str,
+) -> tuple[int, int]:
+  """Resolve and cache body indices for repeated reward computation."""
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e1_body_index_pair_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  key = (id(robot), body_name_a, body_name_b)
+  if key not in cache:
+    ids, names = robot.find_bodies((body_name_a, body_name_b), preserve_order=True)
+    if len(ids) != 2:
+      raise ValueError(
+        "Could not resolve exactly two foot bodies for stance_ortho_to_ball_reward. "
+        f"Got names={names} for patterns=({body_name_a}, {body_name_b})."
+      )
+    cache[key] = (int(ids[0]), int(ids[1]))
+
+  return cache[key]
+
+
+def _resolve_single_body_index_cached(
+  env,
+  robot: Entity,
+  body_name_pattern: str,
+) -> int:
+  """Resolve and cache a single body index for repeated reward computation."""
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e1_body_index_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  key = (id(robot), body_name_pattern)
+  if key not in cache:
+    ids, names = robot.find_bodies(body_name_pattern, preserve_order=True)
+    if len(ids) != 1:
+      raise ValueError(
+        "Could not resolve exactly one body. "
+        f"Got names={names} for pattern=({body_name_pattern})."
+      )
+    cache[key] = int(ids[0])
+
+  return cache[key]
+
+
+def _get_waist_yaw_progress_prev_error_buffer(
+  env,
+  robot: Entity,
+  waist_body_name: str,
+) -> torch.Tensor:
+  """Get/create per-env previous waist yaw error magnitude buffer."""
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e1_waist_yaw_progress_prev_error_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  key = (id(robot), waist_body_name)
+  prev = cache.get(key)
+  if prev is None or prev.shape[0] != int(env.num_envs) or prev.device != robot.data.root_link_pos_w.device:
+    prev = torch.zeros(env.num_envs, device=robot.data.root_link_pos_w.device)
+    cache[key] = prev
+  return prev
+
+
+def _get_bool_state_buffer(
+  env,
+  name: str,
+  num_envs: int,
+  device: torch.device | str,
+) -> torch.Tensor:
+  """Get/create per-env bool buffer used by stateful reward shaping."""
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e1_reward_bool_state_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  buf = cache.get(name)
+  if (
+    buf is None
+    or buf.shape != (num_envs,)
+    or buf.device != torch.device(device)
+    or buf.dtype != torch.bool
+  ):
+    buf = torch.zeros((num_envs,), dtype=torch.bool, device=device)
+    cache[name] = buf
+  return buf
+
+
+def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
+  extras = getattr(env, "extras", None)
+  if extras is None:
+    return None
+  log = extras.get("log")
+  if log is None:
+    log = {}
+    extras["log"] = log
+  return log
+
+
+def _foot_support_from_sensor(
+  env,
+  sensor_name: str | None,
+  fz_thresh: float,
+  support_sign: str = "neg",
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+  """Compute support-contact boolean from vertical net force with robust fallback.
+
+  Preferred logic (E1): support = (Fz < -fz_thresh).
+  Fallback logic (missing/invalid force): support = (found > 0).
+  """
+  if sensor_name is None or sensor_name == "":
+    zeros_bool = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    zeros_f = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
+    return zeros_bool, zeros_f, zeros_f
+
+  sensor = cast(ContactSensor, env.scene[sensor_name])
+  found = sensor.data.found
+  if found is None:
+    found_contact = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+  elif found.ndim == 1:
+    found_contact = found > 0.0
+  else:
+    found_contact = torch.any(found > 0.0, dim=1)
+
+  force = sensor.data.force
+  if force is None:
+    zeros_f = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
+    return found_contact, zeros_f, zeros_f
+
+  # Expected shapes are [B, 3] or [B, N, 3].
+  if force.ndim == 2 and force.shape[-1] == 3:
+    fz = force[:, 2]
+    force_norm = torch.linalg.norm(force, dim=1)
+  elif force.ndim == 3 and force.shape[-1] == 3:
+    fz_all = force[..., 2]
+    force_norm_all = torch.linalg.norm(force, dim=-1)
+    if fz_all.ndim == 1:
+      fz = fz_all
+      force_norm = force_norm_all
+    else:
+      fz = torch.max(fz_all, dim=1).values
+      force_norm = torch.max(force_norm_all, dim=1).values
+  else:
+    zeros_f = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
+    return found_contact, zeros_f, zeros_f
+
+  if fz.ndim != 1:
+    fz = fz.reshape(env.num_envs, -1).max(dim=1).values
+  if force_norm.ndim != 1:
+    force_norm = force_norm.reshape(env.num_envs, -1).max(dim=1).values
+  fz = fz.to(torch.float32)
+  force_norm = force_norm.to(torch.float32)
+
+  valid_fz = torch.isfinite(fz)
+  if support_sign == "neg":
+    support_from_force = fz < -float(fz_thresh)
+  elif support_sign == "pos":
+    support_from_force = fz > float(fz_thresh)
+  elif support_sign == "abs":
+    support_from_force = fz.abs() > float(fz_thresh)
+  else:
+    raise ValueError(
+      f"Unsupported support_sign='{support_sign}'. Use one of: 'neg', 'pos', 'abs'."
+    )
+  support = torch.where(valid_fz, support_from_force, found_contact)
+  fz_clean = torch.nan_to_num(fz, nan=0.0, posinf=0.0, neginf=0.0)
+  force_norm_clean = torch.nan_to_num(force_norm, nan=0.0, posinf=0.0, neginf=0.0)
+  return support, fz_clean, force_norm_clean
 
 
 def get_target_ball_cfg() -> EntityCfg:
@@ -142,6 +351,10 @@ class SetSquareCommandCfg(CommandTermCfg):
   # Keep target fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
   debug_vis: bool = False
+  stance_left_foot_body_name: str = r"^left_foot_link$"
+  stance_right_foot_body_name: str = r"^right_foot_link$"
+  stance_ortho_w_min: float = 0.10
+  stance_ortho_d_min: float = 0.35
 
   @dataclass
   class VizCfg:
@@ -151,6 +364,17 @@ class SetSquareCommandCfg(CommandTermCfg):
     width: float = 0.015
     desired_color: tuple[float, float, float, float] = (0.2, 0.2, 0.9, 0.75)
     actual_color: tuple[float, float, float, float] = (0.0, 0.9, 0.6, 0.75)
+    stance_axis_length: float = 0.55
+    stance_axis_width: float = 0.012
+    stance_z_offset: float = 0.03
+    foot_line_radius: float = 0.008
+    foot_line_color: tuple[float, float, float, float] = (0.85, 0.85, 0.85, 0.70)
+    ball_dir_color: tuple[float, float, float, float] = (0.20, 0.65, 1.0, 0.85)
+    stance_target_color: tuple[float, float, float, float] = (0.95, 0.85, 0.20, 0.85)
+    stance_good_color: tuple[float, float, float, float] = (0.10, 0.85, 0.20, 0.90)
+    stance_bad_color: tuple[float, float, float, float] = (0.95, 0.20, 0.20, 0.90)
+    stance_neutral_color: tuple[float, float, float, float] = (0.55, 0.55, 0.55, 0.70)
+    stance_cue_radius: float = 0.035
 
   viz: VizCfg = field(default_factory=VizCfg)
 
@@ -211,7 +435,7 @@ class SetSquareCommand(CommandTerm):
   def _update_metrics(self) -> None:
     self._target_pos_w[:] = self._ball.data.root_link_pos_w
 
-    yaw_error = _compute_yaw_error(self._robot, self._target_pos_w)
+    yaw_error = _compute_torso_yaw_error(self._robot, self._target_pos_w)
     self.metrics["yaw_error_abs"] = yaw_error.abs()
 
     trunk_xy = self._robot.data.root_link_pos_w[:, :2]
@@ -686,6 +910,92 @@ class SetSquareCommand(CommandTerm):
       label="actual_facing",
     )
 
+    # Stance orthogonality cue (for stance_ortho_to_ball reward).
+    try:
+      left_idx, right_idx = _resolve_body_index_pair_cached(
+        self._env,
+        self._robot,
+        self.cfg.stance_left_foot_body_name,
+        self.cfg.stance_right_foot_body_name,
+      )
+    except ValueError:
+      return
+
+    body_pos = self._robot.data.body_link_pos_w[batch]
+    left_foot = body_pos[left_idx].clone()
+    right_foot = body_pos[right_idx].clone()
+    left_foot[2] += float(self.cfg.viz.stance_z_offset)
+    right_foot[2] += float(self.cfg.viz.stance_z_offset)
+
+    visualizer.add_cylinder(
+      left_foot.cpu().numpy(),
+      right_foot.cpu().numpy(),
+      radius=float(self.cfg.viz.foot_line_radius),
+      color=self.cfg.viz.foot_line_color,
+      label="stance_foot_line",
+    )
+
+    stance_vec_xy = right_foot[:2] - left_foot[:2]
+    stance_width = torch.linalg.norm(stance_vec_xy)
+    ball_vec_xy = target_pos[:2] - root_pos[:2]
+    ball_dist = torch.linalg.norm(ball_vec_xy)
+
+    if float(stance_width.item()) <= 1.0e-6 or float(ball_dist.item()) <= 1.0e-6:
+      return
+
+    stance_dir_xy = stance_vec_xy / stance_width.clamp_min(1.0e-6)
+    ball_dir_xy = ball_vec_xy / ball_dist.clamp_min(1.0e-6)
+    stance_ortho_dir_xy = torch.stack([-stance_dir_xy[1], stance_dir_xy[0]])
+    if torch.dot(stance_ortho_dir_xy, ball_dir_xy) < 0.0:
+      stance_ortho_dir_xy = -stance_ortho_dir_xy
+
+    dot_sb = torch.dot(stance_dir_xy, ball_dir_xy).clamp(-1.0, 1.0)
+    stance_ortho = 1.0 - torch.square(dot_sb)
+    gate_on = (
+      float(stance_width.item()) > float(self.cfg.stance_ortho_w_min)
+      and float(ball_dist.item()) > float(self.cfg.stance_ortho_d_min)
+    )
+
+    cue_origin = 0.5 * (left_foot + right_foot)
+    cue_origin[2] += float(self.cfg.viz.stance_z_offset)
+    axis_len = float(self.cfg.viz.stance_axis_length)
+    ball_end = cue_origin.clone()
+    ball_end[:2] += ball_dir_xy * axis_len
+    stance_ortho_end = cue_origin.clone()
+    stance_ortho_end[:2] += stance_ortho_dir_xy * axis_len
+
+    visualizer.add_arrow(
+      cue_origin.cpu().numpy(),
+      ball_end.cpu().numpy(),
+      color=self.cfg.viz.ball_dir_color,
+      width=float(self.cfg.viz.stance_axis_width),
+      label="stance_ball_dir",
+    )
+
+    if gate_on:
+      t = float(stance_ortho.item())
+      stance_color = tuple(
+        (1.0 - t) * self.cfg.viz.stance_bad_color[i]
+        + t * self.cfg.viz.stance_good_color[i]
+        for i in range(4)
+      )
+    else:
+      stance_color = self.cfg.viz.stance_neutral_color
+
+    visualizer.add_arrow(
+      cue_origin.cpu().numpy(),
+      stance_ortho_end.cpu().numpy(),
+      color=stance_color,
+      width=float(self.cfg.viz.stance_axis_width),
+      label="stance_footline_ortho",
+    )
+    visualizer.add_sphere(
+      cue_origin.cpu().numpy(),
+      radius=float(self.cfg.viz.stance_cue_radius),
+      color=stance_color,
+      label="stance_ortho_cue",
+    )
+
 
 def target_direction_xy(
   env,
@@ -732,7 +1042,7 @@ def ball_velocity_relative_xyz(
   return ball.data.root_link_lin_vel_w - robot.data.root_link_lin_vel_w
 
 
-def yaw_alignment_reward(
+def yaw_alignment_torso_reward(
   env,
   command_name: str = "set_square",
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
@@ -741,8 +1051,315 @@ def yaw_alignment_reward(
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[command.cfg.ball_entity_name]
-  yaw_error = _compute_yaw_error(robot, ball.data.root_link_pos_w)
+  yaw_error = _compute_torso_yaw_error(robot, ball.data.root_link_pos_w)
   return torch.exp(-k * torch.square(yaw_error))
+
+
+def yaw_alignment_waist_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  k: float = 2.5,
+  waist_body_name: str = r"(?i)^waist$",
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  # Waist alignment encourages leg/foot pivot micro-steps instead of trunk-only rotation.
+  yaw_error = _compute_waist_yaw_error(
+    env,
+    robot,
+    ball.data.root_link_pos_w,
+    waist_body_name=waist_body_name,
+  )
+  return torch.exp(-k * torch.square(yaw_error))
+
+
+def waist_yaw_progress_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  waist_body_name: str = r"(?i)^waist$",
+  err_gate: float = 0.25,
+  upright_gate: float = 0.80,
+  max_delta: float = 0.35,
+  tilt_sigma: float = 0.5,
+) -> torch.Tensor:
+  """Reward positive reduction in absolute waist yaw error to the ball."""
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+
+  yaw_err_waist = _compute_waist_yaw_error(
+    env,
+    robot,
+    ball.data.root_link_pos_w,
+    waist_body_name=waist_body_name,
+  )
+  err_abs = yaw_err_waist.abs()
+
+  prev_err_abs = _get_waist_yaw_progress_prev_error_buffer(env, robot, waist_body_name)
+  is_first_step = env.episode_length_buf <= 1
+  effective_prev = torch.where(is_first_step, err_abs, prev_err_abs)
+
+  prog_raw = effective_prev - err_abs
+  prog = torch.clamp(prog_raw, min=0.0, max=float(max_delta))
+
+  projected_gravity_b = robot.data.projected_gravity_b
+  tilt = torch.linalg.norm(projected_gravity_b[:, :2], dim=1)
+  upright = torch.exp(-torch.square(tilt) / max(tilt_sigma * tilt_sigma, 1.0e-6))
+
+  mask = (upright > float(upright_gate)) & (err_abs > float(err_gate))
+  reward = mask.float() * prog
+
+  prev_err_abs.copy_(err_abs)
+  return reward
+
+
+def waist_yaw_abs_penalty(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  waist_body_name: str = r"(?i)^waist$",
+  upright_gate: float = 0.85,
+  tilt_sigma: float = 0.5,
+) -> torch.Tensor:
+  """Penalize absolute waist yaw error to keep persistent pressure to square up."""
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+
+  yaw_err_waist = _compute_waist_yaw_error(
+    env,
+    robot,
+    ball.data.root_link_pos_w,
+    waist_body_name=waist_body_name,
+  )
+  err_abs = yaw_err_waist.abs()
+
+  projected_gravity_b = robot.data.projected_gravity_b
+  tilt = torch.linalg.norm(projected_gravity_b[:, :2], dim=1)
+  upright = torch.exp(-torch.square(tilt) / max(tilt_sigma * tilt_sigma, 1.0e-6))
+  penalty = torch.where(
+    upright > float(upright_gate),
+    err_abs,
+    torch.zeros_like(err_abs),
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_waist_yaw_abs_pen_raw_mean"] = torch.mean(penalty)
+
+  return penalty
+
+
+def torso_waist_twist_penalty(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  waist_body_name: str = r"(?i)^waist$",
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  yaw_err_torso = _compute_torso_yaw_error(robot, ball.data.root_link_pos_w)
+  yaw_err_waist = _compute_waist_yaw_error(
+    env,
+    robot,
+    ball.data.root_link_pos_w,
+    waist_body_name=waist_body_name,
+  )
+  return torch.square(yaw_err_torso - yaw_err_waist)
+
+
+def foot_yaw_slip_contact_pen(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  left_contact_sensor_name: str = "left_foot_ground_contact",
+  right_contact_sensor_name: str = "right_foot_ground_contact",
+  fz_thresh: float = 40.0,
+  support_sign: str = "neg",
+) -> torch.Tensor:
+  """Penalize yaw spinning of feet while they are in contact with the ground."""
+  robot: Entity = env.scene[asset_cfg.name]
+  left_idx, right_idx = _resolve_body_index_pair_cached(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+
+  support_l, fz_l, fnorm_l = _foot_support_from_sensor(
+    env, left_contact_sensor_name, fz_thresh, support_sign=support_sign
+  )
+  support_r, fz_r, fnorm_r = _foot_support_from_sensor(
+    env, right_contact_sensor_name, fz_thresh, support_sign=support_sign
+  )
+
+  body_ang_vel_w = robot.data.body_link_ang_vel_w
+  slip_l = torch.abs(body_ang_vel_w[:, left_idx, 2])
+  slip_r = torch.abs(body_ang_vel_w[:, right_idx, 2])
+  penalty = 0.5 * (
+    support_l.float() * torch.square(slip_l) + support_r.float() * torch.square(slip_r)
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_foot_yaw_slip_contact_pen_raw_mean"] = torch.mean(penalty)
+    log["Metrics/e1_left_foot_fz_mean"] = torch.mean(fz_l)
+    log["Metrics/e1_right_foot_fz_mean"] = torch.mean(fz_r)
+    log["Metrics/e1_left_foot_fz_min"] = torch.min(fz_l)
+    log["Metrics/e1_left_foot_fz_max"] = torch.max(fz_l)
+    log["Metrics/e1_right_foot_fz_min"] = torch.min(fz_r)
+    log["Metrics/e1_right_foot_fz_max"] = torch.max(fz_r)
+    log["Metrics/e1_left_foot_force_norm_mean"] = torch.mean(fnorm_l)
+    log["Metrics/e1_right_foot_force_norm_mean"] = torch.mean(fnorm_r)
+    log["Metrics/e1_left_support_frac"] = torch.mean(support_l.float())
+    log["Metrics/e1_right_support_frac"] = torch.mean(support_r.float())
+    # Keep legacy metric names for continuity in dashboards.
+    log["Metrics/e1_foot_contact_left_frac"] = torch.mean(support_l.float())
+    log["Metrics/e1_foot_contact_right_frac"] = torch.mean(support_r.float())
+
+  return penalty
+
+
+def foot_contact_switch_bonus(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  left_contact_sensor_name: str = "left_foot_ground_contact",
+  right_contact_sensor_name: str = "right_foot_ground_contact",
+  waist_body_name: str = r"(?i)^waist$",
+  upright_gate: float = 0.85,
+  err_gate: float = 0.25,
+  fz_thresh: float = 40.0,
+  support_sign: str = "neg",
+) -> torch.Tensor:
+  """Small exploration bonus for contact state switches during meaningful misalignment."""
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+
+  _resolve_body_index_pair_cached(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+  support_l, fz_l, fnorm_l = _foot_support_from_sensor(
+    env, left_contact_sensor_name, fz_thresh, support_sign=support_sign
+  )
+  support_r, fz_r, fnorm_r = _foot_support_from_sensor(
+    env, right_contact_sensor_name, fz_thresh, support_sign=support_sign
+  )
+
+  prev_contact_l = _get_bool_state_buffer(
+    env,
+    name=f"support_prev::{left_contact_sensor_name}",
+    num_envs=env.num_envs,
+    device=env.device,
+  )
+  prev_contact_r = _get_bool_state_buffer(
+    env,
+    name=f"support_prev::{right_contact_sensor_name}",
+    num_envs=env.num_envs,
+    device=env.device,
+  )
+  is_first_step = env.episode_length_buf <= 1
+  prev_l_eff = torch.where(is_first_step, support_l, prev_contact_l)
+  prev_r_eff = torch.where(is_first_step, support_r, prev_contact_r)
+  switch_l = torch.logical_xor(support_l, prev_l_eff)
+  switch_r = torch.logical_xor(support_r, prev_r_eff)
+  switch = switch_l | switch_r
+
+  yaw_err_waist = _compute_waist_yaw_error(
+    env,
+    robot,
+    ball.data.root_link_pos_w,
+    waist_body_name=waist_body_name,
+  )
+  err_abs = yaw_err_waist.abs()
+  upright = upright_stability_reward(env, asset_cfg=asset_cfg)
+  gate = (upright > float(upright_gate)) & (err_abs > float(err_gate))
+  bonus = gate.float() * switch.float()
+
+  prev_contact_l.copy_(support_l)
+  prev_contact_r.copy_(support_r)
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_foot_contact_switch_bonus_raw_mean"] = torch.mean(bonus)
+    log["Metrics/e1_left_foot_fz_mean"] = torch.mean(fz_l)
+    log["Metrics/e1_right_foot_fz_mean"] = torch.mean(fz_r)
+    log["Metrics/e1_left_foot_fz_min"] = torch.min(fz_l)
+    log["Metrics/e1_left_foot_fz_max"] = torch.max(fz_l)
+    log["Metrics/e1_right_foot_fz_min"] = torch.min(fz_r)
+    log["Metrics/e1_right_foot_fz_max"] = torch.max(fz_r)
+    log["Metrics/e1_left_foot_force_norm_mean"] = torch.mean(fnorm_l)
+    log["Metrics/e1_right_foot_force_norm_mean"] = torch.mean(fnorm_r)
+    log["Metrics/e1_left_support_frac"] = torch.mean(support_l.float())
+    log["Metrics/e1_right_support_frac"] = torch.mean(support_r.float())
+    log["Metrics/e1_support_switch_frac"] = torch.mean(switch.float())
+    # Keep legacy metric names for continuity in dashboards.
+    log["Metrics/e1_foot_contact_switch_frac"] = torch.mean(switch.float())
+    log["Metrics/e1_foot_contact_left_frac"] = torch.mean(support_l.float())
+    log["Metrics/e1_foot_contact_right_frac"] = torch.mean(support_r.float())
+
+  return bonus
+
+
+def stance_ortho_to_ball_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  w_min: float = 0.10,
+  d_min: float = 0.35,
+  eps: float = 1.0e-6,
+  neutral_when_mask_off: bool = True,
+) -> torch.Tensor:
+  """Reward stance axis orthogonality to ball direction in XY plane.
+
+  stance axis: left->right foot direction
+  target: dot(stance_dir, ball_dir) ~= 0
+  """
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+
+  left_idx, right_idx = _resolve_body_index_pair_cached(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+
+  body_pos_w = robot.data.body_link_pos_w
+  p_l_xy = body_pos_w[:, left_idx, :2]
+  p_r_xy = body_pos_w[:, right_idx, :2]
+
+  stance_vec_xy = p_r_xy - p_l_xy
+  stance_width = torch.linalg.norm(stance_vec_xy, dim=1)
+  stance_dir_xy = stance_vec_xy / stance_width.unsqueeze(1).clamp_min(float(eps))
+
+  root_xy = robot.data.root_link_pos_w[:, :2]
+  ball_xy = ball.data.root_link_pos_w[:, :2]
+  ball_vec_xy = ball_xy - root_xy
+  ball_dist = torch.linalg.norm(ball_vec_xy, dim=1)
+  ball_dir_xy = ball_vec_xy / ball_dist.unsqueeze(1).clamp_min(float(eps))
+
+  dot = torch.sum(stance_dir_xy * ball_dir_xy, dim=1).clamp(-1.0, 1.0)
+  stance_ortho = 1.0 - torch.square(dot)
+
+  mask = (stance_width > float(w_min)) & (ball_dist > float(d_min))
+  if neutral_when_mask_off:
+    return torch.where(mask, stance_ortho, torch.ones_like(stance_ortho))
+  return mask.float() * stance_ortho
 
 
 def upright_stability_reward(
@@ -754,35 +1371,43 @@ def upright_stability_reward(
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
 
-  height = robot.data.root_link_pos_w[:, 2]
-  height_err_sq = torch.square(height - height_target)
-  height_reward = torch.exp(-height_err_sq / max(height_sigma * height_sigma, 1.0e-6))
+  # TEMPORARY (E1 set-square): disable height shaping, keep tilt-only upright reward.
+  # height = robot.data.root_link_pos_w[:, 2]
+  # height_err_sq = torch.square(height - height_target)
+  # height_reward = torch.exp(-height_err_sq / max(height_sigma * height_sigma, 1.0e-6))
+  del height_target, height_sigma
 
   projected_gravity_b = robot.data.projected_gravity_b
   tilt = torch.linalg.norm(projected_gravity_b[:, :2], dim=1)
   upright_reward = torch.exp(-torch.square(tilt) / max(tilt_sigma * tilt_sigma, 1.0e-6))
 
-  return height_reward * upright_reward
+  return upright_reward
 
 
-def xy_drift_l2(
+def xy_drift_deadzone(
   env,
   command_name: str = "set_square",
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  r_free: float = 0.10,
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   delta = robot.data.root_link_pos_w[:, :2] - command.spawn_pos_w[:, :2]
-  return torch.sum(torch.square(delta), dim=1)
+  drift_mag = torch.linalg.norm(delta, dim=1)
+  drift_violation = torch.relu(drift_mag - float(r_free))
+  return torch.square(drift_violation)
 
 
-def xy_speed_l2(
+def xy_speed_deadzone(
   env,
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  v_free: float = 0.12,
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   vel_xy = robot.data.root_link_lin_vel_w[:, :2]
-  return torch.sum(torch.square(vel_xy), dim=1)
+  speed_mag = torch.linalg.norm(vel_xy, dim=1)
+  speed_violation = torch.relu(speed_mag - float(v_free))
+  return torch.square(speed_violation)
 
 
 def outside_keeper_area_penalty(

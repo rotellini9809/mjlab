@@ -18,6 +18,17 @@ uv run collect-rollouts Mjlab-Tracking-Flat-Booster-T1_23 \
   --noise-std 0.0
 ```
 
+Collect all runs in a workspace group:
+
+```bash
+uv run collect-rollouts Mjlab-Tracking-Flat-Booster-T1_23 \
+  --wandb-workspace your-org/mjlab \
+  --wandb-group your_group_name \
+  --output-dir ./data/motor_controller_rollouts/my_dataset \
+  --num-envs 64 \
+  --num-episodes 200
+```
+
 Collector behavior:
 
 - Clip-aware random start:
@@ -72,7 +83,7 @@ done = terminated | truncated
 Collector writes `metadata.json` next to shards with:
 
 - `collector_version`
-- `control_dt` (Stage-1 expects `0.03`)
+- `control_dt` (must match rollout env step dt; default collector check is `0.02`)
 - `stage1_chunk_len_hint`
 - `stage1_k_future_hint`
 - `stage1_start_margin`

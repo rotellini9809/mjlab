@@ -1,5 +1,6 @@
 """Task registration for Goalkeeper Expert E1 (Set & Square) on Booster T1 23-DoF."""
 
+from mjlab.rl.runner import MjlabOnPolicyRunner
 from mjlab.tasks.registry import register_mjlab_task
 
 from .env_cfgs import booster_t1_23_gk_expert_set_square_env_cfg
@@ -11,5 +12,5 @@ register_mjlab_task(
   env_cfg=booster_t1_23_gk_expert_set_square_env_cfg(),
   play_env_cfg=booster_t1_23_gk_expert_set_square_env_cfg(play=True),
   rl_cfg=booster_t1_23_gk_expert_set_square_ppo_runner_cfg(),
-  runner_cls=None,
+  runner_cls=MjlabOnPolicyRunner,
 )

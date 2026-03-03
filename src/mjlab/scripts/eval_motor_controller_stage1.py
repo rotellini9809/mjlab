@@ -80,41 +80,47 @@ def _load_metadata(path: Path) -> dict[str, Any]:
   return data
 
 
-def _extract_policy_tensor(obs: Any) -> torch.Tensor:
-  # Always prefer the "policy" group if present.
-  if isinstance(obs, dict):
-    if "policy" not in obs:
-      raise RuntimeError("Policy observation group not found in observations.")
-    obs_policy = obs["policy"]
-  else:
-    obs_policy = obs
+def _resolve_obs_group_name(group_names: set[str]) -> str:
+  if "actor" in group_names:
+    return "actor"
+  raise RuntimeError(f"No 'actor' observation group found: {sorted(group_names)}")
 
-  if torch.is_tensor(obs_policy):
-    return obs_policy
+
+def _extract_obs_tensor(obs: Any) -> torch.Tensor:
+  if isinstance(obs, dict):
+    if "actor" in obs:
+      obs_group = obs["actor"]
+    else:
+      raise RuntimeError("Actor observation group not found in observations.")
+  else:
+    obs_group = obs
+
+  if torch.is_tensor(obs_group):
+    return obs_group
 
   try:
     from tensordict import TensorDictBase  # type: ignore
   except Exception:
     TensorDictBase = None  # type: ignore
 
-  if TensorDictBase is not None and isinstance(obs_policy, TensorDictBase):
-    if "policy" in obs_policy.keys():
-      obs_policy = obs_policy["policy"]
-    elif "obs" in obs_policy.keys():
-      obs_policy = obs_policy["obs"]
+  if TensorDictBase is not None and isinstance(obs_group, TensorDictBase):
+    if "actor" in obs_group.keys():
+      obs_group = obs_group["actor"]
+    elif "obs" in obs_group.keys():
+      obs_group = obs_group["obs"]
     else:
-      values = [obs_policy[k] for k in sorted(obs_policy.keys())]
-      obs_policy = torch.cat(values, dim=-1)
-  elif isinstance(obs_policy, dict):
-    if "policy" in obs_policy:
-      obs_policy = obs_policy["policy"]
+      values = [obs_group[k] for k in sorted(obs_group.keys())]
+      obs_group = torch.cat(values, dim=-1)
+  elif isinstance(obs_group, dict):
+    if "actor" in obs_group:
+      obs_group = obs_group["actor"]
     else:
-      values = [obs_policy[k] for k in sorted(obs_policy.keys())]
-      obs_policy = torch.cat(values, dim=-1)
+      values = [obs_group[k] for k in sorted(obs_group.keys())]
+      obs_group = torch.cat(values, dim=-1)
 
-  if not torch.is_tensor(obs_policy):
-    raise RuntimeError("Policy observations are not concatenated; cannot run.")
-  return obs_policy
+  if not torch.is_tensor(obs_group):
+    raise RuntimeError("Actor observations are not concatenated; cannot run.")
+  return obs_group
 
 
 def _resolve_task_id() -> str:
@@ -173,7 +179,7 @@ class PriorPolicy:
       self.z_prev[reset_mask] = 0.0
 
   def __call__(self, obs: Any) -> torch.Tensor:
-    obs_policy = _extract_policy_tensor(obs)
+    obs_policy = _extract_obs_tensor(obs)
     obs_student, _ = build_student_obs(obs_policy, self.obs_meta)
     if self.pad_missing and self.target_obs_dim is not None:
       if obs_student.shape[-1] < self.target_obs_dim:
@@ -325,13 +331,14 @@ def main() -> None:
   env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
 
   obs_manager = env.unwrapped.observation_manager
+  obs_group_name = _resolve_obs_group_name(set(obs_manager.active_terms.keys()))
   obs_meta = {
-    "term_order": obs_manager.active_terms.get("policy", []),
-    "term_dims": obs_manager.group_obs_term_dim.get("policy", []),
+    "term_order": obs_manager.active_terms.get(obs_group_name, []),
+    "term_dims": obs_manager.group_obs_term_dim.get(obs_group_name, []),
     "act_dim": env.num_actions,
   }
   obs = env.get_observations()
-  obs_policy = _extract_policy_tensor(obs)
+  obs_policy = _extract_obs_tensor(obs)
   obs_student, _ = build_student_obs(obs_policy, obs_meta)
   student_dim = int(obs_student.shape[-1])
   target_dim = int(obs_dim)
@@ -361,7 +368,7 @@ def main() -> None:
   )
 
   obs = env.get_observations()
-  obs_policy = _extract_policy_tensor(obs)
+  obs_policy = _extract_obs_tensor(obs)
   obs_student, _ = build_student_obs(obs_policy, obs_meta)
   if obs_student.shape[-1] != target_dim and not pad_missing:
     raise RuntimeError(

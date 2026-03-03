@@ -8,9 +8,9 @@ from typing import Literal
 import mujoco
 import torch
 import tyro
-from rsl_rl.runners import OnPolicyRunner
 
 from mjlab.envs import ManagerBasedRlEnv
+from mjlab.rl.runner import MjlabOnPolicyRunner
 from mjlab.rl import RslRlVecEnvWrapper
 from mjlab.tasks.registry import load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
@@ -455,7 +455,7 @@ def run_play(task_id: str, cfg: PlayConfig) -> None:
 
       policy = PolicyRandom()
   else:
-    runner_cls = load_runner_cls(task_id) or OnPolicyRunner
+    runner_cls = load_runner_cls(task_id) or MjlabOnPolicyRunner
     runner = runner_cls(env, asdict(agent_cfg), device=device)
     runner.load(str(resume_path), map_location=device)
     policy = runner.get_inference_policy(device=device)

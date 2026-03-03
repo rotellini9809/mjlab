@@ -25,6 +25,7 @@ GOALPOST_X = 7.3
 # E2 keeper spawn near the defended goal line (small lateral error).
 KEEPER_SPAWN_X_RANGE = (GOAL_X_LINE - 0.15, GOAL_X_LINE + 0.15)
 KEEPER_SPAWN_Y_RANGE = (-0.25, 0.25)
+KEEPER_SPAWN_Z = 0.658
 SPAWN_YAW_RANGE = (
   3.141592653589793 - 0.17453292519943295,
   3.141592653589793 + 0.17453292519943295,
@@ -72,6 +73,8 @@ MOTOR_COMMAND_DIM = 46
 MOTOR_ACT_DIM = 23
 
 EPISODE_LENGTH_S = 2.0
+SIM_TIMESTEP_S = 0.005
+CONTROL_DECIMATION = 4
 
 
 def _add_goal_plane_overlay(spec: mujoco.MjSpec) -> None:
@@ -153,7 +156,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
   cfg = make_tracking_env_cfg()
 
   robot_cfg = get_t1_23_robot_cfg()
-  robot_cfg.init_state.pos = (GOAL_X_LINE - 0.2, 0.0, robot_cfg.init_state.pos[2])
+  robot_cfg.init_state.pos = (GOAL_X_LINE - 0.2, 0.0, KEEPER_SPAWN_Z)
   # Face toward field center from the defended +x goal side.
   robot_cfg.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
@@ -199,7 +202,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       scale=T1_23_ACTION_SCALE,
       use_default_offset=True,
       command_name="stand_block",
-      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH"),
+      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER"),
       motor_obs_terms=motor_obs_terms,
       motor_obs_term_dims=motor_obs_term_dims,
       strict_obs_layout=True,
@@ -412,6 +415,8 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     azimuth=178.0,
   )
 
+  cfg.sim.mujoco.timestep = SIM_TIMESTEP_S
+  cfg.decimation = CONTROL_DECIMATION
   cfg.episode_length_s = EPISODE_LENGTH_S
 
   return cfg

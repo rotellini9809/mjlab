@@ -54,6 +54,8 @@ MOTOR_COMMAND_DIM = 46
 MOTOR_ACT_DIM = 23
 
 EPISODE_LENGTH_S = 8.0
+SIM_TIMESTEP_S = 0.005
+CONTROL_DECIMATION = 4
 
 
 
@@ -140,7 +142,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
       scale=T1_23_ACTION_SCALE,
       use_default_offset=True,
       command_name="set_shot",
-      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH"),
+      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_PENALTY"),
       motor_obs_terms=motor_obs_terms,
       motor_obs_term_dims=motor_obs_term_dims,
       strict_obs_layout=True,
@@ -279,11 +281,11 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     ),
 
     # stabilità: più severa + tilt penalty esplicita (anti “sbilanciato in avanti”)
-    "upright": RewardTermCfg(
-        func=mdp.upright_stability_reward,
-        weight=1.6,
-        params={"height_target": 0.62, "height_sigma": 0.12, "tilt_sigma": 0.35},
-    ),
+    #"upright": RewardTermCfg(
+    #    func=mdp.upright_stability_reward,
+    #    weight=1.6,
+    #    params={"height_target": 0.62, "height_sigma": 0.12, "tilt_sigma": 0.35},
+    #),
     "tilt_penalty": RewardTermCfg(
         func=mdp.trunk_tilt_l2_penalty,
         weight=-1.0,
@@ -382,6 +384,8 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     })
 
 
+    cfg.sim.mujoco.timestep = SIM_TIMESTEP_S
+    cfg.decimation = CONTROL_DECIMATION
     cfg.episode_length_s = EPISODE_LENGTH_S  # es. 8.0
 
     # niente random: resampling_time_range infinito già nella command

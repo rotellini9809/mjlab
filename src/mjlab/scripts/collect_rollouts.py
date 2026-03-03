@@ -6,19 +6,19 @@ import json
 import re
 import sys
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import numpy as np
 import torch
 import tyro
-from rsl_rl.runners import OnPolicyRunner
 from tensordict import TensorDict
 from tqdm import tqdm
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.motor_controller_stage1.obs_views import build_student_obs
 from mjlab.rl import RslRlVecEnvWrapper
+from mjlab.rl.runner import MjlabOnPolicyRunner
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.tasks.tracking.mdp.commands import MotionCommand
@@ -26,7 +26,7 @@ from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 
 COLLECTOR_VERSION = "stage1_npmp_v2"
-STAGE1_CONTROL_DT = 0.03
+DEFAULT_EXPECTED_CONTROL_DT = 0.02
 DONE_REASON_NONE = "none"
 DONE_REASON_CLIP_END = "clip_end"
 DONE_REASON_TIMEOUT = "timeout"
@@ -37,7 +37,11 @@ DONE_REASON_INVALID_STATE = "invalid_state"
 
 @dataclass(frozen=True)
 class CollectRolloutsConfig:
-  wandb_run_path: str
+  wandb_run_path: str | None = None
+  wandb_workspace: str | None = None
+  """Entity/project workspace path used to resolve runs (e.g. my-org/mjlab)."""
+  wandb_group: str | None = None
+  """Optional W&B run group filter when using wandb_workspace."""
   num_envs: int | None = None
   num_episodes: int = 100
   num_steps: int | None = None
@@ -55,6 +59,8 @@ class CollectRolloutsConfig:
   stage1_chunk_len_hint: int = 32
   stage1_k_future_hint: int = 8
   stage1_start_margin: int = 4
+  expected_control_dt: float | None = DEFAULT_EXPECTED_CONTROL_DT
+  """Expected env step dt. Set to None to disable strict dt check."""
 
 
 class ShardWriter:
@@ -118,17 +124,15 @@ class ShardWriter:
 
 
 def _resolve_motion_file(
-  env_cfg, cfg: CollectRolloutsConfig, is_tracking_task: bool
+  env_cfg,
+  wandb_run,
+  is_tracking_task: bool,
 ) -> tuple[str | None, str | None]:
   if not is_tracking_task:
     return None, None
   motion_cmd = env_cfg.commands["motion"]
   assert isinstance(motion_cmd, MotionCommandCfg)
 
-  import wandb
-
-  api = wandb.Api()
-  wandb_run = api.run(str(cfg.wandb_run_path))
   art = next((a for a in wandb_run.used_artifacts() if a.type == "motions"), None)
   if art is None:
     raise RuntimeError("No motion artifact found in the run.")
@@ -155,6 +159,8 @@ def _slugify_name(name: str) -> str:
 def _resolve_checkpoint_path(
   agent_cfg, cfg: CollectRolloutsConfig
 ) -> tuple[Path, bool]:
+  if cfg.wandb_run_path is None:
+    raise ValueError("wandb_run_path is required for checkpoint resolution.")
   log_root_path = (Path("logs") / "rsl_rl" / agent_cfg.experiment_name).resolve()
   resume_path, was_cached = get_wandb_checkpoint_path(
     log_root_path, Path(cfg.wandb_run_path)
@@ -166,6 +172,15 @@ def _resolve_checkpoint_path(
     f"[INFO]: Loading checkpoint: {checkpoint_name} (run: {run_id}, {cached_str})"
   )
   return resume_path, was_cached
+
+
+def _get_wandb_run(cfg: CollectRolloutsConfig):
+  if cfg.wandb_run_path is None or cfg.wandb_run_path.strip() == "":
+    raise ValueError("wandb_run_path is required for rollout collection.")
+  import wandb
+
+  api = wandb.Api()
+  return api.run(str(cfg.wandb_run_path))
 
 
 def _removed_dim_from_meta(obs_meta: dict[str, object]) -> int:
@@ -422,8 +437,97 @@ def _sorted_counter_items(counter: Counter[int] | Counter[str]):
   return sorted(counter.items(), key=lambda kv: str(kv[0]))
 
 
+def _resolve_student_obs_group(obs: TensorDict | dict[str, torch.Tensor]) -> str:
+  keys = set(obs.keys())
+  if "actor" in keys:
+    return "actor"
+  raise RuntimeError(
+    "Could not find 'actor' student observation group. "
+    f"Available groups: {sorted(keys)}"
+  )
+
+
+def _resolve_workspace_run_paths(cfg: CollectRolloutsConfig) -> list[str]:
+  if cfg.wandb_workspace is None:
+    return []
+  workspace = cfg.wandb_workspace.strip().strip("/")
+  if workspace.count("/") != 1:
+    raise ValueError(
+      "wandb_workspace must be in '<entity>/<project>' format. "
+      f"Got: {cfg.wandb_workspace!r}"
+    )
+
+  filters: dict[str, object] = {}
+  if cfg.wandb_group is not None and cfg.wandb_group.strip():
+    filters["group"] = cfg.wandb_group.strip()
+
+  import wandb
+
+  api = wandb.Api()
+  runs = api.runs(path=workspace, filters=filters if filters else None)
+  rows: list[tuple[str, str]] = []
+  for run in runs:
+    run_id = getattr(run, "id", None)
+    if not run_id:
+      continue
+    entity = getattr(run, "entity", workspace.split("/")[0])
+    project = getattr(run, "project", workspace.split("/")[1])
+    run_path = f"{entity}/{project}/{run_id}"
+    created_at = str(getattr(run, "created_at", ""))
+    rows.append((created_at, run_path))
+
+  rows.sort(key=lambda row: (row[0], row[1]))
+  run_paths = [run_path for _, run_path in rows]
+  if not run_paths:
+    group_msg = (
+      f" and group '{cfg.wandb_group.strip()}'"
+      if cfg.wandb_group is not None and cfg.wandb_group.strip()
+      else ""
+    )
+    raise RuntimeError(f"No runs found in workspace '{workspace}'{group_msg}.")
+  return run_paths
+
+
+def _resolve_target_run_paths(cfg: CollectRolloutsConfig) -> list[str]:
+  has_run_path = cfg.wandb_run_path is not None and cfg.wandb_run_path.strip() != ""
+  has_workspace = (
+    cfg.wandb_workspace is not None and cfg.wandb_workspace.strip() != ""
+  )
+
+  if has_run_path and has_workspace:
+    raise ValueError(
+      "Provide either --wandb-run-path or --wandb-workspace, not both."
+    )
+  if not has_run_path and not has_workspace:
+    raise ValueError(
+      "Missing W&B source. Provide --wandb-run-path, or "
+      "--wandb-workspace (optionally with --wandb-group)."
+    )
+  if has_run_path:
+    assert cfg.wandb_run_path is not None
+    return [cfg.wandb_run_path.strip()]
+
+  run_paths = _resolve_workspace_run_paths(cfg)
+  workspace = cfg.wandb_workspace.strip() if cfg.wandb_workspace else ""
+  group = cfg.wandb_group.strip() if cfg.wandb_group else ""
+  if group:
+    print(
+      f"[INFO] Resolved {len(run_paths)} run(s) from workspace '{workspace}' "
+      f"with group '{group}'."
+    )
+  else:
+    print(f"[INFO] Resolved {len(run_paths)} run(s) from workspace '{workspace}'.")
+  return run_paths
+
+
 def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
   configure_torch_backends()
+
+  if cfg.wandb_run_path is None or cfg.wandb_run_path.strip() == "":
+    raise ValueError(
+      "wandb_run_path is required. Use --wandb-run-path directly, or "
+      "--wandb-workspace/--wandb-group via batch mode."
+    )
 
   if cfg.output_dir is None:
     print(
@@ -459,10 +563,22 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
       "Stage-1 rollout collector requires tracking task with `commands.motion`."
     )
 
-  run_name, motion_artifact_path = _resolve_motion_file(env_cfg, cfg, is_tracking_task)
+  wandb_run = _get_wandb_run(cfg)
+  run_name = getattr(wandb_run, "name", None) or "wandb_run"
+  run_dir = output_root / _slugify_name(run_name)
+  if run_dir.exists():
+    if run_dir.is_dir():
+      print(
+        f"[INFO] Skipping run '{cfg.wandb_run_path}' because output folder already exists: {run_dir}"
+      )
+      return
+    raise RuntimeError(f"Output path exists and is not a directory: {run_dir}")
+
+  run_name, motion_artifact_path = _resolve_motion_file(
+    env_cfg, wandb_run, is_tracking_task
+  )
   if run_name is None:
     run_name = "wandb_run"
-  run_dir = output_root / _slugify_name(run_name)
   run_dir.mkdir(parents=True, exist_ok=True)
   print(f"[INFO] Output dir: {run_dir}")
   resume_path, _ = _resolve_checkpoint_path(agent_cfg, cfg)
@@ -476,12 +592,16 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
   env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
 
   control_dt = float(env.unwrapped.step_dt)
-  if not np.isclose(control_dt, STAGE1_CONTROL_DT, atol=1e-6):
+  if cfg.expected_control_dt is not None and not np.isclose(
+    control_dt, cfg.expected_control_dt, atol=1e-6
+  ):
     raise RuntimeError(
-      f"Stage-1 collector expects control_dt={STAGE1_CONTROL_DT}, got {control_dt}."
+      "Stage-1 collector control_dt mismatch: "
+      f"expected {cfg.expected_control_dt}, got {control_dt}. "
+      "Use --expected-control-dt to override for this task."
     )
 
-  runner_cls = load_runner_cls(task_id) or OnPolicyRunner
+  runner_cls = load_runner_cls(task_id) or MjlabOnPolicyRunner
   runner = runner_cls(env, asdict(agent_cfg), device=device)
   runner.load(str(resume_path), map_location=device)
   policy = runner.get_inference_policy(device=device)
@@ -538,16 +658,16 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
     noise_probs=noise_probs,
   )
 
-  if "policy" not in obs:
-    raise RuntimeError("Policy observation group not found in observations.")
+  obs_group_name = _resolve_student_obs_group(obs)
+  print(f"[INFO] Using observation group for student view: {obs_group_name}")
 
   obs_manager = env.unwrapped.observation_manager
   obs_meta = {
-    "term_order": obs_manager.active_terms.get("policy", []),
-    "term_dims": obs_manager.group_obs_term_dim.get("policy", []),
+    "term_order": obs_manager.active_terms.get(obs_group_name, []),
+    "term_dims": obs_manager.group_obs_term_dim.get(obs_group_name, []),
     "act_dim": env.num_actions,
   }
-  obs_student_init, obs_student_meta = build_student_obs(obs["policy"], obs_meta)
+  obs_student_init, obs_student_meta = build_student_obs(obs[obs_group_name], obs_meta)
   teacher_dim = int(
     obs_student_meta.get("teacher_obs_dim", obs_student_init.shape[-1])  # type: ignore[arg-type]
   )
@@ -675,8 +795,8 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
       nan_t=nan_t,
     )
 
-    policy_obs = obs["policy"]
-    obs_student, _ = build_student_obs(policy_obs, obs_meta)
+    group_obs = obs[obs_group_name]
+    obs_student, _ = build_student_obs(group_obs, obs_meta)
     if torch.is_tensor(obs_student):
       obs_student_np = obs_student.detach().cpu().numpy()
     else:
@@ -822,7 +942,7 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
     "wandb_run_path": cfg.wandb_run_path,
     "motion_artifact": motion_artifact_path,
     "output_dir": str(run_dir),
-    "control_dt": STAGE1_CONTROL_DT,
+    "control_dt": control_dt,
     "num_envs": num_envs,
     "num_episodes_requested": cfg.num_episodes,
     "num_steps_requested": cfg.num_steps,
@@ -834,6 +954,7 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
     "act_dim": act_dim,
     "keys": data_keys,
     "obs_student_view": obs_student_meta,
+    "obs_group_name": obs_group_name,
     "stage1_chunk_len_hint": cfg.stage1_chunk_len_hint,
     "stage1_k_future_hint": cfg.stage1_k_future_hint,
     "stage1_start_margin": cfg.stage1_start_margin,
@@ -895,6 +1016,35 @@ def run_collect_rollouts(task_id: str, cfg: CollectRolloutsConfig) -> None:
   print(f"[INFO] Output dir: {run_dir}")
 
 
+def run_collect_rollouts_targets(task_id: str, cfg: CollectRolloutsConfig) -> None:
+  run_paths = _resolve_target_run_paths(cfg)
+  failures: dict[str, str] = {}
+
+  for idx, run_path in enumerate(run_paths, start=1):
+    print(f"[INFO] [{idx}/{len(run_paths)}] Collecting run: {run_path}")
+    run_cfg = replace(
+      cfg,
+      wandb_run_path=run_path,
+      wandb_workspace=None,
+      wandb_group=None,
+    )
+    try:
+      run_collect_rollouts(task_id, run_cfg)
+    except Exception as exc:
+      failures[run_path] = str(exc)
+      if len(run_paths) == 1:
+        raise
+      print(f"[ERROR] Failed run '{run_path}': {exc}")
+
+  if failures:
+    print("[ERROR] Some rollout collections failed:")
+    for run_path, reason in failures.items():
+      print(f"[ERROR]   {run_path}: {reason}")
+    raise RuntimeError(
+      f"Rollout collection failed for {len(failures)} / {len(run_paths)} run(s)."
+    )
+
+
 def main():
   import mjlab.tasks  # noqa: F401
 
@@ -912,7 +1062,7 @@ def main():
     config=(tyro.conf.AvoidSubcommands, tyro.conf.FlagConversionOff),
   )
 
-  run_collect_rollouts(chosen_task, args)
+  run_collect_rollouts_targets(chosen_task, args)
 
 
 if __name__ == "__main__":

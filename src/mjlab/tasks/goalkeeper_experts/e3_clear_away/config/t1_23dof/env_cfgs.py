@@ -24,6 +24,7 @@ GOALPOST_X = 7.3
 # E3 keeper spawn near defended goal side, with mild lateral spread.
 KEEPER_SPAWN_X_RANGE = (GOAL_X_LINE - 0.20, GOAL_X_LINE + 0.15)
 KEEPER_SPAWN_Y_RANGE = (-0.50, 0.50)
+KEEPER_SPAWN_Z = 0.658
 SPAWN_YAW_RANGE = (
   3.141592653589793 - 0.20,
   3.141592653589793 + 0.20,
@@ -94,6 +95,8 @@ MOTOR_COMMAND_DIM = 46
 MOTOR_ACT_DIM = 23
 
 EPISODE_LENGTH_S = 2.5
+SIM_TIMESTEP_S = 0.005
+CONTROL_DECIMATION = 4
 
 
 def _add_goal_danger_and_area_overlays(spec: mujoco.MjSpec) -> None:
@@ -199,7 +202,7 @@ def booster_t1_23_gk_expert_clear_away_env_cfg(
   cfg = make_tracking_env_cfg()
 
   robot_cfg = get_t1_23_robot_cfg()
-  robot_cfg.init_state.pos = (GOAL_X_LINE - 0.2, 0.0, robot_cfg.init_state.pos[2])
+  robot_cfg.init_state.pos = (GOAL_X_LINE - 0.2, 0.0, KEEPER_SPAWN_Z)
   # Face toward field center from defended +x goal side.
   robot_cfg.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
@@ -234,7 +237,7 @@ def booster_t1_23_gk_expert_clear_away_env_cfg(
       scale=T1_23_ACTION_SCALE,
       use_default_offset=True,
       command_name="clear_away",
-      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH"),
+      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER"),
       motor_obs_terms=motor_obs_terms,
       motor_obs_term_dims=motor_obs_term_dims,
       strict_obs_layout=True,
@@ -464,6 +467,8 @@ def booster_t1_23_gk_expert_clear_away_env_cfg(
     azimuth=178.0,
   )
 
+  cfg.sim.mujoco.timestep = SIM_TIMESTEP_S
+  cfg.decimation = CONTROL_DECIMATION
   cfg.episode_length_s = EPISODE_LENGTH_S
 
   return cfg
