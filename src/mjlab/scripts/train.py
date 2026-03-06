@@ -17,7 +17,7 @@ from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.utils.gpu import select_gpus
 from mjlab.utils.os import dump_yaml, get_checkpoint_path, get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
-from mjlab.utils.wandb import add_wandb_tags
+from mjlab.utils.wandb import add_wandb_tags, resolve_artifact_path
 from mjlab.utils.wrappers import VideoRecorder
 
 
@@ -85,6 +85,7 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
       registry_name = cast(str, cfg.registry_name)
       if ":" not in registry_name:
         registry_name = registry_name + ":latest"
+      registry_name = resolve_artifact_path(registry_name)
       import wandb
 
       api = wandb.Api()

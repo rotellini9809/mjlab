@@ -14,6 +14,7 @@ from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
 from mjlab.utils.os import get_wandb_checkpoint_path
+from mjlab.utils.wandb import resolve_artifact_path
 from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wrappers import VideoRecorder
 from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
@@ -102,6 +103,7 @@ def run_play(task_id: str, cfg: PlayConfig):
       registry_name = cfg.registry_name
       if ":" not in registry_name:
         registry_name = registry_name + ":latest"
+      registry_name = resolve_artifact_path(registry_name)
       import wandb
 
       api = wandb.Api()

@@ -271,7 +271,7 @@ def main() -> None:
   repo_root = _find_repo_root(Path(__file__).resolve())
   log_root = repo_root / "logs" / "motor_controller_stage1"
 
-  ckpt_path = _download_run_file(log_root, cfg.wandb_run_path, "model_last.pt")
+  ckpt_path = _download_run_file(log_root, cfg.wandb_run_path, "model_best.pt")
   metadata_path = _download_run_file(log_root, cfg.wandb_run_path, "metadata.json")
   norm_path = _download_run_file(
     log_root, cfg.wandb_run_path, "normalization_stats.npz"

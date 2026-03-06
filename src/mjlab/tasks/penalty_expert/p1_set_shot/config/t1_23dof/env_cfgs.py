@@ -1,5 +1,9 @@
 import os
 
+import mujoco
+from mjlab.entity import EntityCfg
+from mjlab.sensor import ContactMatch, ContactSensorCfg  # solo se vuoi anche il sensore curb
+
 from mjlab.asset_zoo.robots import T1_23_ACTION_SCALE, get_t1_23_robot_cfg
 from mjlab.asset_zoo.robocup_assets.ball import get_robocup_ball_cfg
 from mjlab.asset_zoo.robocup_assets.field import get_robocup_field_cfg
@@ -17,9 +21,13 @@ from mjlab.viewer import ViewerConfig
 from mjlab.tasks.penalty_expert.p1_set_shot import mdp
 
 
+
+
 # ---------------- Goal geometry (same convention as GK) ----------------
 GOAL_X_LINE = 7.0
 GOALPOST_X  = 7.3
+
+
 
 # ---------------- Ball geometry ----------------
 BALL_R = 0.11                 # robocup ball radius
@@ -34,7 +42,7 @@ BALL_SPAWN_X_RANGE = (BALL_X, BALL_X)
 BALL_SPAWN_Y_RANGE = (BALL_Y, BALL_Y)
 
 # ---------------- Robot spawn: behind the ball ----------------
-ROBOT_BEHIND_BALL = 1      # meters (tune later if needed)
+ROBOT_BEHIND_BALL = 0.45      # meters (tune later if needed)
 ROBOT_X = BALL_X - ROBOT_BEHIND_BALL
 ROBOT_Y = 0.0
 
@@ -53,10 +61,163 @@ STRIKER_AREA_HARD_MARGIN = 0.5
 MOTOR_COMMAND_DIM = 46
 MOTOR_ACT_DIM = 23
 
-EPISODE_LENGTH_S = 8.0
+EPISODE_LENGTH_S = 6.0
 SIM_TIMESTEP_S = 0.005
 CONTROL_DECIMATION = 4
 
+# ---------------- P1 test walls around the real 14x9 playable area ----------------
+# - 2 continuous walls on long sides (y = +/- 4.5),
+# - 2 segmented walls per short side (x = +/- 7.0) leaving goal opening at y ~= 0.
+# Walls are centered on this boundary.
+
+P1_FIELD_HALF_LENGTH_X = 7.0
+P1_FIELD_HALF_WIDTH_Y = 4.5
+P1_WALL_THICKNESS = 0.16
+P1_WALL_HEIGHT = 0.07
+P1_GOAL_OPENING_HALF_WIDTH = 1.55
+
+P1_WALL_RGBA = (0.92, 0.18, 0.18, 0.45)
+P1_WALL_FRICTION = (1.2, 0.02, 0.002)
+P1_WALL_SOLREF = (0.02, 1.5)
+P1_WALL_SOLIMP = (0.9, 0.95, 0.001, 0.5, 2.0)
+
+# Overlay (area shading)
+P1_AREA_OVERLAY_HALF_THICKNESS = 0.0015
+P1_HARD_AREA_OVERLAY_Z = 0.0015
+P1_STRIKER_AREA_OVERLAY_Z = 0.0035
+P1_HARD_AREA_RGBA = (0.95, 0.55, 0.10, 0.22)
+P1_STRIKER_AREA_RGBA = (0.05, 0.60, 0.95, 0.30)
+
+# (optional) curb contact sensor name
+P1_BALL_CURB_CONTACT_SENSOR_NAME = "p1_ball_curb_contact"
+P1_FIELD_BODY_NAME = "field"
+
+
+def _add_p1_test_walls(
+  spec: mujoco.MjSpec,
+  striker_area_bounds: tuple[float, float, float, float] | None = None,
+  hard_margin: float = 0.5,
+) -> None:
+  field_body = next((body for body in spec.bodies if body.name == P1_FIELD_BODY_NAME), None)
+  if field_body is None:
+    field_body = spec.worldbody.add_body(name=P1_FIELD_BODY_NAME)
+
+  half_t = P1_WALL_THICKNESS / 2.0
+  half_h = P1_WALL_HEIGHT / 2.0
+  wall_z = half_h
+
+  def _add_wall(name: str, pos: tuple[float, float, float], size: tuple[float, float, float]) -> None:
+    wall = field_body.add_geom(
+      type=mujoco.mjtGeom.mjGEOM_BOX,
+      pos=pos,
+      size=size,
+    )
+    wall.name = name
+    wall.rgba = P1_WALL_RGBA
+    wall.friction = P1_WALL_FRICTION
+    wall.solref = P1_WALL_SOLREF
+    wall.solimp = P1_WALL_SOLIMP
+
+  # Long sides: continuous walls.
+  long_side_wall_y = P1_FIELD_HALF_WIDTH_Y
+  _add_wall(
+    "p1_wall_long_pos_y",
+    (0.0, long_side_wall_y, wall_z),
+    (P1_FIELD_HALF_LENGTH_X, half_t, half_h),
+  )
+  _add_wall(
+    "p1_wall_long_neg_y",
+    (0.0, -long_side_wall_y, wall_z),
+    (P1_FIELD_HALF_LENGTH_X, half_t, half_h),
+  )
+
+  # Short sides split in two per side, leaving opening for goal.
+  short_side_segment_half_y = (P1_FIELD_HALF_WIDTH_Y - P1_GOAL_OPENING_HALF_WIDTH) / 2.0
+  if short_side_segment_half_y <= 0.0:
+    raise ValueError("P1_GOAL_OPENING_HALF_WIDTH is too large for field width.")
+  short_side_segment_center_y = P1_GOAL_OPENING_HALF_WIDTH + short_side_segment_half_y
+  short_side_wall_x = P1_FIELD_HALF_LENGTH_X
+
+  _add_wall(
+    "p1_wall_short_pos_x_upper",
+    (short_side_wall_x, short_side_segment_center_y, wall_z),
+    (half_t, short_side_segment_half_y, half_h),
+  )
+  _add_wall(
+    "p1_wall_short_pos_x_lower",
+    (short_side_wall_x, -short_side_segment_center_y, wall_z),
+    (half_t, short_side_segment_half_y, half_h),
+  )
+  _add_wall(
+    "p1_wall_short_neg_x_upper",
+    (-short_side_wall_x, short_side_segment_center_y, wall_z),
+    (half_t, short_side_segment_half_y, half_h),
+  )
+  _add_wall(
+    "p1_wall_short_neg_x_lower",
+    (-short_side_wall_x, -short_side_segment_center_y, wall_z),
+    (half_t, short_side_segment_half_y, half_h),
+  )
+
+  # Optional: shaded overlays (striker area + hard margin)
+  def _add_area_overlay(
+    name: str,
+    bounds: tuple[float, float, float, float],
+    z_center: float,
+    rgba: tuple[float, float, float, float],
+  ) -> None:
+    x_min, x_max, y_min, y_max = bounds
+    half_x = max(0.5 * (x_max - x_min), 1.0e-3)
+    half_y = max(0.5 * (y_max - y_min), 1.0e-3)
+    center_x = 0.5 * (x_min + x_max)
+    center_y = 0.5 * (y_min + y_max)
+
+    overlay = field_body.add_geom(
+      type=mujoco.mjtGeom.mjGEOM_BOX,
+      pos=(center_x, center_y, z_center),
+      size=(half_x, half_y, P1_AREA_OVERLAY_HALF_THICKNESS),
+    )
+    overlay.name = name
+    overlay.rgba = rgba
+    overlay.contype = 0
+    overlay.conaffinity = 0
+
+  if striker_area_bounds is not None:
+    x_min, x_max, y_min, y_max = striker_area_bounds
+    hard_bounds = (
+      x_min - hard_margin,
+      x_max + hard_margin,
+      y_min - hard_margin,
+      y_max + hard_margin,
+    )
+    _add_area_overlay(
+      "p1_striker_area_hard_overlay",
+      hard_bounds,
+      P1_HARD_AREA_OVERLAY_Z,
+      P1_HARD_AREA_RGBA,
+    )
+    _add_area_overlay(
+      "p1_striker_area_overlay",
+      striker_area_bounds,
+      P1_STRIKER_AREA_OVERLAY_Z,
+      P1_STRIKER_AREA_RGBA,
+    )
+
+
+def get_p1_field_cfg_with_test_walls(
+  striker_area_bounds: tuple[float, float, float, float] | None = None,
+  hard_margin: float = 0.5,
+) -> EntityCfg:
+  field_cfg = get_robocup_field_cfg()
+  base_spec_fn = field_cfg.spec_fn
+
+  def _spec_fn() -> mujoco.MjSpec:
+    spec = base_spec_fn()
+    _add_p1_test_walls(spec, striker_area_bounds=striker_area_bounds, hard_margin=hard_margin)
+    return spec
+
+  field_cfg.spec_fn = _spec_fn
+  return field_cfg
 
 
 
@@ -80,8 +241,19 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     ball_x = GOAL_X_LINE- PENALTY_DIST_FROM_GOAL
 
     # robot dietro la palla
-    ROBOT_BEHIND_BALL = 1.2
+    ROBOT_BEHIND_BALL = 0.45
     robot_x = ball_x - ROBOT_BEHIND_BALL
+
+    ball_spawn_x_range = (ball_x, ball_x)
+    ball_spawn_y_range = (0.0, 0.0)
+
+    striker_spawn_x_range = (robot_x, robot_x)
+    striker_spawn_y_range = (0.0, 0.0)
+
+    striker_area_bounds = (robot_x - 0.8, GOAL_X_LINE + 0.6, -1.5, 1.5)
+    hard_area_margin = 0.5
+
+
 
     # ------------------ robot ------------------
     robot_cfg = get_t1_23_robot_cfg()
@@ -109,11 +281,65 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     cfg.scene.num_envs = 512 if not play else 1
     cfg.scene.entities = {
         "robot": robot_cfg,
-        "soccer_field": get_robocup_field_cfg(),
+        "soccer_field": get_p1_field_cfg_with_test_walls(
+            striker_area_bounds=striker_area_bounds,
+            hard_margin=hard_area_margin,
+        ),
         "soccer_ball": ball_cfg,
         "goalpost_left": goal_left_cfg,
         "goalpost_right": goal_right_cfg,
     }
+
+    # ------------------ Contact sensors: foot <-> ball ------------------
+    P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME  = "p1_left_foot_ball_contact"
+    P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME = "p1_right_foot_ball_contact"
+    P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME  = "p1_left_foot_ground_contact"
+    P1_RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME = "p1_right_foot_ground_contact"
+
+
+    left_foot_ground_contact_cfg = ContactSensorCfg(
+        name=P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+        primary=ContactMatch(mode="body", pattern=r"^left_foot_link$", entity="robot"),
+        secondary=ContactMatch(mode="subtree", pattern="field", entity="soccer_field"),
+        fields=("found", "force"),
+        reduce="netforce",
+        num_slots=1,
+    )
+
+    right_foot_ground_contact_cfg = ContactSensorCfg(
+        name=P1_RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+        primary=ContactMatch(mode="body", pattern=r"^right_foot_link$", entity="robot"),
+        secondary=ContactMatch(mode="subtree", pattern="field", entity="soccer_field"),
+        fields=("found", "force"),
+        reduce="netforce",
+        num_slots=1,
+    )
+
+    left_foot_ball_contact_cfg = ContactSensorCfg(
+        name=P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+        primary=ContactMatch(mode="body", pattern=r"^left_foot_link$", entity="robot"),
+        secondary=ContactMatch(mode="geom", pattern="ball_collision", entity="soccer_ball"),
+        fields=("found",),
+        reduce="none",
+        num_slots=1,
+    )
+
+    right_foot_ball_contact_cfg = ContactSensorCfg(
+        name=P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+        primary=ContactMatch(mode="body", pattern=r"^right_foot_link$", entity="robot"),
+        secondary=ContactMatch(mode="geom", pattern="ball_collision", entity="soccer_ball"),
+        fields=("found",),
+        reduce="none",
+        num_slots=1,
+    )
+
+    cfg.scene.sensors = (
+        *cfg.scene.sensors,
+        left_foot_ball_contact_cfg,
+        right_foot_ball_contact_cfg,
+        left_foot_ground_contact_cfg,
+        right_foot_ground_contact_cfg,
+    )
 
     # tieni il reset (userà init_state che abbiamo appena settato)
     cfg.curriculum = {}
@@ -124,7 +350,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
     cfg.viewer = ViewerConfig(
         origin_type=ViewerConfig.OriginType.WORLD,
-        lookat=(ROBOT_X + 1.0, 0.0, 1.0),
+        lookat=(robot_x + 1.0, 0.0, 1.0),
         distance=5.0,
         elevation=-25.0,
         azimuth=0.0,
@@ -148,39 +374,40 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
       strict_obs_layout=True,
     )
   }
-    AIM_Y = 0.75      # angolo destro (metti -0.75 per sinistro)
-    AIM_Z = 0.90      # mira alto (ball center)
-    
+    AIM_Y = 0.0  # valore ASSOLUTO (il segno lo gestisce mdp)
+    AIM_Z = 0.7
+
     cfg.commands = {
-    "set_shot": mdp.SetShotCommandCfg(
-        entity_name="robot",
-        ball_entity_name="soccer_ball",     # la palla fisica che calci
-        command_dim=MOTOR_COMMAND_DIM,
+        "set_shot": mdp.SetShotCommandCfg(
+            entity_name="robot",
+            ball_entity_name="soccer_ball",
+            command_dim=MOTOR_COMMAND_DIM,
 
-        striker_spawn_x_range=STRIKER_SPAWN_X_RANGE,
-        striker_spawn_y_range=STRIKER_SPAWN_Y_RANGE,
-        spawn_yaw_range=SPAWN_YAW_RANGE,
+            striker_spawn_x_range=striker_spawn_x_range,
+            striker_spawn_y_range=striker_spawn_y_range,
+            spawn_yaw_range=SPAWN_YAW_RANGE,
 
-        goal_line_x=GOAL_X_LINE,
-        goal_y_half=1.0,
+            goal_line_x=GOAL_X_LINE,
+            goal_y_half=1.55,
+            goal_z_min=0.0,
+            goal_z_max=1.85,
 
-        ball_spawn_x_range=BALL_SPAWN_X_RANGE,
-        ball_spawn_y_range=BALL_SPAWN_Y_RANGE,
-        ball_spawn_z=BALL_Z,
+            ball_spawn_x_range=ball_spawn_x_range,
+            ball_spawn_y_range=ball_spawn_y_range,
+            ball_spawn_z=BALL_Z,
 
-        striker_area_bounds=STRIKER_AREA_BOUNDS,
-        hard_area_margin=STRIKER_AREA_HARD_MARGIN,
+            striker_area_bounds=striker_area_bounds,
+            hard_area_margin=hard_area_margin,
 
-        # Se vuoi anche un "aim point" fisso (centro porta), puoi passarlo così:
-        aim_x=GOALPOST_X,
-        aim_y=AIM_Y,
-        aim_z=AIM_Z,
+            aim_x=GOALPOST_X,
+            aim_y=AIM_Y,     # <-- SOLO QUESTO
+            aim_z=AIM_Z,
 
-        # no resampling within episode
-        resampling_time_range=(1.0e9, 1.0e9),
-        debug_vis=True,
+            resampling_time_range=(1.0e9, 1.0e9),
+            debug_vis=True,
         )
     }
+
 
     
 
@@ -271,130 +498,240 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     ),
     }
 
-
     cfg.rewards = {
-    # yaw-only verso l'aim (che ora alterna i 2 angoli)
-    "yaw_align": RewardTermCfg(
-        func=mdp.yaw_alignment_reward,
-        weight=3.0,
-        params={"command_name": "set_shot", "k": 2.5},
-    ),
+        # ---------- pre-strike: reach ball + set up ----------
+        "yaw_align": RewardTermCfg(
+            func=mdp.yaw_alignment_reward,
+            weight=0.10,
+            params={"command_name": "set_shot", "k": 2.5},
+        ),
 
-    # stabilità: più severa + tilt penalty esplicita (anti “sbilanciato in avanti”)
-    #"upright": RewardTermCfg(
-    #    func=mdp.upright_stability_reward,
-    #    weight=1.6,
-    #    params={"height_target": 0.62, "height_sigma": 0.12, "tilt_sigma": 0.35},
-    #),
-    "tilt_penalty": RewardTermCfg(
-        func=mdp.trunk_tilt_l2_penalty,
-        weight=-1.0,
-    ),
+        "upright": RewardTermCfg(
+            func=mdp.upright_stability_reward,
+            weight=0.35,
+            # height_target=None -> uses robot default root height (see mdp.py)
+            params={"height_target": None, "height_sigma": 0.14, "tilt_sigma": 0.55},
+        ),
 
-    # setup / approach
-    "approach_ball": RewardTermCfg(
-        func=mdp.approach_ball_reward,
-        weight=2.0,
-        params={"command_name": "set_shot"},
-    ),
-    "behind_ball": RewardTermCfg(
-        func=mdp.behind_ball_reward,
-        weight=1.0,
-        params={"command_name": "set_shot"},
-    ),
+        "tilt_penalty": RewardTermCfg(
+            func=mdp.trunk_tilt_l2_penalty,
+            weight=-0.12,
+        ),
 
-    # strike proxy
-    "strike_event": RewardTermCfg(
-        func=mdp.strike_event_reward,
-        weight=4.0,
-        params={"command_name": "set_shot"},
-    ),
+        # Progress (dense) + a small absolute-distance shaping (prevents "freeze")
+        "approach_ball_prog": RewardTermCfg(
+            func=mdp.approach_ball_progress_reward,
+            weight=10.0,
+            params={"command_name": "set_shot", "max_delta": 0.06, "upright_gate": 0.45},
+        ),
 
-    # >>> al posto di ball_to_goal_speed: velocità verso AIM in 3D (spinge in alto se aim_z è alto)
-    "ball_to_aim_speed_3d": RewardTermCfg(
-        func=mdp.ball_speed_to_aim_reward_3d,
-        weight=3.0,
-        params={"command_name": "set_shot"},
-    ),
+        "approach_ball_abs": RewardTermCfg(
+            func=mdp.approach_ball_reward,
+            weight=1.2,
+            params={"command_name": "set_shot", "k": 2.0},
+        ),
 
-    # shaping: mentre vola verso porta, premia ALTO+LATO
-    "ball_flight_high_side": RewardTermCfg(
-        func=mdp.ball_flight_high_and_side_reward,
-        weight=4.0,
-        params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.55},
-    ),
+        "vel_to_ball": RewardTermCfg(
+            func=mdp.base_vel_towards_ball_reward,
+            weight=2.0,
+            params={"command_name": "set_shot", "max_speed": 1.4},
+        ),
 
-    # goal “buono” (alto+angolato): premio grande
-    "goal_high_corner": RewardTermCfg(
-        func=mdp.goal_high_corner_reward,
-        weight=30.0,
-        params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.55},
-    ),
+        # Footwork unlockers (these are what usually bring back stepping)
+        "foot_switch": RewardTermCfg(
+            func=mdp.foot_contact_switch_bonus_p1,
+            weight=0.8,
+            params={
+                "command_name": "set_shot",
+                "left_contact_sensor_name": P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+                "right_contact_sensor_name": P1_RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+                "upright_gate": 0.35,
+                "fz_thresh": 5.0,
+                "support_sign": "neg",
+            },
+        ),
 
-    # goal “cattivo” (raso o centrale): penalità
-    "goal_bad_penalty": RewardTermCfg(
-        func=mdp.goal_low_or_center_penalty,
-        weight=-10.0,
-        params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.55},
-    ),
+        "single_support": RewardTermCfg(
+            func=mdp.single_support_reward,
+            weight=0.25,
+            params={
+                "command_name": "set_shot",
+                "left_contact_sensor_name": P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+                "right_contact_sensor_name": P1_RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+                "upright_gate": 0.35,
+                "fz_thresh": 5.0,
+                "support_sign": "neg",
+            },
+        ),
 
-    # goal generico: lascialo ma molto basso (non deve competere col corner high)
-    "goal_scored": RewardTermCfg(
-        func=mdp.goal_scored_reward,
-        weight=2.0,
-        params={"command_name": "set_shot"},
-    ),
+        # Stay behind the ball (small, just to avoid passing it)
+        "behind_ball": RewardTermCfg(
+            func=mdp.behind_ball_reward,
+            weight=0.6,
+            params={"command_name": "set_shot", "dx_max": 0.40},
+        ),
 
-    # penalties
-    "outside_area": RewardTermCfg(
-        func=mdp.outside_striker_area_penalty,
-        weight=-0.5,
-        params={"command_name": "set_shot"},
-    ),
-    "fallen": RewardTermCfg(
-        func=mdp.fallen_indicator,
-        weight=-8.0,
-        params={"min_height": 0.30, "max_tilt": 1.20},
-    ),
-    "xy_speed": RewardTermCfg(
-        func=mdp.xy_speed_l2,
-        weight=-0.03,
-    ),
+        # ---------- strike quality ----------
+        # IMPORTANT: keep this BEFORE strike_event so the gate_pre inside mdp works.
+        "strike_from_above": RewardTermCfg(
+            func=mdp.strike_from_above_penalty,
+            weight=-12.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "xy_near": 0.18,
+                "z_margin": 0.02,
+            },
+        ),
+
+        "foot_over_ball": RewardTermCfg(
+            func=mdp.foot_over_ball_penalty,
+            weight=-8.0,
+            params={"command_name": "set_shot", "xy_near": 0.18, "z_margin": 0.02},
+        ),
+
+        "strike_event": RewardTermCfg(
+            func=mdp.strike_event_reward,
+            weight=1.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
+        ),
+
+        "strike_impulse": RewardTermCfg(
+            func=mdp.strike_impulse_reward,
+            weight=12.0,
+            params={"command_name": "set_shot", "max_speed": 8.0},
+        ),
+
+        "clean_strike": RewardTermCfg(
+            func=mdp.clean_strike_reward,
+            weight=24.0,
+            params={"command_name": "set_shot", "max_speed": 7.0, "up_penalty": 0.0},
+        ),
+
+        # ---------- one-touch + stability AFTER strike ----------
+        "extra_touches": RewardTermCfg(
+            func=mdp.extra_touch_after_first_penalty,
+            weight=-10.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
+        ),
+
+        "post_strike_upright": RewardTermCfg(
+            func=mdp.post_strike_upright_reward,
+            weight=4.0,
+            params={"command_name": "set_shot"},
+        ),
+
+        "post_strike_speed": RewardTermCfg(
+            func=mdp.post_strike_base_speed_penalty,
+            weight=-1.5,
+            params={"command_name": "set_shot", "max_speed": 1.2},
+        ),
+
+        # ---------- goal ----------
+        "goal_scored": RewardTermCfg(
+            func=mdp.goal_scored_event_reward,
+            weight=80.0,
+            params={"command_name": "set_shot"},
+        ),
+
+        # (optional) shape the "nice shot": reward high-corner goals a bit more than low/central ones
+        "goal_high_corner": RewardTermCfg(
+            func=mdp.goal_high_corner_reward,
+            weight=10.0,
+            params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.0},
+        ),
+
+        "goal_low_or_center": RewardTermCfg(
+            func=mdp.goal_low_or_center_penalty,
+            weight=-2.5,
+            params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.0},
+        ),
+
+        "post_goal_upright": RewardTermCfg(
+            func=mdp.post_goal_upright_reward,
+            weight=4.0,
+            params={"command_name": "set_shot"},
+        ),
+
+        # ---------- housekeeping ----------
+        "no_strike_timeout": RewardTermCfg(
+            func=mdp.no_strike_timeout_penalty,
+            weight=-15.0,
+            params={"command_name": "set_shot", "episode_length_s": EPISODE_LENGTH_S},
+        ),
+
+        "outside_area": RewardTermCfg(
+            func=mdp.outside_striker_area_penalty,
+            weight=-0.25,
+            params={"command_name": "set_shot"},
+        ),
+
+        "fallen": RewardTermCfg(
+            func=mdp.fallen_indicator,
+            weight=-50.0,
+            params={"min_height": 0.30, "max_tilt": 1.20},
+        ),
+
+        "action_rate_pre": RewardTermCfg(
+            func=mdp.action_rate_l2_prestrike,
+            weight=-0.02,
+            params={"command_name": "set_shot"},
+        ),
+
+        "ball_to_aim_3d": RewardTermCfg(
+            func=mdp.ball_speed_to_aim_reward_3d_after_strike,
+            weight=12.0,
+            params={"command_name": "set_shot"},
+        ),
     }
 
-
- 
     cfg.terminations.pop("ee_body_pos", None)
 
-    # lascia il time_out che arriva dal make_tracking_env_cfg (di solito c’è già)
-    # aggiungi/override le tue
     cfg.terminations.update({
-    "fallen": TerminationTermCfg(
-        func=mdp.FallTermination,
-        params={"min_height": 0.30, "max_tilt": 1.20, "consecutive_steps": 6},
-    ),
-    "success_goal": TerminationTermCfg(
-        func=mdp.goal_scored_termination,
-        params={"command_name": "set_shot"},
-    ),
-    "hard_outside_area": TerminationTermCfg(
-        func=mdp.hard_outside_striker_area_termination,
-        params={"command_name": "set_shot"},
-    ),
+        "fallen": TerminationTermCfg(
+            func=mdp.FallTermination,
+            params={"min_height": 0.30, "max_tilt": 1.20, "consecutive_steps": 6},
+        ),
+
+        "hard_outside_area": TerminationTermCfg(
+            func=mdp.hard_outside_striker_area_termination,
+            params={"command_name": "set_shot"},
+        ),
+
+        "ball_out": TerminationTermCfg(
+            func=mdp.ball_out_of_play_termination,
+            params={
+                "command_name": "set_shot",
+                "field_half_length_x": 7.0,
+                "field_half_width_y": 4.5,
+                "goal_opening_half_width": 1.55,
+                "margin": 0.10,
+            },
+        ),
     })
+
+    cfg.terminations.pop("second_touch", None)
 
 
     cfg.sim.mujoco.timestep = SIM_TIMESTEP_S
     cfg.decimation = CONTROL_DECIMATION
-    cfg.episode_length_s = EPISODE_LENGTH_S  # es. 8.0
+    cfg.episode_length_s = EPISODE_LENGTH_S  # es. 6.0
 
     # niente random: resampling_time_range infinito già nella command
     # e range (v,v) nei parametri command.
 
     if play:
         cfg.scene.num_envs = 1
-        cfg.episode_length_s = int(1e9)
+        cfg.episode_length_s = EPISODE_LENGTH_S
         cfg.observations["actor"].enable_corruption = False
         cfg.events.pop("push_robot", None)  # se esiste nel base
-
     return cfg

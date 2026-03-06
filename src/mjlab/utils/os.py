@@ -103,21 +103,46 @@ def get_wandb_checkpoint_path(
   run_id = str(run_path).split("/")[-1]
   download_dir = log_path / "wandb_checkpoints" / run_id
 
-  # Query wandb API to find the latest checkpoint.
+  # Query wandb API to resolve checkpoint selection.
   api = wandb.Api()
   wandb_run = api.run(str(run_path))
-  files = [
-    file.name for file in wandb_run.files() if re.match(r"^model_\d+\.pt$", file.name)
+  model_files = [file.name for file in wandb_run.files() if file.name.startswith("model")]
+  numeric_files = [
+    name for name in model_files if re.match(r"^model_\d+\.pt$", name)
   ]
-  if checkpoint_name is None:
-    checkpoint_file = max(files, key=lambda x: int(x.split("_")[1].split(".")[0]))
+  best_file = "model_best.pt" if "model_best.pt" in model_files else None
+  last_file = "model_last.pt" if "model_last.pt" in model_files else None
+
+  def _latest_numeric() -> str | None:
+    if not numeric_files:
+      return None
+    return max(numeric_files, key=lambda x: int(x.split("_")[1].split(".")[0]))
+
+  selected = checkpoint_name
+  if selected is None or selected == "":
+    selected = "latest"
+
+  if selected == "best":
+    checkpoint_file = best_file or last_file or _latest_numeric()
+  elif selected == "last":
+    checkpoint_file = last_file or best_file or _latest_numeric()
+  elif selected == "latest":
+    checkpoint_file = _latest_numeric() or last_file or best_file
+  elif selected == "model_best.pt":
+    checkpoint_file = best_file
+  elif selected == "model_last.pt":
+    checkpoint_file = last_file
+  elif re.match(r"^model_\d+\.pt$", selected):
+    checkpoint_file = selected if selected in numeric_files else None
   else:
-    if checkpoint_name not in files:
-      raise ValueError(
-        f"Checkpoint '{checkpoint_name}' not found in run {run_path}."
-        f" Available: {files}"
-      )
-    checkpoint_file = checkpoint_name
+    checkpoint_file = selected if selected in model_files else None
+
+  if checkpoint_file is None:
+    available = sorted(model_files)
+    raise ValueError(
+      f"Checkpoint '{selected}' not found/resolvable in run {run_path}. "
+      f"Available model files: {available}"
+    )
 
   checkpoint_path = download_dir / checkpoint_file
 
