@@ -183,10 +183,16 @@ def launch_training(task_id: str, args: TrainConfig | None = None):
   # Create log directory once before launching workers.
   log_root_path = Path("logs") / "rsl_rl" / args.agent.experiment_name
   log_root_path.resolve()
-  log_dir_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
   if args.agent.run_name:
-    log_dir_name += f"_{args.agent.run_name}"
+    log_dir_name = args.agent.run_name
+  else:
+    log_dir_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
   log_dir = log_root_path / log_dir_name
+  if log_dir.exists():
+    suffix = 2
+    while (log_root_path / f"{log_dir_name}_{suffix}").exists():
+      suffix += 1
+    log_dir = log_root_path / f"{log_dir_name}_{suffix}"
 
   # Select GPUs based on CUDA_VISIBLE_DEVICES and user specification.
   selected_gpus, num_gpus = select_gpus(args.gpu_ids)

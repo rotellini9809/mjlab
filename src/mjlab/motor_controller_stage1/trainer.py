@@ -42,6 +42,8 @@ class TrainConfig:
   val_seed: int | None = None
   val_batches: int = 10
   log_every: int = 0
+  grad_clip_norm: float = 1.0
+  skip_non_finite_batches: bool = True
   run_name: str = ""
   device: str | None = None
   experiment_name: str = "motor_controller_stage1"
@@ -216,7 +218,8 @@ def train_stage1(cfg: TrainConfig) -> None:
   print(
     "[INFO] Starting Stage-1 placeholder training: "
     f"iters={cfg.max_iters}, batch_size={cfg.batch_size}, "
-    f"sample_mode={cfg.sample_mode}, device={device}"
+    f"sample_mode={cfg.sample_mode}, device={device}, "
+    f"grad_clip_norm={cfg.grad_clip_norm}"
   )
 
   beta_kl_end = cfg.beta_kl_end if cfg.beta_kl_end is not None else cfg.beta_kl
@@ -277,8 +280,42 @@ def train_stage1(cfg: TrainConfig) -> None:
         kl_loss = torch.tensor(0.0, device=device)
         loss = bc_loss
 
-    optimizer.zero_grad()
+    if not (
+      _is_finite_scalar(loss)
+      and _is_finite_scalar(bc_loss)
+      and _is_finite_scalar(kl_loss)
+    ):
+      msg = (
+        f"[WARN] Non-finite loss at iter {step}: "
+        f"loss={loss.item()}, bc={bc_loss.item()}, kl={kl_loss.item()}"
+      )
+      if cfg.skip_non_finite_batches:
+        pbar.write(f"{msg} | skipping optimizer step")
+        optimizer.zero_grad(set_to_none=True)
+        continue
+      raise FloatingPointError(msg)
+
+    optimizer.zero_grad(set_to_none=True)
     loss.backward()
+
+    if cfg.grad_clip_norm > 0.0:
+      grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
+      if not _is_finite_scalar(grad_norm):
+        msg = f"[WARN] Non-finite gradient norm at iter {step}: grad_norm={grad_norm}"
+        if cfg.skip_non_finite_batches:
+          pbar.write(f"{msg} | skipping optimizer step")
+          optimizer.zero_grad(set_to_none=True)
+          continue
+        raise FloatingPointError(msg)
+
+    if not _model_grads_are_finite(model):
+      msg = f"[WARN] Non-finite gradients detected at iter {step}"
+      if cfg.skip_non_finite_batches:
+        pbar.write(f"{msg} | skipping optimizer step")
+        optimizer.zero_grad(set_to_none=True)
+        continue
+      raise FloatingPointError(msg)
+
     optimizer.step()
 
     log_interval = cfg.log_every if cfg.log_every and cfg.log_every > 0 else max(1, cfg.max_iters // 10)
@@ -648,6 +685,23 @@ def _compute_beta_kl(
   return beta_start + (beta_end - beta_start) * progress
 
 
+def _is_finite_scalar(value: torch.Tensor | float) -> bool:
+  if isinstance(value, torch.Tensor):
+    if value.numel() == 0:
+      return False
+    return bool(torch.isfinite(value).all().item())
+  return bool(np.isfinite(value))
+
+
+def _model_grads_are_finite(model: torch.nn.Module) -> bool:
+  for param in model.parameters():
+    if param.grad is None:
+      continue
+    if not torch.isfinite(param.grad).all():
+      return False
+  return True
+
+
 def _evaluate(
   model: torch.nn.Module,
   dataset: RolloutDataset,
@@ -665,6 +719,7 @@ def _evaluate(
   total_loss = 0.0
   total_bc = 0.0
   total_kl = 0.0
+  valid_batches = 0
   diag_values: dict[str, list[float]] = {
     "post_mean_abs_mu": [],
     "post_mean_mu2": [],
@@ -729,6 +784,14 @@ def _evaluate(
           kl = torch.tensor(0.0, device=device)
           loss = bc
 
+      if not (
+        _is_finite_scalar(loss)
+        and _is_finite_scalar(bc)
+        and _is_finite_scalar(kl)
+      ):
+        continue
+
+      valid_batches += 1
       total_loss += float(loss.item())
       total_bc += float(bc.item())
       total_kl += float(kl.item())
@@ -738,7 +801,17 @@ def _evaluate(
           diag_values[key].append(value)
 
   model.train()
-  denom = max(1, batches)
+  if valid_batches == 0:
+    result: dict[str, float | dict[str, float]] = {
+      "loss": float("nan"),
+      "bc": float("nan"),
+      "kl": float("nan"),
+    }
+    if use_latent:
+      result["diag"] = _nan_diag()
+    return result
+
+  denom = valid_batches
   result: dict[str, float | dict[str, float]] = {
     "loss": total_loss / denom,
     "bc": total_bc / denom,
@@ -747,7 +820,8 @@ def _evaluate(
   if use_latent:
     diag_avg = {}
     for key, values in diag_values.items():
-      diag_avg[key] = float(np.nanmean(values)) if values else float("nan")
+      finite_values = [v for v in values if np.isfinite(v)]
+      diag_avg[key] = float(np.mean(finite_values)) if finite_values else float("nan")
     result["diag"] = diag_avg
   return result
 

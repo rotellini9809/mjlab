@@ -5,6 +5,13 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
+_LOGVAR_MIN = -10.0
+_LOGVAR_MAX = 5.0
+
+
+def _clamp_logvar(logvar: torch.Tensor) -> torch.Tensor:
+  return torch.clamp(logvar, min=_LOGVAR_MIN, max=_LOGVAR_MAX)
+
 
 @dataclass(frozen=True)
 class LatentModelConfig:
@@ -75,6 +82,7 @@ class ActionDecoder(nn.Module):
 
 def reparameterize(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
   # z = mu + std * eps
+  logvar = _clamp_logvar(logvar)
   std = torch.exp(0.5 * logvar)
   eps = torch.randn_like(std)
   return mu + std * eps
@@ -85,6 +93,7 @@ def kl_to_std_normal(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
   KL( N(mu, sigma) || N(0, I) ) for diagonal Gaussian.
   returns: [B] (per-sample KL)
   """
+  logvar = _clamp_logvar(logvar)
   return 0.5 * torch.sum(torch.exp(logvar) + mu * mu - 1.0 - logvar, dim=-1)
 
 
@@ -99,6 +108,7 @@ class LatentMotorPrimitive(nn.Module):
 
   def forward(self, obs_t: torch.Tensor, obs_future: torch.Tensor) -> dict[str, torch.Tensor]:
     mu, logvar = self.encoder(obs_future)
+    logvar = _clamp_logvar(logvar)
     z = reparameterize(mu, logvar)
     a_pred = self.decoder(obs_t, z)
     kl = kl_to_std_normal(mu, logvar)
@@ -112,6 +122,8 @@ def kl_diag_gaussians(
   logvar_p: torch.Tensor,
 ) -> torch.Tensor:
   """KL( N(mu_q, diag(exp(logvar_q))) || N(mu_p, diag(exp(logvar_p))) ), summed over z_dim."""
+  logvar_q = _clamp_logvar(logvar_q)
+  logvar_p = _clamp_logvar(logvar_p)
   var_q = torch.exp(logvar_q)
   var_p = torch.exp(logvar_p)
   return 0.5 * torch.sum(
@@ -162,12 +174,14 @@ class NPMPLatentMotorPrimitive(nn.Module):
     for step in range(t):
       prior_h = self.prior(z_prev)
       mu_p, logvar_p = torch.chunk(prior_h, 2, dim=-1)
+      logvar_p = _clamp_logvar(logvar_p)
 
       obs_future_t = obs_future[:, step]  # [B, k_future, obs_dim]
       obs_future_flat = obs_future_t.reshape(b, self.cfg.k_future * self.cfg.obs_dim)
       post_in = torch.cat([obs_future_flat, z_prev], dim=-1)
       post_h = self.posterior(post_in)
       mu_q, logvar_q = torch.chunk(post_h, 2, dim=-1)
+      logvar_q = _clamp_logvar(logvar_q)
 
       z_t = reparameterize(mu_q, logvar_q)
       a_pred = self.decoder(obs_chunk[:, step], z_t)

@@ -90,9 +90,10 @@ class RslRlBaseRunnerCfg:
   """Directory name used to group runs under
   ``logs/rsl_rl/{experiment_name}/``."""
   run_name: str = ""
-  """Optional label appended to the timestamped run directory
-  (e.g. ``2025-01-27_14-30-00_{run_name}``). Also becomes the
-  display name for the run in wandb."""
+  """Optional run directory label.
+  If set, it is used directly as run name (no timestamp). If empty,
+  a timestamp-based run name is used. Also becomes the display name
+  for the run in wandb."""
   logger: Literal["wandb", "tensorboard"] = "wandb"
   """The logger to use. Default is wandb."""
   wandb_project: str = "mjlab"

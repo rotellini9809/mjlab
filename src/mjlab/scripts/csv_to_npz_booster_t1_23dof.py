@@ -529,6 +529,7 @@ def _run_single_csv(
       height=480,
       width=640,
       origin_type=ViewerConfig.OriginType.ASSET_ROOT,
+      entity_name="robot",
       distance=2.0,
       elevation=-5.0,
       azimuth=20,

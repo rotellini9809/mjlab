@@ -106,7 +106,7 @@ E1_FIELD_BODY_NAME = "field"
 STANCE_ORTHO_LEFT_FOOT_BODY = r"^left_foot_link$"
 STANCE_ORTHO_RIGHT_FOOT_BODY = r"^right_foot_link$"
 STANCE_ORTHO_W_MIN = 0.10
-STANCE_ORTHO_D_MIN = 0.35
+STANCE_ORTHO_D_MIN = 0.20
 WAIST_BODY_NAME_REGEX = r"(?i)^waist$"
 
 
@@ -448,7 +448,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "waist_yaw_progress": RewardTermCfg(
       func=mdp.waist_yaw_progress_reward,
-      weight=0.0,
+      weight=1.0,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
@@ -459,7 +459,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "waist_yaw_abs_pen": RewardTermCfg(
       func=mdp.waist_yaw_abs_penalty,
-      weight=0.0,
+      weight=-0.25,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
@@ -468,7 +468,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "foot_yaw_slip_contact_pen": RewardTermCfg(
       func=mdp.foot_yaw_slip_contact_pen,
-      weight=-0.35,
+      weight=-0.10,
       params={
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
@@ -480,7 +480,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "foot_xy_slip_contact_pen": RewardTermCfg(
       func=mdp.foot_xy_slip_contact_pen,
-      weight=-0.20,
+      weight=-0.10,
       params={
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
@@ -492,7 +492,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "foot_contact_switch_bonus": RewardTermCfg(
       func=mdp.foot_contact_switch_bonus,
-      weight=0.0,
+      weight=0.12,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -529,10 +529,10 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "xy_speed_deadzone": RewardTermCfg(
       func=mdp.xy_speed_deadzone_reward,
-      weight=0.3,
+      weight=0.0,
       params={},
     ),
-    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.10),
+    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.03),
     "joint_pos_limits": RewardTermCfg(
       func=mdp.joint_pos_limits,
       weight=-0.8,
@@ -540,17 +540,17 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_ang_vel_penalty,
-      weight=-0.05,
+      weight=-0.03,
       params={},
     ),
     "angular_momentum": RewardTermCfg(
       func=mdp.angular_momentum_penalty,
-      weight=-0.02,
+      weight=-0.01,
       params={"sensor_name": "robot/root_angmom"},
     ),
     "twist_pen": RewardTermCfg(
       func=mdp.torso_waist_twist_penalty,
-      weight=-0.04,
+      weight=-0.03,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
