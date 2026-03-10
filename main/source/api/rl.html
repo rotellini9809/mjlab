@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.terrains" href="terrains.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 06, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
   </head>
   
   
@@ -836,9 +836,10 @@ kernel_size, stride, padding, activation, global_pool, max_pool.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.rl.RslRlBaseRunnerCfg.run_name">
 <span class="sig-name descname"><span class="pre">run_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#mjlab.rl.RslRlBaseRunnerCfg.run_name" title="Link to this definition">#</a></dt>
-<dd><p>Optional label appended to the timestamped run directory
-(e.g. <code class="docutils literal notranslate"><span class="pre">2025-01-27_14-30-00_{run_name}</span></code>). Also becomes the
-display name for the run in wandb.</p>
+<dd><p>Optional run directory label.
+If set, it is used directly as run name (no timestamp). If empty,
+a timestamp-based run name is used. Also becomes the display name
+for the run in wandb.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1046,7 +1047,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 06, 2026.
+  Last updated on Mar 10, 2026.
   <br/>
 </p>
   </div>
