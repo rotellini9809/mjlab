@@ -480,33 +480,64 @@ def behind_ball_reward(env, command_name="set_shot", asset_cfg=_DEFAULT_ASSET_CF
 
 
 def strike_event_reward(
-  env,
-  command_name: str = "set_shot",
-  left_sensor_name: str = "p1_left_foot_ball_contact",
-  right_sensor_name: str = "p1_right_foot_ball_contact",
-  speed_thresh: float = 0.6,  # tenuto solo per compatibilità, non usato
+    env,
+    command_name: str = "set_shot",
+    left_sensor_name: str = "p1_left_foot_ball_contact",
+    right_sensor_name: str = "p1_right_foot_ball_contact",
+    ball_depart_xy: float = 0.08,
+    min_vx: float = 0.25,
+    min_speed_xy: float = 0.45,
 ) -> torch.Tensor:
-  """
-  1-shot strike event: primo contatto piede<->palla.
-  NON richiede una soglia di velocità della palla.
-  """
-  touching = _sensor_any_found(env, left_sensor_name) | _sensor_any_found(env, right_sensor_name)
+    """
+    Robust strike latch:
+    - sensor new-touch OR
+    - ball clearly departs from spawn with enough forward/XY speed
+    """
+    touching = _sensor_any_found(env, left_sensor_name) | _sensor_any_found(env, right_sensor_name)
 
-  prev_touch = _get_bool_state_buffer(env, key=f"p1_prev_touch::{command_name}")
-  is_first_step = env.episode_length_buf <= 1
-  prev_touch[is_first_step] = False
+    prev_touch = _get_bool_state_buffer(env, key=f"p1_prev_touch::{command_name}")
+    is_first = env.episode_length_buf <= 1
+    prev_touch[is_first] = False
 
-  new_touch = touching & (~prev_touch)
-  prev_touch.copy_(touching)
+    new_touch = touching & (~prev_touch)
+    prev_touch.copy_(touching)
 
-  struck = _get_bool_state_buffer(env, key=f"p1_struck::{command_name}")
-  struck[is_first_step] = False
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
 
-  reward = new_touch & (~struck)
-  struck |= new_touch
+    origins = env.scene.env_origins
+    ball_local = ball.data.root_link_pos_w - origins
 
-  return reward.to(torch.float32)
+    spawn_x = float(cmd.cfg.ball_spawn_x_range[0])
+    spawn_y = float(cmd.cfg.ball_spawn_y_range[0])
 
+    dx = ball_local[:, 0] - spawn_x
+    dy = ball_local[:, 1] - spawn_y
+    depart_xy = torch.sqrt(dx * dx + dy * dy)
+
+    vel = ball.data.root_link_lin_vel_w
+    speed_xy = torch.linalg.norm(vel[:, :2], dim=1)
+
+    departed = (
+        (depart_xy > float(ball_depart_xy))
+        & (vel[:, 0] > float(min_vx))
+        & (speed_xy > float(min_speed_xy))
+    )
+
+    prev_depart = _get_bool_state_buffer(env, key=f"p1_prev_depart::{command_name}")
+    prev_depart[is_first] = False
+    new_depart = departed & (~prev_depart)
+    prev_depart.copy_(departed)
+
+    new_strike = new_touch | new_depart
+
+    struck = _get_bool_state_buffer(env, key=f"p1_struck::{command_name}")
+    struck[is_first] = False
+
+    reward = new_strike & (~struck)
+    struck |= new_strike
+
+    return reward.to(torch.float32)
 
 
 def extra_touch_after_first_penalty(
@@ -534,23 +565,44 @@ def extra_touch_after_first_penalty(
   extra = new_touch & (touch_count > 1)
   return extra.to(torch.float32)
 
+def post_strike_phase_mask(
+    env,
+    command_name: str = "set_shot",
+    ball_depart_xy: float = 0.08,
+    min_vx: float = 0.5,
+    min_speed_xy: float = 0.8,
+) -> torch.Tensor:
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+    origins = env.scene.env_origins
+    ball_local = ball.data.root_link_pos_w - origins
+
+    spawn_x = float(cmd.cfg.ball_spawn_x_range[0])
+    spawn_y = float(cmd.cfg.ball_spawn_y_range[0])
+
+    dx = ball_local[:, 0] - spawn_x
+    dy = ball_local[:, 1] - spawn_y
+    depart_xy = torch.sqrt(dx * dx + dy * dy)
+
+    vel = ball.data.root_link_lin_vel_w
+    speed_xy = torch.linalg.norm(vel[:, :2], dim=1)
+
+    departed = (
+        (depart_xy > float(ball_depart_xy))
+        & (vel[:, 0] > float(min_vx))
+        & (speed_xy > float(min_speed_xy))
+    )
+
+    return torch.maximum(
+        has_struck(env, command_name),
+        departed.to(torch.float32),
+    )
+
 
 def post_strike_upright_reward(env, command_name: str = "set_shot") -> torch.Tensor:
-  """Dopo lo strike, premia restare in piedi."""
-  return has_struck(env, command_name) * upright_stability_reward(env)
+  return post_strike_phase_mask(env, command_name) * upright_stability_reward(env)
 
-
-def post_goal_upright_reward(env, command_name: str = "set_shot") -> torch.Tensor:
-  """Dopo che è stato fatto goal (latched), premia restare in piedi fino a fine episodio."""
-  cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
-  goal_lat = _get_bool_state_buffer(env, key=f"p1_goal_lat::{command_name}")
-
-  is_first = env.episode_length_buf <= 1
-  goal_lat[is_first] = False
-
-  goal_event = cmd.metrics["goal_event"] > 0.5
-  goal_lat |= goal_event
-  return goal_lat.to(torch.float32) * upright_stability_reward(env)
 
 
 def post_strike_base_speed_penalty(
@@ -558,10 +610,11 @@ def post_strike_base_speed_penalty(
   command_name: str = "set_shot",
   max_speed: float = 1.0,
 ) -> torch.Tensor:
-  """Dopo lo strike, penalizza correre/inseguire (aiuta a non ricontattare e a non cadere)."""
   robot: Entity = env.scene["robot"]
   speed_xy = torch.linalg.norm(robot.data.root_link_lin_vel_w[:, :2], dim=1)
-  return has_struck(env, command_name) * (speed_xy.clamp(min=0.0, max=float(max_speed)) / float(max_speed))
+  return post_strike_phase_mask(env, command_name) * (
+      speed_xy.clamp(min=0.0, max=float(max_speed)) / float(max_speed)
+  )
 
 
 
@@ -673,6 +726,8 @@ def goal_high_corner_reward(
   z_min: float = 0.55,
   y_side_min: float = 0.55,
 ) -> torch.Tensor:
+  scored_now = goal_scored_termination(env, command_name)
+
   cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
 
@@ -681,7 +736,7 @@ def goal_high_corner_reward(
   z = ball.data.root_link_pos_w[:, 2]
 
   good = (z >= z_min) & (torch.abs(y) >= y_side_min)
-  return has_struck(env, command_name) * (cmd.metrics["goal_event"] * good.to(torch.float32))
+  return (scored_now & good).to(torch.float32)
 
 
 
@@ -691,6 +746,8 @@ def goal_low_or_center_penalty(
   z_min: float = 0.55,
   y_side_min: float = 0.55,
 ) -> torch.Tensor:
+  scored_now = goal_scored_termination(env, command_name)
+
   cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
 
@@ -699,7 +756,7 @@ def goal_low_or_center_penalty(
   z = ball.data.root_link_pos_w[:, 2]
 
   bad = (z < z_min) | (torch.abs(y) < y_side_min)
-  return has_struck(env, command_name) * (cmd.metrics["goal_event"] * bad.to(torch.float32))
+  return (scored_now & bad).to(torch.float32)
 
 
 def trunk_tilt_l2_penalty(env, asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG) -> torch.Tensor:
@@ -977,14 +1034,181 @@ def action_rate_l2_prestrike(env, command_name: str = "set_shot") -> torch.Tenso
     return gate_pre * raw
 
 def post_goal_upright_reward(env, command_name: str = "set_shot") -> torch.Tensor:
-    # latch: una volta segnato, resta true fino a reset
-    scored_now = goal_scored_termination(env, command_name)
-    lat = _get_bool_state_buffer(env, key=f"p1_goal_lat::{command_name}")
+  goal_lat = _get_bool_state_buffer(env, key=f"p1_goal_lat::{command_name}")
+  is_first = env.episode_length_buf <= 1
+  goal_lat[is_first] = False
+
+  scored_now = goal_scored_termination(env, command_name)
+  goal_lat |= scored_now
+
+  return goal_lat.to(torch.float32) * upright_stability_reward(env)
+
+def ball_upward_velocity_after_strike_reward(
+  env,
+  command_name: str = "set_shot",
+  max_vz: float = 2.5,
+  min_vx: float = 0.10,
+) -> torch.Tensor:
+  cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+  vel = ball.data.root_link_lin_vel_w
+
+  vx_gate = torch.sigmoid((vel[:, 0] - float(min_vx)) / 0.20)
+  vz_pos = vel[:, 2].clamp(min=0.0, max=float(max_vz)) / float(max_vz)
+
+  return post_strike_phase_mask(env, command_name) * vx_gate * vz_pos
+
+
+def ball_power_lift_reward_after_strike(
+    env,
+    command_name: str = "set_shot",
+    max_speed_3d: float = 9.0,
+    min_vx: float = 0.20,
+    min_vz: float = 0.08,
+) -> torch.Tensor:
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+    vel = ball.data.root_link_lin_vel_w
+    speed3d = torch.linalg.norm(vel, dim=1).clamp(max=float(max_speed_3d)) / float(max_speed_3d)
+
+    vx_gate = torch.sigmoid((vel[:, 0] - float(min_vx)) / 0.20)
+    vz_gate = torch.sigmoid((vel[:, 2] - float(min_vz)) / 0.12)
+
+    speed_bonus = torch.pow(speed3d, 2)
+
+    return post_strike_phase_mask(env, command_name) * speed_bonus * vx_gate * vz_gate
+
+
+def ball_ground_touch_before_goal_penalty(
+  env,
+  command_name: str = "set_shot",
+  ground_z: float = 0.115,
+  min_x_progress: float = 0.30,
+) -> torch.Tensor:
+  cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+  ball_pos = ball.data.root_link_pos_w
+  origins = env.scene.env_origins
+  ball_local = ball_pos - origins
+
+  x = ball_local[:, 0]
+  z = ball_local[:, 2]
+
+  before_goal = x < float(cmd.cfg.goal_line_x)
+  after_leave_spot = x > float(min_x_progress)
+  grounded = z <= float(ground_z)
+
+  return has_struck(env, command_name) * before_goal.to(torch.float32) * after_leave_spot.to(torch.float32) * grounded.to(torch.float32)
+
+def foot_speed_before_strike_reward(
+    env,
+    command_name: str = "set_shot",
+    max_speed: float = 7.0,
+):
+
+    # gate: solo prima dello strike
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+
+    robot = env.scene["robot"]
+
+    left_vel = robot.data.body_com_lin_vel_w[:, robot.find_bodies("^left_foot_link$")[0][0], :]
+    right_vel = robot.data.body_com_lin_vel_w[:, robot.find_bodies("^right_foot_link$")[0][0], :]
+
+    speed = torch.maximum(
+        torch.norm(left_vel, dim=-1),
+        torch.norm(right_vel, dim=-1),
+    )
+
+    return gate_pre * torch.clamp(speed / max_speed, 0.0, 1.0)
+
+def ball_bounce_before_goal_penalty(
+    env,
+    command_name: str = "set_shot",
+    ground_z: float = 0.12,
+    min_x_after_strike: float = 0.35,
+    require_forward_vx: float = 0.35,
+) -> torch.Tensor:
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+    ball_pos_w = ball.data.root_link_pos_w
+    ball_vel_w = ball.data.root_link_lin_vel_w
+    origins = env.scene.env_origins
+    ball_local = ball_pos_w - origins
+
+    x = ball_local[:, 0]
+    z = ball_local[:, 2]
+    vx = ball_vel_w[:, 0]
+
+    before_goal = x < float(cmd.cfg.goal_line_x)
+    left_spot = x > float(min_x_after_strike)
+    moving_forward = vx > float(require_forward_vx)
+    touched_ground = z <= float(ground_z)
+
+    bounce_now = (
+        post_strike_phase_mask(env, command_name).bool()
+        & before_goal
+        & left_spot
+        & moving_forward
+        & touched_ground
+    )
+
+    fired = _get_bool_state_buffer(env, key=f"p1_bounce_fired::{command_name}")
     is_first = env.episode_length_buf <= 1
-    lat[is_first] = False
-    lat |= scored_now
-    # premia la stabilità solo dopo goal
-    return lat.to(torch.float32) * upright_stability_reward(env)
+    fired[is_first] = False
+
+    event = bounce_now & (~fired)
+    fired |= bounce_now
+
+    return event.to(torch.float32)
+
+def foot_to_ball_velocity_alignment(
+    env,
+    command_name: str = "set_shot",
+    max_speed: float = 7.0,
+):
+
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+
+    robot = env.scene["robot"]
+    ball = env.scene["soccer_ball"]
+
+    ball_pos = ball.data.root_link_pos_w
+
+    ids,_ = robot.find_bodies(("^left_foot_link$","^right_foot_link$"), preserve_order=True)
+
+    left_pos = robot.data.body_link_pos_w[:, ids[0]]
+    right_pos = robot.data.body_link_pos_w[:, ids[1]]
+
+    left_vel = robot.data.body_com_lin_vel_w[:, ids[0], :]
+    right_vel = robot.data.body_com_lin_vel_w[:, ids[1], :]
+
+    vec_l = ball_pos - left_pos
+    vec_r = ball_pos - right_pos
+
+    vec_l = vec_l / (torch.norm(vec_l, dim=-1, keepdim=True) + 1e-6)
+    vec_r = vec_r / (torch.norm(vec_r, dim=-1, keepdim=True) + 1e-6)
+
+    vel_l = left_vel / (torch.norm(left_vel, dim=-1, keepdim=True) + 1e-6)
+    vel_r = right_vel / (torch.norm(right_vel, dim=-1, keepdim=True) + 1e-6)
+
+    align_l = torch.sum(vec_l * vel_l, dim=-1)
+    align_r = torch.sum(vec_r * vel_r, dim=-1)
+
+    align = torch.maximum(align_l, align_r)
+
+    speed = torch.maximum(
+        torch.norm(left_vel, dim=-1),
+        torch.norm(right_vel, dim=-1),
+    )
+
+    speed_scale = torch.clamp(speed / max_speed, 0.0, 1.0)
+
+    return gate_pre * torch.clamp(align,0,1) * speed_scale
+
 
 class FallTermination:
   def __init__(self, cfg, env):
@@ -1013,6 +1237,90 @@ class FallTermination:
     )
     return self._counter >= int(consecutive_steps)
 
+
+def impact_foot_speed_reward(
+    env,
+    command_name: str = "set_shot",
+    left_sensor_name: str = "p1_left_foot_ball_contact",
+    right_sensor_name: str = "p1_right_foot_ball_contact",
+    max_speed: float = 8.0,
+):
+    robot = env.scene["robot"]
+
+    ids, _ = robot.find_bodies(("^left_foot_link$", "^right_foot_link$"), preserve_order=True)
+
+    left_vel = robot.data.body_com_lin_vel_w[:, ids[0]]
+    right_vel = robot.data.body_com_lin_vel_w[:, ids[1]]
+
+    left_speed = torch.norm(left_vel, dim=-1)
+    right_speed = torch.norm(right_vel, dim=-1)
+
+    touch_l = _sensor_any_found(env, left_sensor_name)
+    touch_r = _sensor_any_found(env, right_sensor_name)
+
+    prev_l = _get_bool_state_buffer(env, key=f"p1_impact_prev_l::{command_name}")
+    prev_r = _get_bool_state_buffer(env, key=f"p1_impact_prev_r::{command_name}")
+    paid   = _get_bool_state_buffer(env, key=f"p1_impact_paid::{command_name}")
+
+    strike_l = _get_bool_state_buffer(env, key=f"p1_strike_l::{command_name}")
+    strike_r = _get_bool_state_buffer(env, key=f"p1_strike_r::{command_name}")
+
+    is_first = env.episode_length_buf <= 1
+    prev_l[is_first] = False
+    prev_r[is_first] = False
+    paid[is_first] = False
+    strike_l[is_first] = False
+    strike_r[is_first] = False
+
+    new_l = touch_l & (~prev_l)
+    new_r = touch_r & (~prev_r)
+
+    prev_l.copy_(touch_l)
+    prev_r.copy_(touch_r)
+
+    event_l = new_l & (~paid)
+    event_r = new_r & (~paid)
+
+    paid |= (event_l | event_r)
+    strike_l |= event_l
+    strike_r |= event_r
+
+    reward_speed = torch.where(
+        event_r,
+        right_speed,
+        torch.where(event_l, left_speed, torch.zeros_like(left_speed)),
+    )
+
+    return torch.clamp(reward_speed / max_speed, 0.0, 1.0)
+
+
+def non_strike_foot_speed_poststrike_penalty(
+    env,
+    command_name: str = "set_shot",
+    max_speed: float = 6.0,
+):
+    robot = env.scene["robot"]
+
+    ids, _ = robot.find_bodies(("^left_foot_link$", "^right_foot_link$"), preserve_order=True)
+
+    left_vel = robot.data.body_com_lin_vel_w[:, ids[0]]
+    right_vel = robot.data.body_com_lin_vel_w[:, ids[1]]
+
+    left_speed = torch.norm(left_vel, dim=-1)
+    right_speed = torch.norm(right_vel, dim=-1)
+
+    strike_l = _get_bool_state_buffer(env, key=f"p1_strike_l::{command_name}")
+    strike_r = _get_bool_state_buffer(env, key=f"p1_strike_r::{command_name}")
+
+    other_speed = torch.where(
+        strike_r,
+        left_speed,
+        torch.where(strike_l, right_speed, torch.zeros_like(left_speed)),
+    )
+
+    return post_strike_phase_mask(env, command_name) * torch.clamp(other_speed / max_speed, 0.0, 1.0)
+
+
 class SecondTouchContactTermination:
   """Terminate if the robot touches the ball more than once (foot contact sensors)."""
 
@@ -1033,6 +1341,39 @@ class SecondTouchContactTermination:
     self._touching = touching
 
     return self._touch_count > 1
+
+
+def ball_launch_angle_reward_after_strike(
+    env,
+    command_name: str = "set_shot",
+    target_angle_deg: float = 20.0,
+    angle_sigma_deg: float = 12.0,
+    min_vx: float = 0.10,
+    max_speed_3d: float = 9.0,
+) -> torch.Tensor:
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+    vel = ball.data.root_link_lin_vel_w
+    vx = vel[:, 0].clamp(min=0.0)
+    vz = vel[:, 2].clamp(min=0.0)
+
+    speed3d = torch.linalg.norm(vel, dim=1).clamp(max=float(max_speed_3d)) / float(max_speed_3d)
+
+    angle = torch.atan2(vz, vx.clamp(min=1.0e-6))
+    target = torch.deg2rad(torch.tensor(float(target_angle_deg), device=vel.device))
+    sigma = torch.deg2rad(torch.tensor(float(angle_sigma_deg), device=vel.device))
+
+    angle_reward = torch.exp(-0.5 * torch.square((angle - target) / sigma))
+    forward_gate = torch.sigmoid((vx - float(min_vx)) / 0.15)
+
+    return post_strike_phase_mask(env, command_name) * forward_gate * speed3d * angle_reward
+
+def action_rate_l2_poststrike(env, command_name: str = "set_shot") -> torch.Tensor:
+    a = env.action_manager.action
+    pa = env.action_manager.prev_action
+    raw = torch.mean((a - pa) ** 2, dim=1)
+    return post_strike_phase_mask(env, command_name) * raw
 
 class SecondTouchTermination:
   """
@@ -1137,3 +1478,207 @@ def ball_out_of_play_termination(
 
   out = out_sidelines | out_back | wide | over_or_under
   return (~already_scored) & out
+
+
+############### <Funzioni di utilità> ###############
+
+import torch
+from typing import cast
+from mjlab.entity import Entity
+from mjlab.managers.scene_entity_config import SceneEntityCfg
+
+_DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
+
+
+def approach_ball_reward_simple(
+    env,
+    command_name: str = "set_shot",
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    k: float = 2.0,
+) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+    d_xy = ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+    dist = torch.linalg.norm(d_xy, dim=1)
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+    return gate_pre * torch.exp(-k * dist)
+
+
+def behind_ball_reward_simple(
+    env,
+    command_name: str = "set_shot",
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    dx_max: float = 0.40,
+) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+    robot_xy = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
+    ball_xy = _world_to_env_local_xy(env, ball.data.root_link_pos_w[:, :2])
+
+    dx = ball_xy[:, 0] - robot_xy[:, 0]
+    behind = dx > 0.0
+    close = dx < float(dx_max)
+
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+    return gate_pre * (behind & close).to(torch.float32)
+
+
+def strike_event_reward_contact_only(
+    env,
+    command_name: str = "set_shot",
+    left_sensor_name: str = "p1_left_foot_ball_contact",
+    right_sensor_name: str = "p1_right_foot_ball_contact",
+) -> torch.Tensor:
+    touching = _sensor_any_found(env, left_sensor_name) | _sensor_any_found(env, right_sensor_name)
+
+    prev_touch = _get_bool_state_buffer(env, key=f"p1_prev_touch_contact_only::{command_name}")
+    struck = _get_bool_state_buffer(env, key=f"p1_struck::{command_name}")
+
+    is_first = env.episode_length_buf <= 1
+    prev_touch[is_first] = False
+    struck[is_first] = False
+
+    new_touch = touching & (~prev_touch)
+    prev_touch.copy_(touching)
+
+    reward = new_touch & (~struck)
+    struck |= new_touch
+
+    return reward.to(torch.float32)
+
+
+def impact_foot_speed_once_reward(
+    env,
+    command_name: str = "set_shot",
+    left_sensor_name: str = "p1_left_foot_ball_contact",
+    right_sensor_name: str = "p1_right_foot_ball_contact",
+    max_speed: float = 8.0,
+) -> torch.Tensor:
+    robot = env.scene["robot"]
+
+    ids, _ = robot.find_bodies(("^left_foot_link$", "^right_foot_link$"), preserve_order=True)
+
+    left_vel = robot.data.body_com_lin_vel_w[:, ids[0]]
+    right_vel = robot.data.body_com_lin_vel_w[:, ids[1]]
+
+    left_speed = torch.norm(left_vel, dim=-1)
+    right_speed = torch.norm(right_vel, dim=-1)
+
+    touch_l = _sensor_any_found(env, left_sensor_name)
+    touch_r = _sensor_any_found(env, right_sensor_name)
+
+    prev_l = _get_bool_state_buffer(env, key=f"p1_imp_prev_l::{command_name}")
+    prev_r = _get_bool_state_buffer(env, key=f"p1_imp_prev_r::{command_name}")
+    paid = _get_bool_state_buffer(env, key=f"p1_imp_paid::{command_name}")
+
+    is_first = env.episode_length_buf <= 1
+    prev_l[is_first] = False
+    prev_r[is_first] = False
+    paid[is_first] = False
+
+    new_l = touch_l & (~prev_l)
+    new_r = touch_r & (~prev_r)
+
+    prev_l.copy_(touch_l)
+    prev_r.copy_(touch_r)
+
+    event_l = new_l & (~paid)
+    event_r = new_r & (~paid)
+    paid |= (event_l | event_r)
+
+    reward_speed = torch.where(
+        event_r,
+        right_speed,
+        torch.where(event_l, left_speed, torch.zeros_like(left_speed)),
+    )
+
+    return torch.clamp(reward_speed / max_speed, 0.0, 1.0)
+
+
+def ball_launch_angle_underbar_reward(
+    env,
+    command_name: str = "set_shot",
+    target_angle_deg: float = 24.0,
+    angle_sigma_deg: float = 8.0,
+    min_vx: float = 0.10,
+    max_speed_3d: float = 9.0,
+) -> torch.Tensor:
+    return ball_launch_angle_reward_after_strike(
+        env,
+        command_name=command_name,
+        target_angle_deg=target_angle_deg,
+        angle_sigma_deg=angle_sigma_deg,
+        min_vx=min_vx,
+        max_speed_3d=max_speed_3d,
+    )
+
+
+def underbar_goal_reward(
+    env,
+    command_name: str = "set_shot",
+    target_z: float = 1.35,
+    sigma_z: float = 0.18,
+) -> torch.Tensor:
+    cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+    ball_pos = ball.data.root_link_pos_w
+    origins = env.scene.env_origins
+    ball_local = ball_pos - origins
+
+    x = ball_local[:, 0]
+    y = ball_local[:, 1]
+    z = ball_local[:, 2]
+
+    crossed = x >= float(cmd.cfg.goal_line_x)
+    inside_y = torch.abs(y) <= float(cmd.cfg.goal_y_half)
+    inside_z = (z >= float(cmd.cfg.goal_z_min)) & (z <= float(cmd.cfg.goal_z_max))
+    scored_now = crossed & inside_y & inside_z
+
+    prev = _get_bool_state_buffer(env, key=f"p1_underbar_goal_prev::{command_name}")
+    is_first = env.episode_length_buf <= 1
+    prev[is_first] = False
+
+    event = scored_now & (~prev)
+    prev.copy_(scored_now)
+
+    z_score = torch.exp(-0.5 * torch.square((z - float(target_z)) / float(sigma_z)))
+    return event.to(torch.float32) * z_score
+
+
+def post_strike_upright_reward_strong(
+    env,
+    command_name: str = "set_shot",
+) -> torch.Tensor:
+    return post_strike_phase_mask(env, command_name) * upright_stability_reward(env)
+
+
+def action_rate_l2_poststrike_penalty(
+    env,
+    command_name: str = "set_shot",
+) -> torch.Tensor:
+    a = env.action_manager.action
+    pa = env.action_manager.prev_action
+    raw = torch.mean((a - pa) ** 2, dim=1)
+    return post_strike_phase_mask(env, command_name) * raw
+
+def hold_contact_after_strike_penalty(
+    env,
+    command_name: str = "set_shot",
+    left_sensor_name: str = "p1_left_foot_ball_contact",
+    right_sensor_name: str = "p1_right_foot_ball_contact",
+) -> torch.Tensor:
+    touching = _sensor_any_found(env, left_sensor_name) | _sensor_any_found(env, right_sensor_name)
+
+    prev_touch = _get_bool_state_buffer(env, key=f"p1_hold_prev_touch::{command_name}")
+    is_first = env.episode_length_buf <= 1
+    prev_touch[is_first] = False
+
+    new_touch = touching & (~prev_touch)
+    prev_touch.copy_(touching)
+
+    hold = post_strike_phase_mask(env, command_name).bool() & touching & (~new_touch)
+    return hold.to(torch.float32)

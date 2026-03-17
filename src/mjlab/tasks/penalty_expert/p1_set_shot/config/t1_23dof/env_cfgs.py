@@ -42,7 +42,7 @@ BALL_SPAWN_X_RANGE = (BALL_X, BALL_X)
 BALL_SPAWN_Y_RANGE = (BALL_Y, BALL_Y)
 
 # ---------------- Robot spawn: behind the ball ----------------
-ROBOT_BEHIND_BALL = 0.45      # meters (tune later if needed)
+ROBOT_BEHIND_BALL = 0.60     # meters (tune later if needed)
 ROBOT_X = BALL_X - ROBOT_BEHIND_BALL
 ROBOT_Y = 0.0
 
@@ -241,7 +241,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     ball_x = GOAL_X_LINE- PENALTY_DIST_FROM_GOAL
 
     # robot dietro la palla
-    ROBOT_BEHIND_BALL = 0.45
+    ROBOT_BEHIND_BALL = 0.60
     robot_x = ball_x - ROBOT_BEHIND_BALL
 
     ball_spawn_x_range = (ball_x, ball_x)
@@ -374,8 +374,9 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
       strict_obs_layout=True,
     )
   }
-    AIM_Y = 0.0  # valore ASSOLUTO (il segno lo gestisce mdp)
-    AIM_Z = 0.7
+    # Aim high + lateral (sign sampled in command term).
+    AIM_Y = 0.0
+    AIM_Z = 1.45
 
     cfg.commands = {
         "set_shot": mdp.SetShotCommandCfg(
@@ -499,83 +500,129 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     }
 
     cfg.rewards = {
-        # ---------- pre-strike: reach ball + set up ----------
-        "yaw_align": RewardTermCfg(
-            func=mdp.yaw_alignment_reward,
-            weight=0.10,
-            params={"command_name": "set_shot", "k": 2.5},
-        ),
-
-        "upright": RewardTermCfg(
-            func=mdp.upright_stability_reward,
-            weight=0.35,
-            # height_target=None -> uses robot default root height (see mdp.py)
-            params={"height_target": None, "height_sigma": 0.14, "tilt_sigma": 0.55},
-        ),
-
-        "tilt_penalty": RewardTermCfg(
-            func=mdp.trunk_tilt_l2_penalty,
-            weight=-0.12,
-        ),
-
-        # Progress (dense) + a small absolute-distance shaping (prevents "freeze")
-        "approach_ball_prog": RewardTermCfg(
-            func=mdp.approach_ball_progress_reward,
-            weight=10.0,
-            params={"command_name": "set_shot", "max_delta": 0.06, "upright_gate": 0.45},
-        ),
-
-        "approach_ball_abs": RewardTermCfg(
-            func=mdp.approach_ball_reward,
-            weight=1.2,
+        "approach_ball": RewardTermCfg(
+            func=mdp.approach_ball_reward_simple,
+            weight=1.0,
             params={"command_name": "set_shot", "k": 2.0},
         ),
 
-        "vel_to_ball": RewardTermCfg(
-            func=mdp.base_vel_towards_ball_reward,
-            weight=2.0,
-            params={"command_name": "set_shot", "max_speed": 1.4},
-        ),
-
-        # Footwork unlockers (these are what usually bring back stepping)
-        "foot_switch": RewardTermCfg(
-            func=mdp.foot_contact_switch_bonus_p1,
-            weight=0.8,
-            params={
-                "command_name": "set_shot",
-                "left_contact_sensor_name": P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-                "right_contact_sensor_name": P1_RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-                "upright_gate": 0.35,
-                "fz_thresh": 5.0,
-                "support_sign": "neg",
-            },
-        ),
-
-        "single_support": RewardTermCfg(
-            func=mdp.single_support_reward,
-            weight=0.25,
-            params={
-                "command_name": "set_shot",
-                "left_contact_sensor_name": P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-                "right_contact_sensor_name": P1_RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-                "upright_gate": 0.35,
-                "fz_thresh": 5.0,
-                "support_sign": "neg",
-            },
-        ),
-
-        # Stay behind the ball (small, just to avoid passing it)
         "behind_ball": RewardTermCfg(
-            func=mdp.behind_ball_reward,
-            weight=0.6,
-            params={"command_name": "set_shot", "dx_max": 0.40},
+            func=mdp.behind_ball_reward_simple,
+            weight=1.0,
+            params={"command_name": "set_shot", "dx_max": 0.35},
         ),
 
-        # ---------- strike quality ----------
-        # IMPORTANT: keep this BEFORE strike_event so the gate_pre inside mdp works.
+        "strike_event": RewardTermCfg(
+            func=mdp.strike_event_reward_contact_only,
+            weight=6.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
+        ),
+
+        # più enfasi sulla velocità del piede all'impatto
+        "impact_foot_speed": RewardTermCfg(
+            func=mdp.impact_foot_speed_once_reward,
+            weight=18.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "max_speed": 10.0,
+            },
+        ),
+
+        # pre-strike: fai arrivare il piede veloce verso la palla
+        "foot_speed_pre": RewardTermCfg(
+            func=mdp.foot_speed_before_strike_reward,
+            weight=2.5,
+            params={
+                "command_name": "set_shot",
+                "max_speed": 8.0,
+            },
+        ),
+
+        "foot_align_pre": RewardTermCfg(
+            func=mdp.foot_to_ball_velocity_alignment,
+            weight=3.0,
+            params={
+                "command_name": "set_shot",
+                "max_speed": 8.0,
+            },
+        ),
+
+        # NON troppo alta perché è ancora densa post-strike
+        "launch_angle": RewardTermCfg(
+            func=mdp.ball_launch_angle_underbar_reward,
+            weight=16.0,
+            params={
+                "command_name": "set_shot",
+                "target_angle_deg": 18.0,
+                "angle_sigma_deg": 12.0,
+                "min_vx": 0.25,
+                "max_speed_3d": 9.0,
+            },
+        ),
+
+        # molto meno dominante di prima, ma con numeri realistici
+        "ball_upward_after_strike": RewardTermCfg(
+            func=mdp.ball_upward_velocity_after_strike_reward,
+            weight=28.0,
+            params={
+                "command_name": "set_shot",
+                "max_vz": 1.2,
+                "min_vx": 0.20,
+            },
+        ),
+
+        "strike_power_lift": RewardTermCfg(
+            func=mdp.ball_power_lift_reward_after_strike,
+            weight=14.0,
+            params={
+                "command_name": "set_shot",
+                "max_speed_3d": 10.0,
+                "min_vx": 0.25,
+                "min_vz": 0.05,
+            },
+        ),
+
+        "goal_scored": RewardTermCfg(
+            func=mdp.goal_scored_event_reward,
+            weight=8.0,
+            params={"command_name": "set_shot"},
+        ),
+
+        "underbar_goal": RewardTermCfg(
+            func=mdp.underbar_goal_reward,
+            weight=35.0,
+            params={
+                "command_name": "set_shot",
+                "target_z": 1.35,
+                "sigma_z": 0.22,
+            },
+        ),
+
+        # meno vincolo dopo il tiro
+        "post_strike_upright": RewardTermCfg(
+            func=mdp.post_strike_upright_reward_strong,
+            weight=0.8,
+            params={"command_name": "set_shot"},
+        ),
+
+        "post_strike_speed": RewardTermCfg(
+            func=mdp.post_strike_base_speed_penalty,
+            weight=-0.08,
+            params={
+                "command_name": "set_shot",
+                "max_speed": 1.2,
+            },
+        ),
+
         "strike_from_above": RewardTermCfg(
             func=mdp.strike_from_above_penalty,
-            weight=-12.0,
+            weight=-6.0,
             params={
                 "command_name": "set_shot",
                 "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
@@ -585,112 +632,66 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
             },
         ),
 
-        "foot_over_ball": RewardTermCfg(
-            func=mdp.foot_over_ball_penalty,
-            weight=-8.0,
-            params={"command_name": "set_shot", "xy_near": 0.18, "z_margin": 0.02},
-        ),
-
-        "strike_event": RewardTermCfg(
-            func=mdp.strike_event_reward,
-            weight=1.0,
-            params={
-                "command_name": "set_shot",
-                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
-                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
-            },
-        ),
-
-        "strike_impulse": RewardTermCfg(
-            func=mdp.strike_impulse_reward,
-            weight=12.0,
-            params={"command_name": "set_shot", "max_speed": 8.0},
-        ),
-
-        "clean_strike": RewardTermCfg(
-            func=mdp.clean_strike_reward,
-            weight=24.0,
-            params={"command_name": "set_shot", "max_speed": 7.0, "up_penalty": 0.0},
-        ),
-
-        # ---------- one-touch + stability AFTER strike ----------
-        "extra_touches": RewardTermCfg(
-            func=mdp.extra_touch_after_first_penalty,
-            weight=-10.0,
-            params={
-                "command_name": "set_shot",
-                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
-                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
-            },
-        ),
-
-        "post_strike_upright": RewardTermCfg(
-            func=mdp.post_strike_upright_reward,
-            weight=4.0,
-            params={"command_name": "set_shot"},
-        ),
-
-        "post_strike_speed": RewardTermCfg(
-            func=mdp.post_strike_base_speed_penalty,
-            weight=-1.5,
-            params={"command_name": "set_shot", "max_speed": 1.2},
-        ),
-
-        # ---------- goal ----------
-        "goal_scored": RewardTermCfg(
-            func=mdp.goal_scored_event_reward,
-            weight=80.0,
-            params={"command_name": "set_shot"},
-        ),
-
-        # (optional) shape the "nice shot": reward high-corner goals a bit more than low/central ones
-        "goal_high_corner": RewardTermCfg(
-            func=mdp.goal_high_corner_reward,
-            weight=10.0,
-            params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.0},
-        ),
-
-        "goal_low_or_center": RewardTermCfg(
-            func=mdp.goal_low_or_center_penalty,
-            weight=-2.5,
-            params={"command_name": "set_shot", "z_min": 0.55, "y_side_min": 0.0},
-        ),
-
-        "post_goal_upright": RewardTermCfg(
-            func=mdp.post_goal_upright_reward,
-            weight=4.0,
-            params={"command_name": "set_shot"},
-        ),
-
-        # ---------- housekeeping ----------
         "no_strike_timeout": RewardTermCfg(
             func=mdp.no_strike_timeout_penalty,
-            weight=-15.0,
-            params={"command_name": "set_shot", "episode_length_s": EPISODE_LENGTH_S},
+            weight=-8.0,
+            params={
+                "command_name": "set_shot",
+                "episode_length_s": EPISODE_LENGTH_S,
+            },
         ),
 
-        "outside_area": RewardTermCfg(
-            func=mdp.outside_striker_area_penalty,
-            weight=-0.25,
-            params={"command_name": "set_shot"},
+        "upright": RewardTermCfg(
+            func=mdp.upright_stability_reward,
+            weight=1.0,
+            params={"height_target": None, "height_sigma": 0.14, "tilt_sigma": 0.55},
+        ),
+
+        "tilt_penalty": RewardTermCfg(
+            func=mdp.trunk_tilt_l2_penalty,
+            weight=-0.8,
         ),
 
         "fallen": RewardTermCfg(
             func=mdp.fallen_indicator,
-            weight=-50.0,
+            weight=-20.0,
             params={"min_height": 0.30, "max_tilt": 1.20},
         ),
 
-        "action_rate_pre": RewardTermCfg(
-            func=mdp.action_rate_l2_prestrike,
-            weight=-0.02,
-            params={"command_name": "set_shot"},
+        "extra_touches": RewardTermCfg(
+            func=mdp.extra_touch_after_first_penalty,
+            weight=-3.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
         ),
 
-        "ball_to_aim_3d": RewardTermCfg(
-            func=mdp.ball_speed_to_aim_reward_3d_after_strike,
-            weight=12.0,
-            params={"command_name": "set_shot"},
+        "vel_to_ball": RewardTermCfg(
+            func=mdp.base_vel_towards_ball_reward,
+            weight=0.6,
+            params={"command_name": "set_shot", "max_speed": 1.2},
+        ),
+
+        "hold_contact_after_strike": RewardTermCfg(
+            func=mdp.hold_contact_after_strike_penalty,
+            weight=-1.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
+        ),
+
+        "ball_ground_before_goal": RewardTermCfg(
+            func=mdp.ball_ground_touch_before_goal_penalty,
+            weight=-10.0,
+            params={
+                "command_name": "set_shot",
+                "ground_z": 0.115,
+                "min_x_progress": 0.35,
+            },
         ),
     }
 
@@ -717,9 +718,9 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
                 "margin": 0.10,
             },
         ),
-    })
 
-    cfg.terminations.pop("second_touch", None)
+
+    })
 
 
     cfg.sim.mujoco.timestep = SIM_TIMESTEP_S
