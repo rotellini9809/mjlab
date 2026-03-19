@@ -16,6 +16,7 @@ from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.tasks.goalkeeper_experts.e3_clear_away import mdp
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
+from mjlab.terrains import TerrainEntityCfg
 from mjlab.viewer import ViewerConfig
 
 GOAL_X_LINE = 7.0
@@ -100,14 +101,16 @@ CONTROL_DECIMATION = 4
 
 
 def _add_goal_danger_and_area_overlays(spec: mujoco.MjSpec) -> None:
-  field_body = next((body for body in spec.bodies if body.name == "field"), None)
-  if field_body is None:
-    field_body = spec.worldbody.add_body(name="field")
+  overlay_body = next(
+    (body for body in spec.bodies if body.name == "e3_field_overlays"), None
+  )
+  if overlay_body is None:
+    overlay_body = spec.worldbody.add_body(name="e3_field_overlays")
 
   center_z = 0.5 * (GOAL_PLANE_Z_MIN + GOAL_PLANE_Z_MAX)
   half_z = max(0.5 * (GOAL_PLANE_Z_MAX - GOAL_PLANE_Z_MIN), 1.0e-3)
 
-  goal_overlay = field_body.add_geom(
+  goal_overlay = overlay_body.add_geom(
     type=mujoco.mjtGeom.mjGEOM_BOX,
     pos=(GOAL_PLANE_X, GOAL_PLANE_Y_CENTER, center_z),
     size=(GOAL_PLANE_VIS_HALF_THICKNESS, GOAL_PLANE_Y_HALF, half_z),
@@ -116,71 +119,6 @@ def _add_goal_danger_and_area_overlays(spec: mujoco.MjSpec) -> None:
   goal_overlay.rgba = GOAL_PLANE_VIS_RGBA
   goal_overlay.contype = 0
   goal_overlay.conaffinity = 0
-
-  if GOAL_PLANE_X >= 0.0:
-    dz_x_min = GOAL_PLANE_X - DANGER_ZONE_DEPTH
-    dz_x_max = GOAL_PLANE_X
-  else:
-    dz_x_min = GOAL_PLANE_X
-    dz_x_max = GOAL_PLANE_X + DANGER_ZONE_DEPTH
-
-  dz_center_x = 0.5 * (dz_x_min + dz_x_max)
-  dz_half_x = max(0.5 * (dz_x_max - dz_x_min), 1.0e-3)
-
-  dz_overlay = field_body.add_geom(
-    type=mujoco.mjtGeom.mjGEOM_BOX,
-    pos=(dz_center_x, GOAL_PLANE_Y_CENTER, DANGER_ZONE_OVERLAY_Z),
-    size=(
-      dz_half_x,
-      DANGER_ZONE_HALF_WIDTH,
-      DANGER_ZONE_OVERLAY_HALF_THICKNESS,
-    ),
-  )
-  dz_overlay.name = "e3_danger_zone_overlay"
-  dz_overlay.rgba = DANGER_ZONE_OVERLAY_RGBA
-  dz_overlay.contype = 0
-  dz_overlay.conaffinity = 0
-
-  def _add_area_overlay(
-    name: str,
-    bounds: tuple[float, float, float, float],
-    z_center: float,
-    rgba: tuple[float, float, float, float],
-  ) -> None:
-    x_min, x_max, y_min, y_max = bounds
-    half_x = max(0.5 * (x_max - x_min), 1.0e-3)
-    half_y = max(0.5 * (y_max - y_min), 1.0e-3)
-    center_x = 0.5 * (x_min + x_max)
-    center_y = 0.5 * (y_min + y_max)
-
-    area = field_body.add_geom(
-      type=mujoco.mjtGeom.mjGEOM_BOX,
-      pos=(center_x, center_y, z_center),
-      size=(half_x, half_y, E3_AREA_OVERLAY_HALF_THICKNESS),
-    )
-    area.name = name
-    area.rgba = rgba
-    area.contype = 0
-    area.conaffinity = 0
-
-  hard_bounds = (
-    KEEPER_AREA_BOUNDS[0] - KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[1] + KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[2] - KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[3] + KEEPER_AREA_HARD_MARGIN,
-  )
-  _add_area_overlay(
-    "e3_keeper_area_hard_overlay",
-    hard_bounds,
-    E3_HARD_AREA_OVERLAY_Z,
-    E3_HARD_AREA_RGBA,
-  )
-  _add_area_overlay(
-    "e3_keeper_area_overlay",
-    KEEPER_AREA_BOUNDS,
-    E3_KEEPER_AREA_OVERLAY_Z,
-    E3_KEEPER_AREA_RGBA,
-  )
 
 
 def get_e3_field_cfg_with_overlays() -> EntityCfg:
@@ -216,7 +154,9 @@ def booster_t1_23_gk_expert_clear_away_env_cfg(
 
   soccer_ball_cfg = mdp.get_target_ball_cfg()
 
-  cfg.scene.terrain = None
+  cfg.scene.terrain = TerrainEntityCfg(
+    terrain_type="plane",
+  )
   cfg.scene.num_envs = 512 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,

@@ -219,6 +219,7 @@ class TerrainEntity(Entity):
       name=name,
       type=mujoco.mjtGeom.mjGEOM_PLANE,
       size=(0, 0, 0.01),
+      group=4,
     )
 
   def _add_env_origin_sites(self) -> None:

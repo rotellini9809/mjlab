@@ -1,5 +1,10 @@
 <mujoco model="field">
   <asset>
+    <mesh
+      name="field_mesh"
+      file="field_visual.obj"
+      inertia="shell"
+    />
     <texture
       name="field_tex"
       type="2d"
@@ -20,12 +25,12 @@
     <body name="field">
       <geom
         name="ground"
-        type="plane"
-        size="8 5.5 0.05"
-        pos="0 0 0"
+        type="mesh"
+        mesh="field_mesh"
         material="field_mat"
-        friction="1.0 0.005 0.0001"
-        condim="3"
+        pos="0 0 0.001"
+        contype="0"
+        conaffinity="0"
         rgba="1 1 1 1"
       />
     </body>

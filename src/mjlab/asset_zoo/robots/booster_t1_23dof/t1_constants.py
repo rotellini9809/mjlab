@@ -226,7 +226,7 @@ T1_23_ACTUATOR_4010 = BuiltinPositionActuatorCfg(
 ##
 
 T1_23_KNEES_BENT_KEYFRAME = EntityCfg.InitialStateCfg(
-    pos=(0.0, 0.0, 0.76),
+    pos=(0.0, 0.0, 0.7),
     joint_pos={
         ".*_Hip_Pitch": -0.312,
         ".*_Knee_Pitch": 0.669,

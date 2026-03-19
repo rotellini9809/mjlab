@@ -20,6 +20,7 @@ assert ROBOCUP_FIELD_XML.exists()
 
 def get_assets() -> dict[str, bytes]:
   assets: dict[str, bytes] = {}
+  update_assets(assets, ROBOCUP_FIELD_XML.parent, glob="*.obj")
   update_assets(assets, ROBOCUP_FIELD_XML.parent, glob="*.png")
   return assets
 

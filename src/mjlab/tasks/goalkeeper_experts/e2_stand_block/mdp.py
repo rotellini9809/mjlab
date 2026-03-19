@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import torch
 
@@ -10,20 +11,25 @@ from mjlab.entity import Entity, EntityCfg
 from mjlab.envs.mdp import *  # noqa: F401,F403
 from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from mjlab.motor_controller_stage1.latent_action import (
-  default_motor_obs_layout,
+from mjlab.motor_controller_stage1.latent_action import (  # noqa: F401
   MotorLatentActionCfg,
+  default_motor_obs_layout,
   motor_last_decoded_action,
 )
 from mjlab.sensor import ContactSensor
 from mjlab.tasks.goalkeeper_experts.launcher import (
+  LAUNCH_FAMILY_NAMES,
   GoalkeeperBallLauncher,
   GoalkeeperBallLauncherCfg,
+  get_e2_launcher_curriculum_stage_index,
 )
 from mjlab.utils.lab_api.math import (
   quat_from_euler_xyz,
   quat_mul,
 )
+
+if TYPE_CHECKING:
+  import viser
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
@@ -42,26 +48,100 @@ def _normalize_xy(vec_xy: torch.Tensor, eps: float = 1.0e-6) -> torch.Tensor:
   return vec_xy / norm
 
 
-def _outside_area_violation(
-  pos_xy: torch.Tensor,
-  bounds: tuple[float, float, float, float],
-) -> torch.Tensor:
-  x_min, x_max, y_min, y_max = bounds
-  x = pos_xy[:, 0]
-  y = pos_xy[:, 1]
-  x_low = (x_min - x).clamp_min(0.0)
-  x_high = (x - x_max).clamp_min(0.0)
-  y_low = (y_min - y).clamp_min(0.0)
-  y_high = (y - y_max).clamp_min(0.0)
-  return x_low + x_high + y_low + y_high
-
-
 def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
 
 def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
   return pos_w_xyz - env.scene.env_origins
+
+
+def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
+  extras = getattr(env, "extras", None)
+  if extras is None:
+    return None
+  log = extras.get("log")
+  if log is None:
+    log = {}
+    extras["log"] = log
+  return log
+
+
+def _posture_score_components(
+  projected_gravity_b: torch.Tensor,
+  roll_band: float,
+  roll_sigma: float,
+  pitch_target: float,
+  pitch_band: float,
+  pitch_sigma: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+  sagittal = projected_gravity_b[:, 0]
+  lateral = projected_gravity_b[:, 1]
+
+  roll_error = torch.relu(torch.abs(lateral) - float(roll_band))
+  roll_score = torch.exp(
+    -torch.square(roll_error) / max(float(roll_sigma) * float(roll_sigma), 1.0e-6)
+  )
+
+  pitch_error = torch.relu(
+    torch.abs(sagittal - float(pitch_target)) - float(pitch_band)
+  )
+  pitch_score = torch.exp(
+    -torch.square(pitch_error) / max(float(pitch_sigma) * float(pitch_sigma), 1.0e-6)
+  )
+
+  posture_score = roll_score * pitch_score
+  return posture_score, roll_score, pitch_score, lateral, sagittal
+
+
+def _standing_gate(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  h_low: float = 0.36,
+  h_good: float = 0.56,
+  roll_band: float = 0.1,
+  roll_sigma: float = 0.12,
+  pitch_target: float = 0.25,
+  pitch_band: float = 0.20,
+  pitch_sigma: float = 0.30,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  posture_score, _, _, _, _ = _posture_score_components(
+    robot.data.projected_gravity_b,
+    roll_band=roll_band,
+    roll_sigma=roll_sigma,
+    pitch_target=pitch_target,
+    pitch_band=pitch_band,
+    pitch_sigma=pitch_sigma,
+  )
+  base_height = robot.data.root_link_pos_w[:, 2]
+  height_score = torch.clamp(
+    (base_height - float(h_low)) / max(float(h_good) - float(h_low), 1.0e-6),
+    min=0.0,
+    max=1.0,
+  )
+  stand_score = posture_score * height_score
+  gate = stand_score
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_stand_score_mean"] = torch.mean(stand_score)
+    log["Metrics/e2_stand_gate_mean"] = torch.mean(gate)
+    log["Metrics/e2_height_score_mean"] = torch.mean(height_score)
+    log["Metrics/e2_base_height_mean"] = torch.mean(base_height)
+
+  return gate
+
+
+def _apply_standing_gate_if_enabled(
+  raw: torch.Tensor,
+  env,
+  asset_cfg: SceneEntityCfg,
+  apply_standing_gate: bool,
+) -> torch.Tensor:
+  if not apply_standing_gate:
+    return raw
+  return raw * _standing_gate(env, asset_cfg=asset_cfg)
 
 
 def get_target_ball_cfg() -> EntityCfg:
@@ -89,10 +169,6 @@ class StandBlockCommandCfg(CommandTermCfg):
   keeper_joint_pos_noise: float = 0.02
   keeper_joint_vel_noise: float = 0.08
 
-  # Safe keeper area bounds: (x_min, x_max, y_min, y_max).
-  keeper_area_bounds: tuple[float, float, float, float]
-  hard_area_margin: float = 0.4
-
   # Reusable centralized launcher configuration.
   launcher_cfg: GoalkeeperBallLauncherCfg = field(
     default_factory=GoalkeeperBallLauncherCfg
@@ -106,10 +182,6 @@ class StandBlockCommandCfg(CommandTermCfg):
   goal_plane_z_min: float = 0.0
   goal_plane_z_max: float = 1.90
 
-  # Visual cue shown for a few frames after goal detection.
-  goal_termination_term_name: str = "goal_conceded"
-  goal_cue_flash_steps: int = 18
-
   # Keep command fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
   debug_vis: bool = False
@@ -117,14 +189,10 @@ class StandBlockCommandCfg(CommandTermCfg):
   @dataclass
   class VizCfg:
     goal_plane_color: tuple[float, float, float, float] = (0.15, 0.85, 0.95, 0.85)
-    goal_cue_ok_color: tuple[float, float, float, float] = (0.15, 0.90, 0.20, 0.90)
-    goal_cue_alert_color: tuple[float, float, float, float] = (0.95, 0.15, 0.15, 0.95)
     velocity_color: tuple[float, float, float, float] = (0.95, 0.85, 0.10, 0.85)
     plane_line_radius: float = 0.008
     velocity_arrow_scale: float = 0.22
     velocity_arrow_width: float = 0.014
-    cue_radius: float = 0.075
-    cue_z_offset: float = 0.18
 
   viz: VizCfg = field(default_factory=VizCfg)
 
@@ -142,17 +210,13 @@ class StandBlockCommand(CommandTerm):
     self._launcher = GoalkeeperBallLauncher(cfg.launcher_cfg, env)
 
     self._command = torch.zeros(env.num_envs, cfg.command_dim, device=self.device)
-    self._goal_flash_steps_left = torch.zeros(
-      env.num_envs,
-      device=self.device,
-      dtype=torch.long,
-    )
 
-    self.metrics["outside_keeper_area"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["ball_speed_xy"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["goal_detected"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["launch_family_id"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["launch_t_goal_est_s"] = torch.zeros(env.num_envs, device=self.device)
+    self._status_markdown = None
+    self._gui_get_env_idx: Callable[[], int] | None = None
 
   @property
   def command(self) -> torch.Tensor:
@@ -162,25 +226,76 @@ class StandBlockCommand(CommandTerm):
   def launcher(self) -> GoalkeeperBallLauncher:
     return self._launcher
 
-  @property
-  def keeper_area_bounds(self) -> tuple[float, float, float, float]:
-    return self.cfg.keeper_area_bounds
+  def create_gui(
+    self,
+    name: str,
+    server: "viser.ViserServer",
+    get_env_idx: Callable[[], int],
+  ) -> None:
+    del name
+    self._gui_get_env_idx = get_env_idx
+    with server.gui.add_folder("Launcher"):
+      self._status_markdown = server.gui.add_markdown("")
+    self._update_status_markdown()
+
+  def compute(self, dt: float) -> None:
+    super().compute(dt)
+    self._update_status_markdown()
 
   @property
-  def hard_keeper_area_bounds(self) -> tuple[float, float, float, float]:
-    x_min, x_max, y_min, y_max = self.cfg.keeper_area_bounds
-    m = self.cfg.hard_area_margin
-    return (x_min - m, x_max + m, y_min - m, y_max + m)
+  def launcher_preset_name(self) -> str:
+    return self.cfg.launcher_cfg.active_preset_name or "custom"
+
+  @property
+  def launcher_curriculum_stage(self) -> int | None:
+    return get_e2_launcher_curriculum_stage_index(self.launcher_preset_name)
+
+  def _update_status_markdown(self) -> None:
+    if self._status_markdown is None or self._gui_get_env_idx is None:
+      return
+
+    env_idx = int(self._gui_get_env_idx())
+    if env_idx < 0 or env_idx >= self.num_envs:
+      self._status_markdown.content = (
+        "**Stage:** n/a\n\n"
+        "**Preset:** n/a\n\n"
+        "**Launch family:** n/a\n\n"
+        "**T goal est.:** n/a\n\n"
+        "**Launched:** n/a\n\n"
+        "**Deflection:** n/a"
+      )
+      return
+
+    family_id = int(self._launcher.family_id[env_idx].item())
+    if 0 <= family_id < len(LAUNCH_FAMILY_NAMES):
+      family_name = LAUNCH_FAMILY_NAMES[family_id].replace("_", " ")
+    else:
+      family_name = "n/a"
+
+    t_goal_est_s = float(self._launcher.t_goal_est_s[env_idx].item())
+    launched = bool(self._launcher.has_launched[env_idx].item())
+    has_deflection = bool(self._launcher.has_deflection[env_idx].item())
+    has_deflected = bool(self._launcher.has_deflected[env_idx].item())
+    deflection_status = (
+      "scheduled"
+      if has_deflection and not has_deflected
+      else "applied"
+      if has_deflected
+      else "none"
+    )
+    stage_index = self.launcher_curriculum_stage
+    stage_text = str(stage_index) if stage_index is not None else "baseline/custom"
+
+    self._status_markdown.content = (
+      f"**Stage:** {stage_text}\n\n"
+      f"**Preset:** {self.launcher_preset_name}\n\n"
+      f"**Launch family:** {family_name}\n\n"
+      f"**T goal est.:** {t_goal_est_s:.3f} s\n\n"
+      f"**Launched:** {'yes' if launched else 'no'}\n\n"
+      f"**Deflection:** {deflection_status}"
+    )
 
   def _update_metrics(self) -> None:
-    trunk_xy_local = _world_to_env_local_xy(
-      self._env,
-      self._robot.data.root_link_pos_w[:, :2],
-    )
-    self.metrics["outside_keeper_area"] = _outside_area_violation(
-      trunk_xy_local,
-      self.cfg.keeper_area_bounds,
-    )
     self.metrics["ball_speed_xy"] = torch.linalg.norm(
       self._ball.data.root_link_lin_vel_w[:, :2],
       dim=1,
@@ -193,44 +308,28 @@ class StandBlockCommand(CommandTerm):
     if env_ids.numel() == 0:
       return
 
-    self._reset_robot_pose(env_ids)
     self._launcher.reset(env_ids)
+    self._reset_robot_pose(env_ids)
 
     # Stage-1 decoder command input. For E2 we keep it deterministic zero.
     self._command[env_ids] = 0.0
-    self._goal_flash_steps_left[env_ids] = 0
 
   def _update_command(self) -> None:
     time_s = self._env.episode_length_buf.to(torch.float) * self._env.step_dt
     self._launcher.step(time_s)
 
-    if self.cfg.goal_cue_flash_steps <= 0:
-      return
-
-    self._goal_flash_steps_left = torch.clamp(
-      self._goal_flash_steps_left - 1,
-      min=0,
+  def _reset_robot_pose(self, env_ids: torch.Tensor) -> None:
+    from mjlab.tasks.goalkeeper_experts.e2_stand_block.config.t1_23dof.env_cfgs import (
+      KEEPER_SPAWN_Z,
+      READY_JOINT_POS,
+      READY_ROOT_QUAT,
+      READY_ROOT_YAW,
     )
 
-    goal_now: torch.Tensor
-    term_name = self.cfg.goal_termination_term_name
-    if term_name != "":
-      try:
-        goal_now = self._env.termination_manager.get_term(term_name)
-      except KeyError:
-        goal_now = self._goal_conceded_mask()
-    else:
-      goal_now = self._goal_conceded_mask()
-
-    self._goal_flash_steps_left[goal_now] = int(self.cfg.goal_cue_flash_steps)
-
-  def _reset_robot_pose(self, env_ids: torch.Tensor) -> None:
     default_root_state = self._robot.data.default_root_state
-    default_joint_pos = self._robot.data.default_joint_pos
     default_joint_vel = self._robot.data.default_joint_vel
 
     assert default_root_state is not None
-    assert default_joint_pos is not None
     assert default_joint_vel is not None
 
     spawn_x = _sample_uniform_range(
@@ -250,23 +349,39 @@ class StandBlockCommand(CommandTerm):
     origins = self._env.scene.env_origins[env_ids]
     root_state[:, 0] = origins[:, 0] + spawn_x
     root_state[:, 1] = origins[:, 1] + spawn_y
+    root_state[:, 2] = origins[:, 2] + float(KEEPER_SPAWN_Z)
+
+    # Face the sampled ball spawn point in XY, with optional additive yaw offset.
+    ball_xy = self._launcher.spawn_pos_w[env_ids, :2]
+    robot_xy = root_state[:, :2]
+    to_ball_xy = ball_xy - robot_xy
+    yaw_face_ball = torch.atan2(to_ball_xy[:, 1], to_ball_xy[:, 0])
 
     yaw_lo, yaw_hi = self.cfg.spawn_yaw_range
     if abs(yaw_hi - yaw_lo) <= 1.0e-9:
-      yaw = torch.full((len(env_ids),), float(yaw_lo), device=self.device)
+      yaw_offset = torch.full((len(env_ids),), float(yaw_lo), device=self.device)
     else:
-      yaw = _sample_uniform_range(yaw_lo, yaw_hi, len(env_ids), self.device)
+      yaw_offset = _sample_uniform_range(yaw_lo, yaw_hi, len(env_ids), self.device)
+    yaw = yaw_face_ball + yaw_offset
+
+    ready_quat = torch.tensor(READY_ROOT_QUAT, dtype=torch.float32, device=self.device)
+    yaw_delta = yaw - float(READY_ROOT_YAW)
+
     yaw_q = quat_from_euler_xyz(
       torch.zeros_like(yaw),
       torch.zeros_like(yaw),
-      yaw,
+      yaw_delta,
     )
-    root_state[:, 3:7] = quat_mul(root_state[:, 3:7], yaw_q)
+    root_state[:, 3:7] = quat_mul(
+      yaw_q,
+      ready_quat.unsqueeze(0).expand(len(env_ids), -1),
+    )
     root_state[:, 7:13] = 0.0
     self._robot.write_root_state_to_sim(root_state, env_ids=env_ids)
 
-    joint_pos = default_joint_pos[env_ids].clone()
-    joint_vel = default_joint_vel[env_ids].clone()
+    joint_pos = torch.tensor(READY_JOINT_POS, dtype=torch.float32, device=self.device)
+    joint_pos = joint_pos.unsqueeze(0).expand(len(env_ids), -1).clone()
+    joint_vel = torch.zeros_like(joint_pos)
 
     pos_noise_mag = max(float(self.cfg.keeper_joint_pos_noise), 0.0)
     vel_noise_mag = max(float(self.cfg.keeper_joint_vel_noise), 0.0)
@@ -316,8 +431,16 @@ class StandBlockCommand(CommandTerm):
     origin = self._env.scene.env_origins[batch]
 
     x = origin[0] + float(self.cfg.goal_plane_x)
-    y0 = origin[1] + float(self.cfg.goal_plane_y_center) - float(self.cfg.goal_plane_y_half)
-    y1 = origin[1] + float(self.cfg.goal_plane_y_center) + float(self.cfg.goal_plane_y_half)
+    y0 = (
+      origin[1]
+      + float(self.cfg.goal_plane_y_center)
+      - float(self.cfg.goal_plane_y_half)
+    )
+    y1 = (
+      origin[1]
+      + float(self.cfg.goal_plane_y_center)
+      + float(self.cfg.goal_plane_y_half)
+    )
     z0 = origin[2] + float(self.cfg.goal_plane_z_min)
     z1 = origin[2] + float(self.cfg.goal_plane_z_max)
 
@@ -366,26 +489,6 @@ class StandBlockCommand(CommandTerm):
       label="ball_velocity",
     )
 
-    cue_pos = torch.tensor(
-      [
-        x,
-        origin[1] + float(self.cfg.goal_plane_y_center),
-        z1 + float(self.cfg.viz.cue_z_offset),
-      ],
-      device=self.device,
-    )
-    cue_color = (
-      self.cfg.viz.goal_cue_alert_color
-      if int(self._goal_flash_steps_left[batch].item()) > 0
-      else self.cfg.viz.goal_cue_ok_color
-    )
-    visualizer.add_sphere(
-      cue_pos.cpu().numpy(),
-      radius=float(self.cfg.viz.cue_radius),
-      color=cue_color,
-      label="goal_cue",
-    )
-
 
 def _goal_conceded_mask_from_command(
   env,
@@ -425,6 +528,7 @@ def _first_ball_robot_contact_mask(
 
 
 # ---------------- Observations ----------------
+
 
 def target_direction_xy(
   env,
@@ -490,6 +594,7 @@ def time_to_goal_plane(
 
 # ---------------- Rewards ----------------
 
+
 def goal_conceded_indicator(
   env,
   command_name: str = "stand_block",
@@ -501,6 +606,8 @@ def save_success_reward(
   env,
   command_name: str = "stand_block",
   resolution_term_name: str | None = "contact_resolution_window",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  apply_standing_gate: bool = False,
 ) -> torch.Tensor:
   goal = _goal_conceded_mask_from_command(env, command_name)
   resolution_done = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
@@ -514,8 +621,8 @@ def save_success_reward(
         dtype=torch.bool,
       )
 
-  success = resolution_done & (~goal)
-  return success.float()
+  success = (resolution_done & (~goal)).float()
+  return _apply_standing_gate_if_enabled(success, env, asset_cfg, apply_standing_gate)
 
 
 def deflect_away_from_goal_reward(
@@ -523,12 +630,16 @@ def deflect_away_from_goal_reward(
   command_name: str = "stand_block",
   only_on_first_contact: bool = True,
   clip_speed: float = 4.0,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  apply_standing_gate: bool = False,
 ) -> torch.Tensor:
   cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
 
   if only_on_first_contact:
-    contact = _first_ball_robot_contact_mask(env, cmd.cfg.ball_robot_contact_sensor_name)
+    contact = _first_ball_robot_contact_mask(
+      env, cmd.cfg.ball_robot_contact_sensor_name
+    )
   else:
     contact = _ball_robot_contact_mask(env, cmd.cfg.ball_robot_contact_sensor_name)
 
@@ -538,18 +649,54 @@ def deflect_away_from_goal_reward(
   else:
     away_speed = torch.clamp(vx, min=0.0, max=float(clip_speed))
 
-  return away_speed * contact.float()
+  raw = away_speed * contact.float()
+  return _apply_standing_gate_if_enabled(raw, env, asset_cfg, apply_standing_gate)
 
 
-def outside_keeper_area_penalty(
+def upright_stability_reward(
   env,
-  command_name: str = "stand_block",
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  roll_band: float = 0.1,
+  roll_sigma: float = 0.12,
+  pitch_target: float = 0.25,
+  pitch_band: float = 0.20,
+  pitch_sigma: float = 0.30,
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
-  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
-  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
-  return _outside_area_violation(pos_xy_local, cmd.keeper_area_bounds)
+  posture_score, roll_score, pitch_score, lateral, sagittal = _posture_score_components(
+    robot.data.projected_gravity_b,
+    roll_band=roll_band,
+    roll_sigma=roll_sigma,
+    pitch_target=pitch_target,
+    pitch_band=pitch_band,
+    pitch_sigma=pitch_sigma,
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_roll_score_mean"] = torch.mean(roll_score)
+    log["Metrics/e2_pitch_score_mean"] = torch.mean(pitch_score)
+    log["Metrics/e2_lateral_posture_component_mean"] = torch.mean(lateral)
+    log["Metrics/e2_sagittal_posture_component_mean"] = torch.mean(sagittal)
+
+  return posture_score
+
+
+def low_height_soft_penalty(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  h_soft: float = 0.48,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  height = robot.data.root_link_pos_w[:, 2]
+  low = torch.relu(float(h_soft) - height)
+  penalty = torch.square(low)
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_low_height_soft_pen_mean"] = torch.mean(penalty)
+
+  return penalty
 
 
 def fallen_indicator(
@@ -567,26 +714,12 @@ def fallen_indicator(
 
 # ---------------- Terminations ----------------
 
+
 def goal_conceded_termination(
   env,
   command_name: str = "stand_block",
 ) -> torch.Tensor:
   return _goal_conceded_mask_from_command(env, command_name)
-
-
-def outside_keeper_area_hard(
-  env,
-  command_name: str = "stand_block",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
-  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
-  violation = _outside_area_violation(
-    pos_xy_local,
-    cmd.hard_keeper_area_bounds,
-  )
-  return violation > 0.0
 
 
 def first_ball_contact_termination(
@@ -625,7 +758,7 @@ class ContactResolutionTermination:
     self,
     env,
     command_name: str = "stand_block",
-    resolution_window_s: float = 0.8,
+    resolution_window_s: float = 1.5,
   ) -> torch.Tensor:
     cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
     time_s = env.episode_length_buf.to(torch.float) * env.step_dt

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import math
 import os
+import sys
+from pathlib import Path
 
 import mujoco
+import yaml
 
-from mjlab.asset_zoo.robots import T1_23_ACTION_SCALE, get_t1_23_robot_cfg
 from mjlab.asset_zoo.robocup_assets.field import get_robocup_field_cfg
 from mjlab.asset_zoo.robocup_assets.goalpost import get_robocup_goalpost_cfg
+from mjlab.asset_zoo.robots import T1_23_ACTION_SCALE, get_t1_23_robot_cfg
 from mjlab.entity import EntityCfg
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp.events import reset_scene_to_default
@@ -18,21 +22,55 @@ from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.goalkeeper_experts.e1_set_square import mdp
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
+from mjlab.terrains import TerrainEntityCfg
 from mjlab.viewer import ViewerConfig
 
 GOAL_X_LINE = 7
 GOALPOST_X = 7.3
-# E1 keeper spawn near goal mouth (world frame, before env origins).
-KEEPER_SPAWN_X_RANGE = (GOAL_X_LINE - 0.2, GOAL_X_LINE + 0.2)
+# Old coherent E1 convention:
+# - home point sits slightly more forward into the field
+# - spawn band is centered around that home point, not around the goal line
+# This keeps the home-point shaping meaningful at episode start.
+KEEPER_HOME_POINT_X = 6.75
+KEEPER_HOME_POINT_Y = 0.0
+KEEPER_SPAWN_X_RANGE = (6.55, 6.95)
 KEEPER_SPAWN_Y_RANGE = (-0.6, 0.6)
-KEEPER_SPAWN_Z = 0.658
+# Raw spawn height from crouch_stance_1 tracking policy run k0zgfxdw near the
+# start (frame 11/66, ~= 1/6 of the clip), extracted in the MJLab controller.
+KEEPER_SPAWN_Z = 0.7
+# Root quaternion (w, x, y, z) and joint positions from the same snapshot.
+READY_ROOT_QUAT = (0.850692629814148, -0.01908080279827118, 0.048677168786525726, 0.5230569243431091)
+READY_JOINT_POS = [
+  -0.006449203006923199,   # AAHead_yaw
+  -0.06991329044103622,    # Head_pitch
+  -0.06792288273572922,    # Left_Shoulder_Pitch
+  -1.2981278896331787,     # Left_Shoulder_Roll
+   0.5135267376899719,     # Left_Elbow_Pitch
+  -0.5423100590705872,     # Left_Elbow_Yaw
+  -0.0499301552772522,     # Right_Shoulder_Pitch
+   1.2249946594238281,     # Right_Shoulder_Roll
+   0.5443910956382751,     # Right_Elbow_Pitch
+   0.6937841773033142,     # Right_Elbow_Yaw
+   0.07025951147079468,    # Waist
+  -0.3184724450111389,     # Left_Hip_Pitch
+  -0.03504209965467453,    # Left_Hip_Roll
+   0.06286874413490295,    # Left_Hip_Yaw
+   0.2646978199481964,     # Left_Knee_Pitch
+  -0.04678475856781006,    # Left_Ankle_Pitch
+   0.015397579409182072,   # Left_Ankle_Roll
+  -0.3520301878452301,     # Right_Hip_Pitch
+  -0.004032755270600319,   # Right_Hip_Roll
+  -0.08282425254583359,    # Right_Hip_Yaw
+   0.4212573170661926,     # Right_Knee_Pitch
+  -0.17360135912895203,    # Right_Ankle_Pitch
+  -0.040193840861320496,   # Right_Ankle_Roll
+]
 
 # Safe keeper area bounds (x_min, x_max, y_min, y_max).
 KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1, GOAL_X_LINE + 0.5, -2, 2)
 KEEPER_AREA_HARD_MARGIN = 0.3
 
-# Target ball spawn relative to keeper spawn.
-# With keeper spawn centered at x~=+7, mean forward=7 centers mean ball spawn at field x~=0.
+# Target ball spawn relative to the sampled keeper spawn around the E1 home point.
 TARGET_SPAWN_FORWARD_RANGE = (3.0, 11.0)
 TARGET_SPAWN_LATERAL_RANGE = (-3.8, 3.8)
 # Ball geometry in robocup asset: radius=0.11 -> height=0.22.
@@ -51,6 +89,7 @@ DEBUG_TARGET_BALL_GROUND_Z = TARGET_BALL_HEIGHT / 2.0
 # E1 kick sampler (single kick, lateral-biased, anti-shot).
 KICK_DEAD_BALL_PROB = 0.40
 KICK_LATERAL_ROLL_PROB = 0.40
+KICK_DRIBBLE_PROB = 0.20
 KICK_DEAD_BALL_TINY_DRIFT_PROB = 0.20
 KICK_DEAD_BALL_DRIFT_SPEED_RANGE = (0.02, 0.10)
 KICK_SPEED_RANGE = (0.4, 1.6)
@@ -61,14 +100,60 @@ DRIBBLE_TAP_INTERVAL_RANGE = (0.16, 0.64)
 DRIBBLE_TAP_SPEED_RANGE = (0.2, 0.6)
 MAX_TOWARD_GOAL_VX = 0.2
 
-# Future reset curriculum hook (for now always default pose).
-P_READY = 0.0
+# Spawn from the ready pose on half of resets; otherwise use default pose.
+P_READY = 0.5
 
-# Keeper spawn yaw (rad). Use pi to face opposite field side.
-SPAWN_YAW_RANGE = (
-  3.141592653589793 - 1.3089969389957472,
-  3.141592653589793 + 1.3089969389957472,
+# Manual reset curriculum.
+E1_RESET_CURRICULUM_STAGE_ENV = os.environ.get(
+  "MJLAB_E1_RESET_CURRICULUM_STAGE", ""
+).strip()
+E1_DEFAULT_RESET_CURRICULUM_STAGE = 4
+# Goalkeeper nominal facing in field coordinates: look out into the field, not at the sampled ball.
+KEEPER_NOMINAL_FACING_YAW = math.pi
+
+# Early stages intentionally use disjoint Y/lateral intervals with a hole around zero.
+# This keeps starts easier while still requiring meaningful repositioning, without rejection sampling.
+E1_RESET_STAGE_CFGS = (
+  mdp.SetSquareResetStageCfg(
+    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.08, KEEPER_HOME_POINT_X + 0.08),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
+    spawn_yaw_offset_range=(-math.radians(20.0), math.radians(20.0)),
+    target_forward_range=(4.0, 6.0),
+    target_lateral_range=mdp.IntervalUnionCfg(intervals=((-1.2, -0.5), (0.5, 1.2))),
+    launcher_mode_probs=(1.0, 0.0, 0.0),
+  ),
+  mdp.SetSquareResetStageCfg(
+    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.12, KEEPER_HOME_POINT_X + 0.12),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-0.40, -0.08), (0.08, 0.40))),
+    spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
+    target_forward_range=(3.5, 7.5),
+    target_lateral_range=mdp.IntervalUnionCfg(intervals=((-2.0, -0.30), (0.30, 2.0))),
+    launcher_mode_probs=(0.8, 0.2, 0.0),
+  ),
+  mdp.SetSquareResetStageCfg(
+    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.15, KEEPER_HOME_POINT_X + 0.15),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-0.55, -0.05), (0.05, 0.55))),
+    spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
+    target_forward_range=(3.0, 9.0),
+    target_lateral_range=mdp.IntervalUnionCfg(intervals=((-3.0, -0.15), (0.15, 3.0))),
+    launcher_mode_probs=(0.6, 0.3, 0.1),
+  ),
+  mdp.SetSquareResetStageCfg(
+    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.08, KEEPER_HOME_POINT_X + 0.08),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-0.40, -0.18), (0.18, 0.40))),
+    spawn_yaw_offset_range=(-math.radians(45.0), math.radians(45.0)),
+    target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
+    target_lateral_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_LATERAL_RANGE,)),
+    launcher_mode_probs=(1.0, 0.0, 0.0),
+  ),
 )
+
+# Upright posture shaping (anisotropic): strict lateral, tolerant sagittal with slight forward lean.
+UPRIGHT_ROLL_BAND = 0.1
+UPRIGHT_ROLL_SIGMA = 0.12
+UPRIGHT_PITCH_TARGET = 0.25
+UPRIGHT_PITCH_BAND = 0.20
+UPRIGHT_PITCH_SIGMA = 0.30
 
 # Stage-1 command dimension used in motor-observation layout.
 MOTOR_COMMAND_DIM = 46
@@ -80,6 +165,8 @@ MOTOR_ACT_DIM = 23
 EPISODE_LENGTH_S = 4.0
 SIM_TIMESTEP_S = 0.005
 CONTROL_DECIMATION = 4
+E1_TASK_ID = "Mjlab-GK-Expert-SetSquare-Booster-T1_23"
+E1_EXPERIMENT_NAME = "gk_expert_set_square_booster_t1_23"
 
 # E1 test walls around the real 14x9 playable area:
 # - 2 continuous walls on long sides (y = +/- 4.5),
@@ -102,18 +189,128 @@ E1_KEEPER_AREA_RGBA = (0.05, 0.60, 0.95, 0.30)
 BALL_CURB_CONTACT_SENSOR_NAME = "ball_curb_contact"
 LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME = "left_foot_ground_contact"
 RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME = "right_foot_ground_contact"
-E1_FIELD_BODY_NAME = "field"
 STANCE_ORTHO_LEFT_FOOT_BODY = r"^left_foot_link$"
 STANCE_ORTHO_RIGHT_FOOT_BODY = r"^right_foot_link$"
 STANCE_ORTHO_W_MIN = 0.10
 STANCE_ORTHO_D_MIN = 0.20
 WAIST_BODY_NAME_REGEX = r"(?i)^waist$"
+# Shared home-point band used by reward shaping.
+HOME_POINT_BAND_RADIUS = 0.10
+
+
+def _get_cli_flag_value(flag: str) -> str | None:
+  flag_eq = f"{flag}="
+  argv = sys.argv[1:]
+  for index, arg in enumerate(argv):
+    if arg == flag and index + 1 < len(argv):
+      return argv[index + 1]
+    if arg.startswith(flag_eq):
+      return arg[len(flag_eq) :]
+  return None
+
+
+def _is_e1_play_cli_invocation() -> bool:
+  script_stem = Path(sys.argv[0]).stem.lower()
+  if "play" not in script_stem:
+    return False
+  return len(sys.argv) > 1 and sys.argv[1] == E1_TASK_ID
+
+
+def _download_wandb_run_file(log_root: Path, run_path: str, filename: str) -> Path:
+  import wandb
+
+  run_id = run_path.split("/")[-1]
+  download_dir = log_root / "wandb_checkpoints" / run_id
+  target = download_dir / filename
+  if target.exists():
+    return target
+
+  download_dir.mkdir(parents=True, exist_ok=True)
+
+  api = wandb.Api()
+  run = api.run(run_path)
+  files = {f.name for f in run.files()}
+  if filename not in files:
+    raise FileNotFoundError(
+      f"Required file '{filename}' not found in W&B run {run_path}."
+    )
+  run.file(filename).download(str(download_dir), replace=True)
+  return target
+
+
+def _try_download_wandb_run_file(
+  log_root: Path, run_path: str, filename: str
+) -> Path | None:
+  try:
+    return _download_wandb_run_file(log_root, run_path, filename)
+  except FileNotFoundError:
+    return None
+
+
+def _extract_saved_e1_curriculum_stage(env_yaml_path: Path) -> int | None:
+  with env_yaml_path.open("r", encoding="utf-8") as handle:
+    env_data = yaml.safe_load(handle) or {}
+
+  if not isinstance(env_data, dict):
+    return None
+  commands = env_data.get("commands")
+  if not isinstance(commands, dict):
+    return None
+  set_square_cfg = commands.get("set_square")
+  if not isinstance(set_square_cfg, dict):
+    return None
+
+  stage_value = set_square_cfg.get("curriculum_stage")
+  try:
+    stage_index = int(stage_value)
+  except (TypeError, ValueError):
+    return None
+
+  if not (1 <= stage_index <= len(E1_RESET_STAGE_CFGS)):
+    return None
+  return stage_index
+
+
+def _resolve_saved_e1_play_curriculum_stage() -> int | None:
+  if not _is_e1_play_cli_invocation():
+    return None
+
+  checkpoint_file = _get_cli_flag_value("--checkpoint-file")
+  if checkpoint_file:
+    env_yaml_path = (
+      Path(checkpoint_file).expanduser().resolve().parent / "params" / "env.yaml"
+    )
+    if not env_yaml_path.exists():
+      print(
+        "[WARN]: Saved E1 env config was not found next to the checkpoint; "
+        "using the default play stage."
+      )
+      return None
+    return _extract_saved_e1_curriculum_stage(env_yaml_path)
+
+  wandb_run_path = _get_cli_flag_value("--wandb-run-path")
+  if not wandb_run_path:
+    return None
+
+  log_root = (Path("logs") / "rsl_rl" / E1_EXPERIMENT_NAME).resolve()
+  env_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "params/env.yaml"
+  )
+  if env_yaml_path is None:
+    print(
+      "[WARN]: Saved E1 env config was not found in the W&B run; "
+      "using the default play stage."
+    )
+    return None
+  return _extract_saved_e1_curriculum_stage(env_yaml_path)
 
 
 def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
-  field_body = next((body for body in spec.bodies if body.name == "field"), None)
-  if field_body is None:
-    field_body = spec.worldbody.add_body(name="field")
+  overlay_body = next(
+    (body for body in spec.bodies if body.name == "e1_field_overlays"), None
+  )
+  if overlay_body is None:
+    overlay_body = spec.worldbody.add_body(name="e1_field_overlays")
 
   half_t = E1_WALL_THICKNESS / 2.0
   half_h = E1_WALL_HEIGHT / 2.0
@@ -124,7 +321,7 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
     pos: tuple[float, float, float],
     size: tuple[float, float, float],
   ) -> None:
-    wall = field_body.add_geom(
+    wall = overlay_body.add_geom(
       type=mujoco.mjtGeom.mjGEOM_BOX,
       pos=pos,
       size=size,
@@ -176,47 +373,6 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
     (half_t, short_side_segment_half_y, half_h),
   )
 
-  def _add_area_overlay(
-    name: str,
-    bounds: tuple[float, float, float, float],
-    z_center: float,
-    rgba: tuple[float, float, float, float],
-  ) -> None:
-    x_min, x_max, y_min, y_max = bounds
-    half_x = max(0.5 * (x_max - x_min), 1.0e-3)
-    half_y = max(0.5 * (y_max - y_min), 1.0e-3)
-    center_x = 0.5 * (x_min + x_max)
-    center_y = 0.5 * (y_min + y_max)
-
-    overlay = field_body.add_geom(
-      type=mujoco.mjtGeom.mjGEOM_BOX,
-      pos=(center_x, center_y, z_center),
-      size=(half_x, half_y, E1_AREA_OVERLAY_HALF_THICKNESS),
-    )
-    overlay.name = name
-    overlay.rgba = rgba
-    overlay.contype = 0
-    overlay.conaffinity = 0
-
-  hard_bounds = (
-    KEEPER_AREA_BOUNDS[0] - KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[1] + KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[2] - KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[3] + KEEPER_AREA_HARD_MARGIN,
-  )
-  _add_area_overlay(
-    "e1_keeper_area_hard_overlay",
-    hard_bounds,
-    E1_HARD_AREA_OVERLAY_Z,
-    E1_HARD_AREA_RGBA,
-  )
-  _add_area_overlay(
-    "e1_keeper_area_overlay",
-    KEEPER_AREA_BOUNDS,
-    E1_KEEPER_AREA_OVERLAY_Z,
-    E1_KEEPER_AREA_RGBA,
-  )
-
 
 def get_e1_field_cfg_with_test_walls() -> EntityCfg:
   field_cfg = get_robocup_field_cfg()
@@ -235,6 +391,17 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   play: bool = False,
 ) -> ManagerBasedRlEnvCfg:
   cfg = make_tracking_env_cfg()
+  curriculum_stage = E1_DEFAULT_RESET_CURRICULUM_STAGE
+  if E1_RESET_CURRICULUM_STAGE_ENV:
+    curriculum_stage = int(E1_RESET_CURRICULUM_STAGE_ENV)
+  elif play:
+    saved_stage = _resolve_saved_e1_play_curriculum_stage()
+    if saved_stage is not None:
+      curriculum_stage = saved_stage
+      print(
+        f"[INFO]: Auto-selected E1 play curriculum stage from saved run: "
+        f"{curriculum_stage}"
+      )
 
   robot_cfg = get_t1_23_robot_cfg()
   # Keep default keyframe pose but place initial robot near goal.
@@ -252,7 +419,9 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
 
   soccer_ball_cfg = mdp.get_target_ball_cfg()
 
-  cfg.scene.terrain = None
+  cfg.scene.terrain = TerrainEntityCfg(
+    terrain_type="plane",
+  )
   cfg.scene.num_envs = 512 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,
@@ -272,7 +441,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   left_foot_ground_contact_cfg = ContactSensorCfg(
     name=LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
     primary=ContactMatch(mode="body", pattern=STANCE_ORTHO_LEFT_FOOT_BODY, entity="robot"),
-    secondary=ContactMatch(mode="subtree", pattern=E1_FIELD_BODY_NAME, entity="soccer_field"),
+    secondary=ContactMatch(mode="body", pattern="terrain"),
     fields=("found", "force"),
     reduce="netforce",
     num_slots=1,
@@ -280,7 +449,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   right_foot_ground_contact_cfg = ContactSensorCfg(
     name=RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
     primary=ContactMatch(mode="body", pattern=STANCE_ORTHO_RIGHT_FOOT_BODY, entity="robot"),
-    secondary=ContactMatch(mode="subtree", pattern=E1_FIELD_BODY_NAME, entity="soccer_field"),
+    secondary=ContactMatch(mode="body", pattern="terrain"),
     fields=("found", "force"),
     reduce="netforce",
     num_slots=1,
@@ -340,11 +509,16 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       goal_toward_positive_x=True,
       max_toward_goal_speed=MAX_TOWARD_GOAL_VX,
       p_ready=P_READY,
-      spawn_yaw_range=SPAWN_YAW_RANGE,
+      home_point_x=KEEPER_HOME_POINT_X,
+      home_point_y=KEEPER_HOME_POINT_Y,
+      curriculum_stage=curriculum_stage,
+      curriculum_stages=E1_RESET_STAGE_CFGS,
+      nominal_keeper_facing_yaw=KEEPER_NOMINAL_FACING_YAW,
       stance_left_foot_body_name=STANCE_ORTHO_LEFT_FOOT_BODY,
       stance_right_foot_body_name=STANCE_ORTHO_RIGHT_FOOT_BODY,
       stance_ortho_w_min=STANCE_ORTHO_W_MIN,
       stance_ortho_d_min=STANCE_ORTHO_D_MIN,
+      viz=mdp.SetSquareCommandCfg.VizCfg(home_point_radius=HOME_POINT_BAND_RADIUS),
       resampling_time_range=(1.0e9, 1.0e9),
       debug_vis=True,
     )
@@ -371,6 +545,10 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "target_dir_xy": ObservationTermCfg(
       func=mdp.target_direction_xy,
+      params={"command_name": "set_square"},
+    ),
+    "desired_point_rel_xy": ObservationTermCfg(
+      func=mdp.desired_point_relative_xy,
       params={"command_name": "set_square"},
     ),
     "ball_pos_rel_xyz": ObservationTermCfg(
@@ -406,6 +584,10 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       func=mdp.target_direction_xy,
       params={"command_name": "set_square"},
     ),
+    "desired_point_rel_xy": ObservationTermCfg(
+      func=mdp.desired_point_relative_xy,
+      params={"command_name": "set_square"},
+    ),
     "ball_pos_rel_xyz": ObservationTermCfg(
       func=mdp.target_position_relative_xyz,
       params={"command_name": "set_square"},
@@ -429,137 +611,19 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
   }
 
-  fallen_weight = -4.0
+  fallen_weight = -6.0
 
   cfg.rewards = {
-    "yaw_align_torso": RewardTermCfg(
-      func=mdp.yaw_alignment_torso_reward,
-      weight=0.0,
-      params={"command_name": "set_square", "k": 2.5},
-    ),
-    "yaw_align_waist": RewardTermCfg(
-      func=mdp.yaw_alignment_waist_reward,
-      weight=2.0,
-      params={
-        "command_name": "set_square",
-        "k": 2.5,
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-      },
-    ),
-    "waist_yaw_progress": RewardTermCfg(
-      func=mdp.waist_yaw_progress_reward,
-      weight=1.0,
-      params={
-        "command_name": "set_square",
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-        "err_gate": 0.25,
-        "upright_gate": 0.80,
-        "max_delta": 0.35,
-      },
-    ),
-    "waist_yaw_abs_pen": RewardTermCfg(
-      func=mdp.waist_yaw_abs_penalty,
-      weight=-0.25,
-      params={
-        "command_name": "set_square",
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-        "upright_gate": 0.85,
-      },
-    ),
-    "foot_yaw_slip_contact_pen": RewardTermCfg(
-      func=mdp.foot_yaw_slip_contact_pen,
-      weight=-0.10,
-      params={
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-        "left_contact_sensor_name": LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-        "right_contact_sensor_name": RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-        "fz_thresh": 40.0,
-        "support_sign": "neg",
-      },
-    ),
-    "foot_xy_slip_contact_pen": RewardTermCfg(
-      func=mdp.foot_xy_slip_contact_pen,
-      weight=-0.10,
-      params={
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-        "left_contact_sensor_name": LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-        "right_contact_sensor_name": RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-        "fz_thresh": 40.0,
-        "support_sign": "neg",
-      },
-    ),
-    "foot_contact_switch_bonus": RewardTermCfg(
-      func=mdp.foot_contact_switch_bonus,
-      weight=0.12,
-      params={
-        "command_name": "set_square",
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-        "left_contact_sensor_name": LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-        "right_contact_sensor_name": RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-        "upright_gate": 0.85,
-        "err_gate": 0.25,
-        "fz_thresh": 40.0,
-        "support_sign": "neg",
-      },
-    ),
-    "stance_ortho_to_ball": RewardTermCfg(
-      func=mdp.stance_ortho_to_ball_reward,
-      weight=0.6,
-      params={
-        "command_name": "set_square",
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-        "w_min": STANCE_ORTHO_W_MIN,
-        "d_min": STANCE_ORTHO_D_MIN,
-      },
-    ),
-    "upright": RewardTermCfg(
-      func=mdp.upright_stability_reward,
-      weight=1.0,
-      params={},
-    ),
-    "drift_deadzone": RewardTermCfg(
-      func=mdp.xy_drift_deadzone_reward,
-      weight=0.0,
-      params={"command_name": "set_square"},
-    ),
-    "xy_speed_deadzone": RewardTermCfg(
-      func=mdp.xy_speed_deadzone_reward,
-      weight=0.0,
-      params={},
-    ),
-    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.03),
-    "joint_pos_limits": RewardTermCfg(
-      func=mdp.joint_pos_limits,
-      weight=-0.8,
-      params={"asset_cfg": SceneEntityCfg("robot", joint_names=(".*",))},
+    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.008),
+    "angular_momentum": RewardTermCfg(
+      func=mdp.angular_momentum_penalty,
+      weight=-0.005,
+      params={"sensor_name": "robot/root_angmom"},
     ),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_ang_vel_penalty,
-      weight=-0.03,
-      params={},
-    ),
-    "angular_momentum": RewardTermCfg(
-      func=mdp.angular_momentum_penalty,
       weight=-0.01,
-      params={"sensor_name": "robot/root_angmom"},
-    ),
-    "twist_pen": RewardTermCfg(
-      func=mdp.torso_waist_twist_penalty,
-      weight=-0.03,
-      params={
-        "command_name": "set_square",
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-      },
-    ),
-    "outside_area": RewardTermCfg(
-      func=mdp.outside_keeper_area_penalty,
-      weight=-2.0,
-      params={"command_name": "set_square"},
+      params={},
     ),
     "fallen": RewardTermCfg(
       func=mdp.fallen_indicator,
@@ -567,6 +631,145 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       params={
         "min_height": 0.32,
         "max_tilt": 1.25,
+      },
+    ),
+    "joint_pos_limits": RewardTermCfg(
+      func=mdp.joint_pos_limits,
+      weight=-0.5,
+      params={"asset_cfg": SceneEntityCfg("robot", joint_names=(".*",))},
+    ),
+    "low_height_soft_penalty": RewardTermCfg(
+      func=mdp.low_height_soft_penalty,
+      weight=-1.6,
+      params={"h_soft": 0.48},
+    ),
+    "stance_center_home_x_abs_pen": RewardTermCfg(
+      func=mdp.stance_center_home_axis_abs_penalty,
+      weight=-0.2,
+      params={
+        "command_name": "set_square",
+        "axis": "x",
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_center_home_x_progress": RewardTermCfg(
+      func=mdp.stance_center_home_axis_progress_reward,
+      weight=0.3,
+      params={
+        "command_name": "set_square",
+        "axis": "x",
+        "max_delta": 0.12,
+        "apply_standing_gate": True,
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_center_home_y_abs_pen": RewardTermCfg(
+      func=mdp.stance_center_home_axis_abs_penalty,
+      weight=-0.7,
+      params={
+        "command_name": "set_square",
+        "axis": "y",
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_center_home_y_progress": RewardTermCfg(
+      func=mdp.stance_center_home_axis_progress_reward,
+      weight=1.0,
+      params={
+        "command_name": "set_square",
+        "axis": "y",
+        "max_delta": 0.2,
+        "apply_standing_gate": True,
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_center_move_toward_home": RewardTermCfg(
+      func=mdp.stance_center_move_toward_home_reward,
+      weight=0.15,
+      params={
+        "command_name": "set_square",
+        "r_deadband": HOME_POINT_BAND_RADIUS,
+        "v_cap": 0.6,
+        "apply_standing_gate": True,
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_ortho_abs_pen": RewardTermCfg(
+      func=mdp.stance_ortho_abs_penalty,
+      weight=-0.8,
+      params={
+        "command_name": "set_square",
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_ortho_progress": RewardTermCfg(
+      func=mdp.stance_ortho_progress_reward,
+      weight=1.0,
+      params={
+        "command_name": "set_square",
+        "max_delta": 0.2,
+        "apply_standing_gate": True,
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "stance_width_band_pen": RewardTermCfg(
+      func=mdp.stance_width_band_penalty,
+      weight=-0.25,
+      params={
+        "command_name": "set_square",
+        "w_min": 0.16,
+        "w_max": 0.4,
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "upright": RewardTermCfg(
+      func=mdp.upright_stability_reward,
+      weight=1.0,
+      params={
+        "roll_band": UPRIGHT_ROLL_BAND,
+        "roll_sigma": UPRIGHT_ROLL_SIGMA,
+        "pitch_target": UPRIGHT_PITCH_TARGET,
+        "pitch_band": UPRIGHT_PITCH_BAND,
+        "pitch_sigma": UPRIGHT_PITCH_SIGMA,
+      },
+    ),
+    "yaw_align_waist": RewardTermCfg(
+      func=mdp.yaw_alignment_waist_reward,
+      weight=0.1,
+      params={
+        "command_name": "set_square",
+        "k": 2.5,
+        "waist_body_name": WAIST_BODY_NAME_REGEX,
+        "apply_standing_gate": True,
+      },
+    ),
+    "yaw_err_abs_pen": RewardTermCfg(
+      func=mdp.waist_yaw_abs_penalty,
+      weight=-0.1,
+      params={
+        "command_name": "set_square",
+        "waist_body_name": WAIST_BODY_NAME_REGEX,
+        "upright_gate": 0.0,
+      },
+    ),
+    "yaw_progress": RewardTermCfg(
+      func=mdp.waist_yaw_progress_reward,
+      weight=0.2,
+      params={
+        "command_name": "set_square",
+        "waist_body_name": WAIST_BODY_NAME_REGEX,
+        "err_gate": 0.0,
+        "upright_gate": 0.0,
+        "max_delta": 0.2,
+        "apply_standing_gate": True,
       },
     ),
   }
@@ -580,10 +783,6 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
         "max_tilt": 1.25,
         "consecutive_steps": 6,
       },
-    ),
-    "out_of_area_hard": TerminationTermCfg(
-      func=mdp.outside_keeper_area_hard,
-      params={"command_name": "set_square"},
     ),
   }
 

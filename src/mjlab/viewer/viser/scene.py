@@ -95,6 +95,9 @@ class ViserMujocoScene(DebugVisualizer):
 
   # Handles (created once).
   fixed_bodies_frame: viser.SceneNodeHandle = field(init=False)
+  fixed_geom_handles_by_group: dict[tuple[int, int, int], viser.SceneNodeHandle] = field(
+    default_factory=dict
+  )
   mesh_handles_by_group: dict[tuple[int, int, int], viser.BatchedGlbHandle] = field(
     default_factory=dict
   )
@@ -247,6 +250,10 @@ class ViserMujocoScene(DebugVisualizer):
 
   def _sync_visibilities(self) -> None:
     """Synchronize all handle visibilities based on current flags."""
+    # Fixed geom handles (planes and fixed meshes).
+    for (_body_id, group_id, _handle_id), handle in self.fixed_geom_handles_by_group.items():
+      handle.visible = group_id < 6 and self.geom_groups_visible[group_id]
+
     # Geom group meshes.
     for (_body_id, group_id, _sub_idx), handle in self.mesh_handles_by_group.items():
       handle.visible = group_id < 6 and self.geom_groups_visible[group_id]
@@ -749,13 +756,14 @@ class ViserMujocoScene(DebugVisualizer):
           continue
 
         # Iterate over geoms.
-        nonplane_geom_ids: list[int] = []
+        nonplane_geom_ids_by_group: dict[int, list[int]] = {}
         for geom_id in all_geoms:
           geom_type = self.mj_model.geom_type[geom_id]
+          geom_group = int(self.mj_model.geom_group[geom_id])
           # Add plane geoms as infinite grids.
           if geom_type == mjtGeom.mjGEOM_PLANE:
             geom_name = mj_id2name(self.mj_model, mjtObj.mjOBJ_GEOM, geom_id)
-            self.server.scene.add_grid(
+            handle = self.server.scene.add_grid(
               f"/fixed_bodies/{body_name}/{geom_name}",
               infinite_grid=True,
               fade_distance=50.0,
@@ -763,25 +771,30 @@ class ViserMujocoScene(DebugVisualizer):
               plane_opacity=0.4,
               position=self.mj_model.geom_pos[geom_id],
               wxyz=self.mj_model.geom_quat[geom_id],
+              visible=geom_group < 6 and self.geom_groups_visible[geom_group],
             )
+            self.fixed_geom_handles_by_group[(body_id, geom_group, geom_id)] = handle
           else:
-            nonplane_geom_ids.append(geom_id)
+            nonplane_geom_ids_by_group.setdefault(geom_group, []).append(geom_id)
 
         # Handle non-plane geoms — split by visual compatibility to avoid
         # gray fallback when mixing TextureVisuals and ColorVisuals.
-        if len(nonplane_geom_ids) > 0:
+        for group_id, nonplane_geom_ids in nonplane_geom_ids_by_group.items():
+          if len(nonplane_geom_ids) == 0:
+            continue
           subgroups = group_geoms_by_visual_compat(self.mj_model, nonplane_geom_ids)
           for sub_idx, sub_geom_ids in enumerate(subgroups):
             suffix = f"/sub{sub_idx}" if len(subgroups) > 1 else ""
-            self.server.scene.add_mesh_trimesh(
-              f"/fixed_bodies/{body_name}{suffix}",
+            handle = self.server.scene.add_mesh_trimesh(
+              f"/fixed_bodies/{body_name}/group{group_id}{suffix}",
               merge_geoms(self.mj_model, sub_geom_ids),
               cast_shadow=False,
               receive_shadow=0.2,
               position=self.mj_model.body(body_id).pos,
               wxyz=self.mj_model.body(body_id).quat,
-              visible=True,
+              visible=group_id < 6 and self.geom_groups_visible[group_id],
             )
+            self.fixed_geom_handles_by_group[(body_id, group_id, sub_idx)] = handle
 
   def _create_mesh_handles_by_group(self) -> None:
     """Create mesh handles for each geom group separately to allow independent toggling.

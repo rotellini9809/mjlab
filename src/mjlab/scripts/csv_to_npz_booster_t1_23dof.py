@@ -478,11 +478,19 @@ def run_sim(
         logged_artifact = run.log_artifact(
           artifact_or_path=str(motion_npz_path), name=COLLECTION, type=REGISTRY
         )
-        linked = _link_artifact_with_retry(
-          run=run,
-          artifact=logged_artifact,
-          target_path=f"wandb-registry-{REGISTRY}/{COLLECTION}",
-        )
+        try:
+          linked = _link_artifact_with_retry(
+            run=run,
+            artifact=logged_artifact,
+            target_path=f"wandb-registry-{REGISTRY}/{COLLECTION}",
+          )
+        except Exception as exc:
+          linked = False
+          print(
+            "[WARN]: Artifact logged but registry linking failed: "
+            f"{REGISTRY}/{COLLECTION}. Error: {exc}"
+          )
+
         if linked:
           print(f"[INFO]: Motion saved to wandb registry: {REGISTRY}/{COLLECTION}")
         else:

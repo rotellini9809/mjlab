@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import torch
 
@@ -21,6 +21,412 @@ LAUNCH_FAMILY_NAMES = (
   "long_driven",
 )
 
+E2_STAGE1_BASIC = "e2_stage1_basic"
+E2_STAGE2_LATERAL = "e2_stage2_lateral"
+E2_STAGE3_VERTICAL_PACE = "e2_stage3_vertical_pace"
+E2_STAGE4_FULL_GEOMETRY = "e2_stage4_full_geometry"
+E2_STAGE5_FINAL_HARDER = "e2_stage5_final_harder"
+
+E2_LAUNCHER_CURRICULUM_PRESET_NAMES = (
+  E2_STAGE1_BASIC,
+  E2_STAGE2_LATERAL,
+  E2_STAGE3_VERTICAL_PACE,
+  E2_STAGE4_FULL_GEOMETRY,
+  E2_STAGE5_FINAL_HARDER,
+)
+
+
+@dataclass(frozen=True, kw_only=True)
+class GoalkeeperLauncherCurriculumPreset:
+  """Named launcher-only sampling preset for E2 stand-block."""
+
+  name: str
+  family_weights: tuple[float, float, float, float, float]
+  delay_range: tuple[float, float]
+  t_goal_band: tuple[float, float]
+  shot_target_mode_probs: tuple[float, float, float]
+  shot_nearpost_abs_y_range: tuple[float, float]
+  shot_farpost_abs_y_range: tuple[float, float]
+  shot_center_y_range: tuple[float, float]
+  shot_low_z_range: tuple[float, float]
+  shot_mid_z_range: tuple[float, float]
+  shot_low_z_prob: float
+  lob_tof_range: tuple[float, float]
+  lob_target_z_range: tuple[float, float]
+  cross_target_x_range: tuple[float, float]
+  cross_driven_tof_range: tuple[float, float]
+  cross_lofted_tof_range: tuple[float, float]
+  long_driven_target_z_range: tuple[float, float]
+  deflection_prob: float
+  deflection_dv_mag_range: tuple[float, float] | None = None
+
+
+@dataclass(frozen=True)
+class GoalkeeperLauncherPromotionDecision:
+  promoted: bool
+  from_stage_index: int
+  from_preset_name: str
+  to_stage_index: int
+  to_preset_name: str
+  save_rate: float
+  fall_rate: float
+  required_save_rate: float | None
+  max_fall_rate: float
+  reason: str
+
+
+def _e2_time_tiers_from_band(
+  band: tuple[float, float],
+  *,
+  slow_weight: float,
+  mid_weight: float,
+  fast_weight: float,
+  slow_start_frac: float,
+  mid_start_frac: float,
+  mid_end_frac: float,
+  fast_end_frac: float,
+) -> tuple[tuple[float, float, float], ...]:
+  lo, hi = band
+  span = max(float(hi) - float(lo), 1.0e-4)
+  return (
+    (
+      slow_weight,
+      lo + slow_start_frac * span,
+      hi,
+    ),
+    (
+      mid_weight,
+      lo + mid_start_frac * span,
+      lo + mid_end_frac * span,
+    ),
+    (
+      fast_weight,
+      lo,
+      lo + fast_end_frac * span,
+    ),
+  )
+
+
+def _e2_ground_time_tiers(
+  band: tuple[float, float],
+) -> tuple[tuple[float, float, float], ...]:
+  return _e2_time_tiers_from_band(
+    band,
+    slow_weight=0.30,
+    mid_weight=0.45,
+    fast_weight=0.25,
+    slow_start_frac=0.45,
+    mid_start_frac=0.20,
+    mid_end_frac=0.62,
+    fast_end_frac=0.30,
+  )
+
+
+def _e2_one_bounce_time_tiers(
+  band: tuple[float, float],
+) -> tuple[tuple[float, float, float], ...]:
+  return _e2_time_tiers_from_band(
+    band,
+    slow_weight=0.35,
+    mid_weight=0.45,
+    fast_weight=0.20,
+    slow_start_frac=0.42,
+    mid_start_frac=0.18,
+    mid_end_frac=0.56,
+    fast_end_frac=0.28,
+  )
+
+
+def _e2_long_driven_time_tiers(
+  band: tuple[float, float],
+) -> tuple[tuple[float, float, float], ...]:
+  return _e2_time_tiers_from_band(
+    band,
+    slow_weight=0.25,
+    mid_weight=0.45,
+    fast_weight=0.30,
+    slow_start_frac=0.42,
+    mid_start_frac=0.16,
+    mid_end_frac=0.52,
+    fast_end_frac=0.22,
+  )
+
+
+_E2_LAUNCHER_PRESETS: dict[str, GoalkeeperLauncherCurriculumPreset] = {
+  E2_STAGE1_BASIC: GoalkeeperLauncherCurriculumPreset(
+    name=E2_STAGE1_BASIC,
+    family_weights=(0.90, 0.10, 0.00, 0.00, 0.00),
+    delay_range=(0.18, 0.30),
+    t_goal_band=(0.55, 1.00),
+    shot_target_mode_probs=(0.18, 0.00, 0.82),
+    shot_nearpost_abs_y_range=(0.38, 0.68),
+    shot_farpost_abs_y_range=(0.72, 0.92),
+    shot_center_y_range=(-0.22, 0.22),
+    shot_low_z_range=(0.11, 0.16),
+    shot_mid_z_range=(0.18, 0.24),
+    shot_low_z_prob=1.0,
+    lob_tof_range=(0.55, 1.05),
+    lob_target_z_range=(0.75, 1.15),
+    cross_target_x_range=(5.8, 6.95),
+    cross_driven_tof_range=(0.45, 0.75),
+    cross_lofted_tof_range=(0.75, 1.20),
+    long_driven_target_z_range=(0.75, 1.10),
+    deflection_prob=0.00,
+  ),
+  E2_STAGE2_LATERAL: GoalkeeperLauncherCurriculumPreset(
+    name=E2_STAGE2_LATERAL,
+    family_weights=(0.75, 0.25, 0.00, 0.00, 0.00),
+    delay_range=(0.15, 0.28),
+    t_goal_band=(0.50, 0.95),
+    shot_target_mode_probs=(0.24, 0.08, 0.68),
+    shot_nearpost_abs_y_range=(0.55, 0.95),
+    shot_farpost_abs_y_range=(0.88, 1.05),
+    shot_center_y_range=(-0.34, 0.34),
+    shot_low_z_range=(0.11, 0.18),
+    shot_mid_z_range=(0.22, 0.34),
+    shot_low_z_prob=0.88,
+    lob_tof_range=(0.55, 1.05),
+    lob_target_z_range=(0.78, 1.18),
+    cross_target_x_range=(5.8, 6.95),
+    cross_driven_tof_range=(0.45, 0.75),
+    cross_lofted_tof_range=(0.75, 1.20),
+    long_driven_target_z_range=(0.78, 1.12),
+    deflection_prob=0.00,
+  ),
+  E2_STAGE3_VERTICAL_PACE: GoalkeeperLauncherCurriculumPreset(
+    name=E2_STAGE3_VERTICAL_PACE,
+    family_weights=(0.55, 0.20, 0.15, 0.00, 0.10),
+    delay_range=(0.12, 0.24),
+    t_goal_band=(0.42, 0.85),
+    shot_target_mode_probs=(0.28, 0.18, 0.54),
+    shot_nearpost_abs_y_range=(0.68, 1.12),
+    shot_farpost_abs_y_range=(0.92, 1.22),
+    shot_center_y_range=(-0.48, 0.48),
+    shot_low_z_range=(0.11, 0.20),
+    shot_mid_z_range=(0.30, 0.82),
+    shot_low_z_prob=0.58,
+    lob_tof_range=(0.44, 0.78),
+    lob_target_z_range=(0.88, 1.24),
+    cross_target_x_range=(5.8, 6.95),
+    cross_driven_tof_range=(0.45, 0.75),
+    cross_lofted_tof_range=(0.75, 1.20),
+    long_driven_target_z_range=(0.74, 1.18),
+    deflection_prob=0.00,
+  ),
+  E2_STAGE4_FULL_GEOMETRY: GoalkeeperLauncherCurriculumPreset(
+    name=E2_STAGE4_FULL_GEOMETRY,
+    family_weights=(0.45, 0.15, 0.15, 0.10, 0.15),
+    delay_range=(0.10, 0.22),
+    t_goal_band=(0.38, 0.80),
+    shot_target_mode_probs=(0.34, 0.26, 0.40),
+    shot_nearpost_abs_y_range=(0.75, 1.20),
+    shot_farpost_abs_y_range=(0.95, 1.28),
+    shot_center_y_range=(-0.45, 0.45),
+    shot_low_z_range=(0.11, 0.20),
+    shot_mid_z_range=(0.28, 1.02),
+    shot_low_z_prob=0.45,
+    lob_tof_range=(0.40, 0.78),
+    lob_target_z_range=(0.80, 1.45),
+    cross_target_x_range=(6.78, 6.98),
+    cross_driven_tof_range=(0.34, 0.54),
+    cross_lofted_tof_range=(0.48, 0.64),
+    long_driven_target_z_range=(0.78, 1.30),
+    deflection_prob=0.03,
+  ),
+  E2_STAGE5_FINAL_HARDER: GoalkeeperLauncherCurriculumPreset(
+    name=E2_STAGE5_FINAL_HARDER,
+    family_weights=(0.40, 0.15, 0.15, 0.10, 0.20),
+    delay_range=(0.10, 0.20),
+    t_goal_band=(0.35, 0.75),
+    shot_target_mode_probs=(0.34, 0.34, 0.32),
+    shot_nearpost_abs_y_range=(0.75, 1.20),
+    shot_farpost_abs_y_range=(0.95, 1.30),
+    shot_center_y_range=(-0.35, 0.35),
+    shot_low_z_range=(0.11, 0.18),
+    shot_mid_z_range=(0.22, 1.10),
+    shot_low_z_prob=0.38,
+    lob_tof_range=(0.36, 0.72),
+    lob_target_z_range=(0.75, 1.55),
+    cross_target_x_range=(6.84, 6.99),
+    cross_driven_tof_range=(0.30, 0.48),
+    cross_lofted_tof_range=(0.44, 0.60),
+    long_driven_target_z_range=(0.80, 1.35),
+    deflection_prob=0.06,
+  ),
+}
+
+
+def get_e2_launcher_preset(name: str) -> GoalkeeperLauncherCurriculumPreset:
+  try:
+    return _E2_LAUNCHER_PRESETS[name]
+  except KeyError as exc:
+    supported = ", ".join(sorted(_E2_LAUNCHER_PRESETS))
+    raise ValueError(
+      f"Unknown E2 launcher preset '{name}'. Supported presets: {supported}."
+    ) from exc
+
+
+def get_e2_launcher_curriculum_stage_index(preset_name: str) -> int | None:
+  try:
+    return E2_LAUNCHER_CURRICULUM_PRESET_NAMES.index(preset_name) + 1
+  except ValueError:
+    return None
+
+
+def get_e2_launcher_curriculum_preset_name(stage_index: int) -> str:
+  if not (1 <= int(stage_index) <= len(E2_LAUNCHER_CURRICULUM_PRESET_NAMES)):
+    raise ValueError(
+      f"E2 curriculum stage must be within [1, {len(E2_LAUNCHER_CURRICULUM_PRESET_NAMES)}], "
+      f"got {stage_index}."
+    )
+  return E2_LAUNCHER_CURRICULUM_PRESET_NAMES[int(stage_index) - 1]
+
+
+def apply_e2_launcher_preset(
+  cfg: "GoalkeeperBallLauncherCfg",
+  preset_name: str,
+) -> "GoalkeeperBallLauncherCfg":
+  preset = get_e2_launcher_preset(preset_name)
+  return replace(
+    cfg,
+    active_preset_name=preset.name,
+    family_weights=preset.family_weights,
+    delay_range=preset.delay_range,
+    t_goal_band=preset.t_goal_band,
+    shot_target_mode_probs=preset.shot_target_mode_probs,
+    shot_nearpost_abs_y_range=preset.shot_nearpost_abs_y_range,
+    shot_farpost_abs_y_range=preset.shot_farpost_abs_y_range,
+    shot_center_y_range=preset.shot_center_y_range,
+    shot_low_z_range=preset.shot_low_z_range,
+    shot_mid_z_range=preset.shot_mid_z_range,
+    shot_low_z_prob=preset.shot_low_z_prob,
+    lob_tof_range=preset.lob_tof_range,
+    ground_time_tiers=_e2_ground_time_tiers(preset.t_goal_band),
+    one_bounce_time_tiers=_e2_one_bounce_time_tiers(preset.t_goal_band),
+    lob_target_z_range=preset.lob_target_z_range,
+    cross_target_x_range=preset.cross_target_x_range,
+    cross_driven_tof_range=preset.cross_driven_tof_range,
+    cross_lofted_tof_range=preset.cross_lofted_tof_range,
+    long_driven_time_tiers=_e2_long_driven_time_tiers(preset.t_goal_band),
+    long_driven_target_z_range=preset.long_driven_target_z_range,
+    deflection_prob=preset.deflection_prob,
+    deflection_dv_mag_range=(
+      preset.deflection_dv_mag_range
+      if preset.deflection_dv_mag_range is not None
+      else cfg.deflection_dv_mag_range
+    ),
+  )
+
+
+@dataclass(kw_only=True)
+class GoalkeeperLauncherCurriculumManager:
+  """Simple no-demotion stage manager for E2 launcher presets.
+
+  Promotion requires both save-rate success and a low fall rate.
+  Exploit checks remain a human review item.
+  """
+
+  current_stage_index: int = 1
+  stage_preset_names: tuple[str, ...] = E2_LAUNCHER_CURRICULUM_PRESET_NAMES
+  promotion_save_rate_thresholds: tuple[float, ...] = (0.85, 0.80, 0.75, 0.70)
+  max_fall_rate: float = 0.10
+
+  def __post_init__(self) -> None:
+    if len(self.stage_preset_names) < 1:
+      raise ValueError("stage_preset_names must contain at least one entry.")
+    if len(self.promotion_save_rate_thresholds) != len(self.stage_preset_names) - 1:
+      raise ValueError(
+        "promotion_save_rate_thresholds must have length len(stage_preset_names) - 1."
+      )
+    if not (1 <= int(self.current_stage_index) <= len(self.stage_preset_names)):
+      raise ValueError(
+        f"current_stage_index must be within [1, {len(self.stage_preset_names)}], "
+        f"got {self.current_stage_index}."
+      )
+
+  @property
+  def current_preset_name(self) -> str:
+    return self.stage_preset_names[self.current_stage_index - 1]
+
+  def maybe_promote(
+    self,
+    *,
+    save_rate: float,
+    fall_rate: float,
+  ) -> GoalkeeperLauncherPromotionDecision:
+    from_stage_index = int(self.current_stage_index)
+    from_preset_name = self.current_preset_name
+
+    if from_stage_index >= len(self.stage_preset_names):
+      return GoalkeeperLauncherPromotionDecision(
+        promoted=False,
+        from_stage_index=from_stage_index,
+        from_preset_name=from_preset_name,
+        to_stage_index=from_stage_index,
+        to_preset_name=from_preset_name,
+        save_rate=float(save_rate),
+        fall_rate=float(fall_rate),
+        required_save_rate=None,
+        max_fall_rate=float(self.max_fall_rate),
+        reason="Already at final curriculum stage. No auto-demotion is supported.",
+      )
+
+    required_save_rate = float(
+      self.promotion_save_rate_thresholds[from_stage_index - 1]
+    )
+    if float(save_rate) < required_save_rate:
+      return GoalkeeperLauncherPromotionDecision(
+        promoted=False,
+        from_stage_index=from_stage_index,
+        from_preset_name=from_preset_name,
+        to_stage_index=from_stage_index,
+        to_preset_name=from_preset_name,
+        save_rate=float(save_rate),
+        fall_rate=float(fall_rate),
+        required_save_rate=required_save_rate,
+        max_fall_rate=float(self.max_fall_rate),
+        reason=(
+          f"Save rate {float(save_rate):.3f} is below required threshold "
+          f"{required_save_rate:.3f}."
+        ),
+      )
+
+    if float(fall_rate) > float(self.max_fall_rate):
+      return GoalkeeperLauncherPromotionDecision(
+        promoted=False,
+        from_stage_index=from_stage_index,
+        from_preset_name=from_preset_name,
+        to_stage_index=from_stage_index,
+        to_preset_name=from_preset_name,
+        save_rate=float(save_rate),
+        fall_rate=float(fall_rate),
+        required_save_rate=required_save_rate,
+        max_fall_rate=float(self.max_fall_rate),
+        reason=(
+          f"Fall rate {float(fall_rate):.3f} exceeds max allowed "
+          f"{float(self.max_fall_rate):.3f}."
+        ),
+      )
+
+    to_stage_index = from_stage_index + 1
+    to_preset_name = self.stage_preset_names[to_stage_index - 1]
+    self.current_stage_index = to_stage_index
+    return GoalkeeperLauncherPromotionDecision(
+      promoted=True,
+      from_stage_index=from_stage_index,
+      from_preset_name=from_preset_name,
+      to_stage_index=to_stage_index,
+      to_preset_name=to_preset_name,
+      save_rate=float(save_rate),
+      fall_rate=float(fall_rate),
+      required_save_rate=required_save_rate,
+      max_fall_rate=float(self.max_fall_rate),
+      reason=(
+        "Promotion approved by save-rate and fall-rate thresholds. "
+        "Exploit checks still require human review."
+      ),
+    )
+
 
 @dataclass(kw_only=True)
 class GoalkeeperBallLauncherCfg:
@@ -32,6 +438,7 @@ class GoalkeeperBallLauncherCfg:
   """
 
   ball_entity_name: str = "soccer_ball"
+  active_preset_name: str | None = None
 
   # Goal orientation + aperture.
   goal_toward_positive_x: bool = True
@@ -51,7 +458,13 @@ class GoalkeeperBallLauncherCfg:
 
   # Family enable + weights: (ground, one_bounce, lob_chip, cross, long_driven).
   enabled_families: tuple[bool, bool, bool, bool, bool] = (True, True, True, True, True)
-  family_weights: tuple[float, float, float, float, float] = (0.50, 0.15, 0.15, 0.10, 0.10)
+  family_weights: tuple[float, float, float, float, float] = (
+    0.50,
+    0.15,
+    0.15,
+    0.10,
+    0.10,
+  )
 
   # Launch stability clamps.
   max_speed: float = 8.5
@@ -178,7 +591,9 @@ class GoalkeeperBallLauncher:
 
     self.has_launched = torch.zeros(env.num_envs, device=self.device, dtype=torch.bool)
 
-    self.has_deflection = torch.zeros(env.num_envs, device=self.device, dtype=torch.bool)
+    self.has_deflection = torch.zeros(
+      env.num_envs, device=self.device, dtype=torch.bool
+    )
     self.deflect_time_s = torch.zeros(env.num_envs, device=self.device)
     self.deflect_dv_w = torch.zeros(env.num_envs, 3, device=self.device)
     self.has_deflected = torch.zeros(env.num_envs, device=self.device, dtype=torch.bool)
@@ -271,7 +686,9 @@ class GoalkeeperBallLauncher:
       return self.launch_vel_w[:, 0]
     return -self.launch_vel_w[:, 0]
 
-  def validation_report(self, env_ids: torch.Tensor | None = None) -> dict[str, float | int]:
+  def validation_report(
+    self, env_ids: torch.Tensor | None = None
+  ) -> dict[str, float | int]:
     """Aggregate reset-plan diagnostics for quick validation."""
     if env_ids is None:
       env_ids = torch.arange(self._env.num_envs, device=self.device)
@@ -290,10 +707,18 @@ class GoalkeeperBallLauncher:
       "lob_chip": int(hist[LOB_CHIP_FAMILY].item()),
       "cross": int(hist[CROSS_FAMILY].item()),
       "long_driven": int(hist[LONG_DRIVEN_FAMILY].item()),
-      "pct_speed_ok": float((speed <= self.cfg.max_speed + 1.0e-4).float().mean().item()),
-      "pct_vz_ok": float((torch.abs(vel[:, 2]) <= self.cfg.max_abs_vz + 1.0e-4).float().mean().item()),
-      "pct_toward_ok": float((toward >= self.cfg.min_toward_goal_speed - 1.0e-4).float().mean().item()),
-      "pct_t_goal_ok": float(((t_goal >= t_lo - 1.0e-4) & (t_goal <= t_hi + 1.0e-4)).float().mean().item()),
+      "pct_speed_ok": float(
+        (speed <= self.cfg.max_speed + 1.0e-4).float().mean().item()
+      ),
+      "pct_vz_ok": float(
+        (torch.abs(vel[:, 2]) <= self.cfg.max_abs_vz + 1.0e-4).float().mean().item()
+      ),
+      "pct_toward_ok": float(
+        (toward >= self.cfg.min_toward_goal_speed - 1.0e-4).float().mean().item()
+      ),
+      "pct_t_goal_ok": float(
+        ((t_goal >= t_lo - 1.0e-4) & (t_goal <= t_hi + 1.0e-4)).float().mean().item()
+      ),
       "t_goal_min": float(t_goal.min().item()),
       "t_goal_max": float(t_goal.max().item()),
       "speed_min": float(speed.min().item()),
@@ -306,9 +731,15 @@ class GoalkeeperBallLauncher:
   # ---------------------------------------------------------------------------
 
   def _sample_family_ids(self, n: int) -> torch.Tensor:
-    enabled = torch.tensor(self.cfg.enabled_families, device=self.device, dtype=torch.bool)
-    weights = torch.tensor(self.cfg.family_weights, device=self.device, dtype=torch.float32)
-    weights = torch.where(enabled, torch.clamp(weights, min=0.0), torch.zeros_like(weights))
+    enabled = torch.tensor(
+      self.cfg.enabled_families, device=self.device, dtype=torch.bool
+    )
+    weights = torch.tensor(
+      self.cfg.family_weights, device=self.device, dtype=torch.float32
+    )
+    weights = torch.where(
+      enabled, torch.clamp(weights, min=0.0), torch.zeros_like(weights)
+    )
 
     total = torch.sum(weights)
     if float(total.item()) <= 1.0e-8:
@@ -364,13 +795,13 @@ class GoalkeeperBallLauncher:
     self,
     origins: torch.Tensor,
   ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    n = len(origins)
-
     def _sample_once(
       m: int,
       local_origins: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-      near_mask = torch.rand(m, device=self.device) < float(self.cfg.ground_near_depth_prob)
+      near_mask = torch.rand(m, device=self.device) < float(
+        self.cfg.ground_near_depth_prob
+      )
       x_local = torch.where(
         near_mask,
         self._sample_uniform(self.cfg.ground_near_x_range, m),
@@ -383,11 +814,17 @@ class GoalkeeperBallLauncher:
       left_m = channel == 1
       right_m = channel == 2
       if center_m.any():
-        y_local[center_m] = self._sample_uniform(self.cfg.ground_center_y_range, int(center_m.sum().item()))
+        y_local[center_m] = self._sample_uniform(
+          self.cfg.ground_center_y_range, int(center_m.sum().item())
+        )
       if left_m.any():
-        y_local[left_m] = self._sample_uniform(self.cfg.ground_left_y_range, int(left_m.sum().item()))
+        y_local[left_m] = self._sample_uniform(
+          self.cfg.ground_left_y_range, int(left_m.sum().item())
+        )
       if right_m.any():
-        y_local[right_m] = self._sample_uniform(self.cfg.ground_right_y_range, int(right_m.sum().item()))
+        y_local[right_m] = self._sample_uniform(
+          self.cfg.ground_right_y_range, int(right_m.sum().item())
+        )
 
       z_local = torch.full((m,), float(self.cfg.ball_radius), device=self.device)
       spawn_local = torch.stack([x_local, y_local, z_local], dim=1)
@@ -410,8 +847,6 @@ class GoalkeeperBallLauncher:
     self,
     origins: torch.Tensor,
   ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    n = len(origins)
-
     def _sample_once(
       m: int,
       local_origins: torch.Tensor,
@@ -498,7 +933,9 @@ class GoalkeeperBallLauncher:
       spawn_w = local_origins + spawn_local
 
       target_x_local = self._sample_uniform(self.cfg.cross_target_x_range, m)
-      farpost_mode = torch.rand(m, device=self.device) < float(self.cfg.cross_farpost_mode_prob)
+      farpost_mode = torch.rand(m, device=self.device) < float(
+        self.cfg.cross_farpost_mode_prob
+      )
 
       side_sign = torch.sign(y_local)
       zero_side = torch.abs(side_sign) < 1.0e-5
@@ -527,7 +964,9 @@ class GoalkeeperBallLauncher:
         self._sample_uniform(self.cfg.cross_lofted_target_z_range, m),
       )
 
-      target_local = torch.stack([target_x_local, target_y_local, target_z_local], dim=1)
+      target_local = torch.stack(
+        [target_x_local, target_y_local, target_z_local], dim=1
+      )
       target_w = local_origins + target_local
       vel = self._ballistic_velocity(spawn_w, target_w, tof)
       return spawn_w, target_w, vel
@@ -600,7 +1039,7 @@ class GoalkeeperBallLauncher:
   ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     n = len(origins)
     spawn_w, target_w, vel_w = sample_once(n, origins)
-
+    vel_w = self._clamp_velocity(vel_w)
     valid = self._base_valid_mask(spawn_w, vel_w)
     if extra_valid_fn is not None:
       valid = valid & extra_valid_fn(spawn_w, vel_w)
@@ -612,6 +1051,7 @@ class GoalkeeperBallLauncher:
 
       invalid_origins = origins[invalid]
       s_i, t_i, v_i = sample_once(len(invalid_origins), invalid_origins)
+      v_i = self._clamp_velocity(v_i)
       spawn_w[invalid] = s_i
       target_w[invalid] = t_i
       vel_w[invalid] = v_i
@@ -621,15 +1061,15 @@ class GoalkeeperBallLauncher:
         valid_i = valid_i & extra_valid_fn(s_i, v_i)
       valid[invalid] = valid_i
 
-    # Final safety clamp.
-    vel_w = self._clamp_velocity(vel_w)
     return spawn_w, target_w, vel_w
 
   # ---------------------------------------------------------------------------
   # Validation / constraints
   # ---------------------------------------------------------------------------
 
-  def _base_valid_mask(self, spawn_w: torch.Tensor, vel_w: torch.Tensor) -> torch.Tensor:
+  def _base_valid_mask(
+    self, spawn_w: torch.Tensor, vel_w: torch.Tensor
+  ) -> torch.Tensor:
     speed = torch.linalg.norm(vel_w, dim=1)
     toward = self._toward_speed(vel_w[:, 0])
     t_goal = self._estimate_time_to_goal(spawn_w[:, 0], vel_w[:, 0])
@@ -643,7 +1083,9 @@ class GoalkeeperBallLauncher:
       & (t_goal <= float(t_hi))
     )
 
-  def _one_bounce_valid(self, spawn_w: torch.Tensor, vel_w: torch.Tensor) -> torch.Tensor:
+  def _one_bounce_valid(
+    self, spawn_w: torch.Tensor, vel_w: torch.Tensor
+  ) -> torch.Tensor:
     g = float(self.cfg.gravity)
     vz = torch.clamp(vel_w[:, 2], min=0.0)
     t_bounce = 2.0 * vz / max(g, 1.0e-6)
@@ -659,12 +1101,16 @@ class GoalkeeperBallLauncher:
     lo, hi = self.cfg.one_bounce_fraction_range
     return (frac >= float(lo)) & (frac <= float(hi))
 
-  def _long_driven_valid(self, spawn_w: torch.Tensor, vel_w: torch.Tensor) -> torch.Tensor:
+  def _long_driven_valid(
+    self, spawn_w: torch.Tensor, vel_w: torch.Tensor
+  ) -> torch.Tensor:
     del spawn_w
     toward = self._toward_speed(vel_w[:, 0])
     return toward >= float(self.cfg.long_driven_min_toward_goal_speed)
 
-  def _estimate_time_to_goal(self, x_w: torch.Tensor, vx_w: torch.Tensor) -> torch.Tensor:
+  def _estimate_time_to_goal(
+    self, x_w: torch.Tensor, vx_w: torch.Tensor
+  ) -> torch.Tensor:
     eps = 1.0e-4
     if self.cfg.goal_toward_positive_x:
       dx = float(self.cfg.goal_plane_x) - x_w
@@ -802,9 +1248,13 @@ class GoalkeeperBallLauncher:
 
     # Bias away from goal for plausible deflections.
     away_x = -1.0 if self.cfg.goal_toward_positive_x else 1.0
-    direction[:, 0] = direction[:, 0] + float(self.cfg.deflection_away_goal_bias) * away_x
+    direction[:, 0] = (
+      direction[:, 0] + float(self.cfg.deflection_away_goal_bias) * away_x
+    )
 
-    direction = direction / torch.linalg.norm(direction, dim=1, keepdim=True).clamp_min(1.0e-6)
+    direction = direction / torch.linalg.norm(direction, dim=1, keepdim=True).clamp_min(
+      1.0e-6
+    )
     return direction * mag.unsqueeze(1)
 
   def _sample_uniform(self, bounds: tuple[float, float], n: int) -> torch.Tensor:

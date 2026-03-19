@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
 import mujoco
+import yaml
 
-from mjlab.asset_zoo.robots import T1_23_ACTION_SCALE, get_t1_23_robot_cfg
 from mjlab.asset_zoo.robocup_assets.field import get_robocup_field_cfg
 from mjlab.asset_zoo.robocup_assets.goalpost import get_robocup_goalpost_cfg
+from mjlab.asset_zoo.robots import T1_23_ACTION_SCALE, get_t1_23_robot_cfg
 from mjlab.entity import EntityCfg
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp.events import reset_scene_to_default
@@ -16,34 +19,85 @@ from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.goalkeeper_experts.e2_stand_block import mdp
+from mjlab.tasks.goalkeeper_experts.launcher import (
+  E2_STAGE5_FINAL_HARDER,
+  apply_e2_launcher_preset,
+  get_e2_launcher_curriculum_preset_name,
+)
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
+from mjlab.terrains import TerrainEntityCfg
 from mjlab.viewer import ViewerConfig
 
 GOAL_X_LINE = 7.0
 GOALPOST_X = 7.3
+E1_HOME_POINT_X = 6.75
+E1_HOME_POINT_Y = 0.0
+E1_HOME_POINT_BAND_RADIUS = 0.10
 
-# E2 keeper spawn near the defended goal line (small lateral error).
-KEEPER_SPAWN_X_RANGE = (GOAL_X_LINE - 0.15, GOAL_X_LINE + 0.15)
-KEEPER_SPAWN_Y_RANGE = (-0.25, 0.25)
-KEEPER_SPAWN_Z = 0.658
-SPAWN_YAW_RANGE = (
-  3.141592653589793 - 0.17453292519943295,
-  3.141592653589793 + 0.17453292519943295,
+# E2 keeper spawn centered at E1 home point with the same x-band as E1's home-point cue.
+KEEPER_SPAWN_X_RANGE = (
+  E1_HOME_POINT_X - E1_HOME_POINT_BAND_RADIUS,
+  E1_HOME_POINT_X + E1_HOME_POINT_BAND_RADIUS,
 )
+KEEPER_SPAWN_Y_RANGE = (
+  E1_HOME_POINT_Y - E1_HOME_POINT_BAND_RADIUS,
+  E1_HOME_POINT_Y + E1_HOME_POINT_BAND_RADIUS,
+)
+# Matches E1's ready-pose spawn after compensating for the measured
+# foot-collision clearance above the field collider.
+KEEPER_SPAWN_Z = 0.6728
+# Ready pose imported from crouch_stance_1 tracking run k0zgfxdw near the start
+# (frame 11/66, ~= 1/6 of the clip), extracted in the MJLab controller.
+READY_ROOT_QUAT = (
+  0.850692629814148,
+  -0.01908080279827118,
+  0.048677168786525726,
+  0.5230569243431091,
+)
+READY_ROOT_YAW = 1.1035051026418754
+READY_JOINT_POS = [
+  -0.006449203006923199,
+  -0.06991329044103622,
+  -0.06792288273572922,
+  -1.2981278896331787,
+  0.5135267376899719,
+  -0.5423100590705872,
+  -0.0499301552772522,
+  1.2249946594238281,
+  0.5443910956382751,
+  0.6937841773033142,
+  0.07025951147079468,
+  -0.3184724450111389,
+  -0.03504209965467453,
+  0.06286874413490295,
+  0.2646978199481964,
+  -0.04678475856781006,
+  0.015397579409182072,
+  -0.3520301878452301,
+  -0.004032755270600319,
+  -0.08282425254583359,
+  0.4212573170661926,
+  -0.17360135912895203,
+  -0.040193840861320496,
+]
+# Yaw offset applied around the "face the ball" heading sampled at reset.
+SPAWN_YAW_RANGE = (-0.1, 0.1)
+
+# Upright posture shaping (same convention as E1): strict lateral, tolerant
+# sagittal with a slight forward lean.
+UPRIGHT_ROLL_BAND = 0.1
+UPRIGHT_ROLL_SIGMA = 0.12
+UPRIGHT_PITCH_TARGET = 0.25
+UPRIGHT_PITCH_BAND = 0.20
+UPRIGHT_PITCH_SIGMA = 0.30
 
 # Keep reset close to standing/default with light noise.
 KEEPER_JOINT_POS_NOISE = 0.02
 KEEPER_JOINT_VEL_NOISE = 0.08
 
-# Keeper area bounds (x_min, x_max, y_min, y_max).
-KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1.0, GOAL_X_LINE + 0.6, -2.0, 2.0)
-KEEPER_AREA_HARD_MARGIN = 0.35
-
-# Reusable launcher defaults for E2 (requested mix).
-E2_LAUNCHER_FAMILY_WEIGHTS = (0.45, 0.15, 0.15, 0.10, 0.15)
-E2_LAUNCH_DELAY_RANGE = (0.10, 0.35)
-E2_T_GOAL_BAND = (0.35, 1.00)
-E2_DEFLECTION_PROB = 0.06
+# Reusable launcher defaults for E2. Presets only override launcher sampling.
+E2_RESET_CURRICULUM_STAGE = os.environ.get("MJLAB_E2_RESET_CURRICULUM_STAGE", "").strip()
+E2_DEFAULT_LAUNCHER_PRESET_NAME = E2_STAGE5_FINAL_HARDER
 E2_DEFLECTION_TIME_AFTER_LAUNCH_RANGE = (0.08, 0.22)
 E2_DEFLECTION_DV_MAG_RANGE = (0.35, 1.25)
 E2_LAUNCH_MAX_SPEED = 8.5
@@ -59,14 +113,10 @@ GOAL_PLANE_Z_MAX = 1.85
 
 GOAL_PLANE_VIS_HALF_THICKNESS = 0.005
 GOAL_PLANE_VIS_RGBA = (0.15, 0.85, 0.95, 0.08)
-E2_AREA_OVERLAY_HALF_THICKNESS = 0.0015
-E2_HARD_AREA_OVERLAY_Z = 0.0015
-E2_KEEPER_AREA_OVERLAY_Z = 0.0035
-E2_HARD_AREA_RGBA = (0.95, 0.55, 0.10, 0.22)
-E2_KEEPER_AREA_RGBA = (0.05, 0.60, 0.95, 0.30)
+GOAL_PLANE_VIS_GROUP = 3
 
 BALL_ROBOT_CONTACT_SENSOR_NAME = "ball_robot_contact"
-RESOLUTION_WINDOW_S = 0.8
+RESOLUTION_WINDOW_S = 1.5
 
 # Stage-1 command dimension used in motor-observation layout.
 MOTOR_COMMAND_DIM = 46
@@ -75,66 +125,135 @@ MOTOR_ACT_DIM = 23
 EPISODE_LENGTH_S = 2.0
 SIM_TIMESTEP_S = 0.005
 CONTROL_DECIMATION = 4
+E2_TASK_ID = "Mjlab-GK-Expert-StandBlock-Booster-T1_23"
+E2_EXPERIMENT_NAME = "gk_expert_stand_block_booster_t1_23"
+
+
+def _get_cli_flag_value(flag: str) -> str | None:
+  flag_eq = f"{flag}="
+  argv = sys.argv[1:]
+  for index, arg in enumerate(argv):
+    if arg == flag and index + 1 < len(argv):
+      return argv[index + 1]
+    if arg.startswith(flag_eq):
+      return arg[len(flag_eq) :]
+  return None
+
+
+def _is_e2_play_cli_invocation() -> bool:
+  script_stem = Path(sys.argv[0]).stem.lower()
+  if "play" not in script_stem:
+    return False
+  return len(sys.argv) > 1 and sys.argv[1] == E2_TASK_ID
+
+
+def _download_wandb_run_file(log_root: Path, run_path: str, filename: str) -> Path:
+  import wandb
+
+  run_id = run_path.split("/")[-1]
+  download_dir = log_root / "wandb_checkpoints" / run_id
+  target = download_dir / filename
+  if target.exists():
+    return target
+
+  download_dir.mkdir(parents=True, exist_ok=True)
+
+  api = wandb.Api()
+  run = api.run(run_path)
+  files = {f.name for f in run.files()}
+  if filename not in files:
+    raise FileNotFoundError(
+      f"Required file '{filename}' not found in W&B run {run_path}."
+    )
+  run.file(filename).download(str(download_dir), replace=True)
+  return target
+
+
+def _try_download_wandb_run_file(
+  log_root: Path, run_path: str, filename: str
+) -> Path | None:
+  try:
+    return _download_wandb_run_file(log_root, run_path, filename)
+  except FileNotFoundError:
+    return None
+
+
+def _extract_saved_e2_launcher_preset_name(env_yaml_path: Path) -> str | None:
+  with env_yaml_path.open("r", encoding="utf-8") as handle:
+    env_data = yaml.safe_load(handle) or {}
+
+  if not isinstance(env_data, dict):
+    return None
+  commands = env_data.get("commands")
+  if not isinstance(commands, dict):
+    return None
+  stand_block_cfg = commands.get("stand_block")
+  if not isinstance(stand_block_cfg, dict):
+    return None
+  launcher_cfg = stand_block_cfg.get("launcher_cfg")
+  if not isinstance(launcher_cfg, dict):
+    return None
+  preset_name = launcher_cfg.get("active_preset_name")
+  if not isinstance(preset_name, str):
+    return None
+  preset_name = preset_name.strip()
+  return preset_name or None
+
+
+def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
+  if not _is_e2_play_cli_invocation():
+    return None
+
+  checkpoint_file = _get_cli_flag_value("--checkpoint-file")
+  if checkpoint_file:
+    env_yaml_path = Path(checkpoint_file).expanduser().resolve().parent / "params" / "env.yaml"
+    if not env_yaml_path.exists():
+      print(
+        "[WARN]: Saved E2 env config was not found next to the checkpoint; "
+        "using the default play preset."
+      )
+      return None
+    return _extract_saved_e2_launcher_preset_name(env_yaml_path)
+
+  wandb_run_path = _get_cli_flag_value("--wandb-run-path")
+  if not wandb_run_path:
+    return None
+
+  log_root = (Path("logs") / "rsl_rl" / E2_EXPERIMENT_NAME).resolve()
+  env_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "params/env.yaml"
+  )
+  if env_yaml_path is None:
+    print(
+      "[WARN]: Saved E2 env config was not found in the W&B run; "
+      "using the default play preset."
+    )
+    return None
+  return _extract_saved_e2_launcher_preset_name(env_yaml_path)
 
 
 def _add_goal_plane_overlay(spec: mujoco.MjSpec) -> None:
-  field_body = next((body for body in spec.bodies if body.name == "field"), None)
-  if field_body is None:
-    field_body = spec.worldbody.add_body(name="field")
+  overlay_body = next(
+    (body for body in spec.bodies if body.name == "e2_field_overlays"), None
+  )
+  if overlay_body is None:
+    overlay_body = spec.worldbody.add_body(name="e2_field_overlays")
 
   center_z = 0.5 * (GOAL_PLANE_Z_MIN + GOAL_PLANE_Z_MAX)
   half_z = max(0.5 * (GOAL_PLANE_Z_MAX - GOAL_PLANE_Z_MIN), 1.0e-3)
 
-  overlay = field_body.add_geom(
+  overlay = overlay_body.add_geom(
     type=mujoco.mjtGeom.mjGEOM_BOX,
     pos=(GOAL_PLANE_X, GOAL_PLANE_Y_CENTER, center_z),
     size=(GOAL_PLANE_VIS_HALF_THICKNESS, GOAL_PLANE_Y_HALF, half_z),
   )
   overlay.name = "e2_goal_plane_overlay"
   overlay.rgba = GOAL_PLANE_VIS_RGBA
+  # Put the purely-visual goal plane in the same hidden-by-default viewer group
+  # used for collision/debug geometry so Viser does not show it unless requested.
+  overlay.group = GOAL_PLANE_VIS_GROUP
   overlay.contype = 0
   overlay.conaffinity = 0
-
-  def _add_area_overlay(
-    name: str,
-    bounds: tuple[float, float, float, float],
-    z_center: float,
-    rgba: tuple[float, float, float, float],
-  ) -> None:
-    x_min, x_max, y_min, y_max = bounds
-    half_x = max(0.5 * (x_max - x_min), 1.0e-3)
-    half_y = max(0.5 * (y_max - y_min), 1.0e-3)
-    center_x = 0.5 * (x_min + x_max)
-    center_y = 0.5 * (y_min + y_max)
-
-    area = field_body.add_geom(
-      type=mujoco.mjtGeom.mjGEOM_BOX,
-      pos=(center_x, center_y, z_center),
-      size=(half_x, half_y, E2_AREA_OVERLAY_HALF_THICKNESS),
-    )
-    area.name = name
-    area.rgba = rgba
-    area.contype = 0
-    area.conaffinity = 0
-
-  hard_bounds = (
-    KEEPER_AREA_BOUNDS[0] - KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[1] + KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[2] - KEEPER_AREA_HARD_MARGIN,
-    KEEPER_AREA_BOUNDS[3] + KEEPER_AREA_HARD_MARGIN,
-  )
-  _add_area_overlay(
-    "e2_keeper_area_hard_overlay",
-    hard_bounds,
-    E2_HARD_AREA_OVERLAY_Z,
-    E2_HARD_AREA_RGBA,
-  )
-  _add_area_overlay(
-    "e2_keeper_area_overlay",
-    KEEPER_AREA_BOUNDS,
-    E2_KEEPER_AREA_OVERLAY_Z,
-    E2_KEEPER_AREA_RGBA,
-  )
 
 
 def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
@@ -152,11 +271,13 @@ def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
 
 def booster_t1_23_gk_expert_stand_block_env_cfg(
   play: bool = False,
+  launcher_preset_name: str | None = None,
+  launcher_curriculum_stage: int | None = None,
 ) -> ManagerBasedRlEnvCfg:
   cfg = make_tracking_env_cfg()
 
   robot_cfg = get_t1_23_robot_cfg()
-  robot_cfg.init_state.pos = (GOAL_X_LINE - 0.2, 0.0, KEEPER_SPAWN_Z)
+  robot_cfg.init_state.pos = (E1_HOME_POINT_X, E1_HOME_POINT_Y, KEEPER_SPAWN_Z)
   # Face toward field center from the defended +x goal side.
   robot_cfg.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
@@ -170,7 +291,9 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
 
   soccer_ball_cfg = mdp.get_target_ball_cfg()
 
-  cfg.scene.terrain = None
+  cfg.scene.terrain = TerrainEntityCfg(
+    terrain_type="plane",
+  )
   cfg.scene.num_envs = 512 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,
@@ -209,6 +332,25 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     )
   }
 
+  resolved_preset_name = launcher_preset_name
+  if resolved_preset_name is None and launcher_curriculum_stage is not None:
+    resolved_preset_name = get_e2_launcher_curriculum_preset_name(
+      launcher_curriculum_stage
+    )
+  if resolved_preset_name is None and E2_RESET_CURRICULUM_STAGE:
+    resolved_preset_name = get_e2_launcher_curriculum_preset_name(
+      int(E2_RESET_CURRICULUM_STAGE)
+    )
+  if resolved_preset_name is None and play:
+    resolved_preset_name = _resolve_saved_e2_play_launcher_preset_name()
+    if resolved_preset_name is not None:
+      print(
+        f"[INFO]: Auto-selected E2 play launcher preset from saved run: "
+        f"{resolved_preset_name}"
+      )
+  if resolved_preset_name is None:
+    resolved_preset_name = E2_DEFAULT_LAUNCHER_PRESET_NAME
+
   launcher_cfg = mdp.GoalkeeperBallLauncherCfg(
     ball_entity_name="soccer_ball",
     goal_toward_positive_x=True,
@@ -217,16 +359,13 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     goal_y_half=GOAL_PLANE_Y_HALF,
     goal_z_min=GOAL_PLANE_Z_MIN,
     goal_z_max=GOAL_PLANE_Z_MAX,
-    delay_range=E2_LAUNCH_DELAY_RANGE,
-    t_goal_band=E2_T_GOAL_BAND,
-    family_weights=E2_LAUNCHER_FAMILY_WEIGHTS,
     max_speed=E2_LAUNCH_MAX_SPEED,
     max_abs_vz=E2_LAUNCH_MAX_ABS_VZ,
     min_toward_goal_speed=E2_MIN_TOWARD_GOAL_SPEED,
-    deflection_prob=E2_DEFLECTION_PROB,
     deflection_time_after_launch_range=E2_DEFLECTION_TIME_AFTER_LAUNCH_RANGE,
     deflection_dv_mag_range=E2_DEFLECTION_DV_MAG_RANGE,
   )
+  launcher_cfg = apply_e2_launcher_preset(launcher_cfg, resolved_preset_name)
 
   cfg.commands = {
     "stand_block": mdp.StandBlockCommandCfg(
@@ -239,8 +378,6 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       spawn_yaw_range=SPAWN_YAW_RANGE,
       keeper_joint_pos_noise=KEEPER_JOINT_POS_NOISE,
       keeper_joint_vel_noise=KEEPER_JOINT_VEL_NOISE,
-      keeper_area_bounds=KEEPER_AREA_BOUNDS,
-      hard_area_margin=KEEPER_AREA_HARD_MARGIN,
       launcher_cfg=launcher_cfg,
       goal_toward_positive_x=True,
       goal_plane_x=GOAL_PLANE_X,
@@ -248,8 +385,6 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       goal_plane_y_half=GOAL_PLANE_Y_HALF,
       goal_plane_z_min=GOAL_PLANE_Z_MIN,
       goal_plane_z_max=GOAL_PLANE_Z_MAX,
-      goal_termination_term_name="goal_conceded",
-      goal_cue_flash_steps=18,
       resampling_time_range=(1.0e9, 1.0e9),
       debug_vis=True,
     )
@@ -350,17 +485,32 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       params={
         "command_name": "stand_block",
         "resolution_term_name": "contact_resolution_window",
+        "apply_standing_gate": True,
       },
     ),
     "deflect_away": RewardTermCfg(
       func=mdp.deflect_away_from_goal_reward,
       weight=40.0,
-      params={"command_name": "stand_block", "only_on_first_contact": True},
+      params={
+        "command_name": "stand_block",
+        "only_on_first_contact": True,
+      },
     ),
-    "outside_area": RewardTermCfg(
-      func=mdp.outside_keeper_area_penalty,
-      weight=-15.0,
-      params={"command_name": "stand_block"},
+    "low_height_soft_penalty": RewardTermCfg(
+      func=mdp.low_height_soft_penalty,
+      weight=-1.6,
+      params={"h_soft": 0.48},
+    ),
+    "upright": RewardTermCfg(
+      func=mdp.upright_stability_reward,
+      weight=1.0,
+      params={
+        "roll_band": UPRIGHT_ROLL_BAND,
+        "roll_sigma": UPRIGHT_ROLL_SIGMA,
+        "pitch_target": UPRIGHT_PITCH_TARGET,
+        "pitch_band": UPRIGHT_PITCH_BAND,
+        "pitch_sigma": UPRIGHT_PITCH_SIGMA,
+      },
     ),
     "fallen": RewardTermCfg(
       func=mdp.fallen_indicator,
@@ -392,10 +542,6 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         "max_tilt": 1.25,
         "consecutive_steps": 6,
       },
-    ),
-    "out_of_area_hard": TerminationTermCfg(
-      func=mdp.outside_keeper_area_hard,
-      params={"command_name": "stand_block"},
     ),
   }
 
