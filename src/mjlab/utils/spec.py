@@ -168,12 +168,32 @@ def create_position_actuator(
   actuator.biasprm[1] = -stiffness
   actuator.biasprm[2] = -damping
 
-  # Limits.
+  # Position actuators must allow setpoints beyond joint limits.
+  # Since force = stiffness * (ctrl - pos), clamping ctrl to the joint range would
+  # produce zero force when the joint is at its limit. Force is still bounded by
+  # forcerange below. Both lines are needed: ctrllimited=False is the primary guard,
+  # and inheritrange=0 prevents MuJoCo from resolving the default ctrllimited=AUTO back
+  # to True when a joint range exists.
+  actuator.inheritrange = 0.0
   actuator.ctrllimited = False
-  # No ctrlrange needed.
   if effort_limit is not None:
     actuator.forcelimited = True
     actuator.forcerange[:] = np.array([-effort_limit, effort_limit])
+
+    # Informational ctrlrange (not enforced since ctrllimited=False).
+    # Assuming zero velocity, force = stiffness * (ctrl - pos). Solving for the ctrl
+    # that saturates force at the worst-case position gives:
+    #   ctrl_max = joint_high + effort_limit / stiffness
+    #   ctrl_min = joint_low  - effort_limit / stiffness
+    # Beyond this range, force is always clamped regardless of position.
+    if transmission_type == TransmissionType.JOINT:
+      target_range = spec.joint(joint_name).range
+    elif transmission_type == TransmissionType.TENDON:
+      target_range = spec.tendon(joint_name).range
+    else:
+      target_range = (0.0, 0.0)
+    delta = effort_limit / stiffness
+    actuator.ctrlrange[:] = np.array([target_range[0] - delta, target_range[1] + delta])
   else:
     actuator.forcelimited = False
     # No forcerange needed.
@@ -197,10 +217,14 @@ def create_velocity_actuator(
   effort_limit: float | None = None,
   armature: float = 0.0,
   frictionloss: float = 0.0,
-  inheritrange: float = 1.0,
   transmission_type: TransmissionType = TransmissionType.JOINT,
 ) -> mujoco.MjsActuator:
-  """Creates a <velocity> actuator."""
+  """Creates a <velocity> actuator.
+
+  Control inputs are not clamped so that velocity commands work for any joint,
+  including continuous joints that have no range defined. Force output is still
+  bounded when effort_limit is set.
+  """
   actuator = spec.add_actuator(name=joint_name, target=joint_name)
 
   actuator.trntype = _TRANSMISSION_TYPE_MAP[transmission_type]
@@ -208,8 +232,8 @@ def create_velocity_actuator(
   actuator.gaintype = mujoco.mjtGain.mjGAIN_FIXED
   actuator.biastype = mujoco.mjtBias.mjBIAS_AFFINE
 
-  actuator.inheritrange = inheritrange
-  actuator.ctrllimited = True  # Technically redundant but being explicit.
+  actuator.inheritrange = 0.0
+  actuator.ctrllimited = False
   actuator.gainprm[0] = damping
   actuator.biasprm[2] = -damping
 

@@ -601,8 +601,8 @@ def test_body_quat_only_specified_axes(device):
   )
 
   result = env.sim.model.body_quat[:, body_ids, :]
-  # For the default quat [1,0,0,0] composed with a yaw-only rotation,
-  # qx and qy should remain 0 (pure yaw -> no roll/pitch).
+  # For the default quat [1,0,0,0] composed with a yaw-only rotation, qx and qy should
+  # remain 0 (pure yaw -> no roll/pitch).
   q_default = env.sim.get_default_field("body_quat")[body_ids]
   if torch.allclose(q_default, torch.tensor([[1.0, 0.0, 0.0, 0.0]], device=device)):
     assert torch.allclose(result[..., 1], torch.zeros_like(result[..., 1]), atol=1e-6)
@@ -622,7 +622,10 @@ def _make_inertia_env(device, num_envs=NUM_ENVS):
 
 
 def _matrix_from_quat(q: torch.Tensor) -> torch.Tensor:
-  """Convert wxyz quaternion(s) to 3×3 rotation matrix. Shape: (..., 4) → (..., 3, 3)."""
+  """Convert wxyz quaternion(s) to 3x3 rotation matrix.
+
+  Shape: (..., 4) → (..., 3, 3).
+  """
   w, x, y, z = q[..., 0], q[..., 1], q[..., 2], q[..., 3]
   return torch.stack(
     [
@@ -644,8 +647,8 @@ def _reconstruct_J(mass, ipos, inertia, iquat):
   """Reconstruct pseudo-inertia matrix from MuJoCo fields (test helper).
 
   Correctly accounts for body_iquat (the principal-frame rotation) and the
-  parallel-axis theorem (body_ipos) so that the reconstructed J is exact
-  regardless of shear magnitude.
+  parallel-axis theorem (body_ipos) so that the reconstructed J is exact regardless of
+  shear magnitude.
   """
   I3 = torch.eye(3, device=mass.device, dtype=mass.dtype)
   # MuJoCo body_iquat maps principal→body.
@@ -716,9 +719,9 @@ def test_pseudo_inertia_physical_consistency(device):
   assert torch.all(d1 + d3 >= d2 - 1e-6)
   assert torch.all(d2 + d3 >= d1 - 1e-6)
 
-  # Round-trip check: reconstruct J from all four stored fields (including
-  # body_iquat) and verify it is positive definite. This is exact because
-  # the implementation writes the eigendecomposition of J'.
+  # Round-trip check: reconstruct J from all four stored fields (including body_iquat)
+  # and verify it is positive definite. This is exact because the implementation writes
+  # the eigendecomposition of J'.
   J = _reconstruct_J(mass, ipos, inertia, iquat)
   eigvals = torch.linalg.eigvalsh(J)
   assert torch.all(eigvals > -1e-5), f"Non-positive J eigenvalue: {eigvals.min()}"
@@ -746,21 +749,26 @@ def test_pseudo_inertia_zero_perturbation_unchanged(device):
 
   assert torch.allclose(mass, def_mass.unsqueeze(0).expand_as(mass), atol=1e-5)
   assert torch.allclose(ipos, def_ipos.unsqueeze(0).expand_as(ipos), atol=1e-5)
-  assert torch.allclose(inertia, def_inertia.unsqueeze(0).expand_as(inertia), atol=1e-5)
-  # q and -q represent the same rotation; check both signs.
-  def_exp = def_iquat.unsqueeze(0).expand_as(iquat)
-  assert torch.allclose(iquat, def_exp, atol=1e-5) or torch.allclose(
-    iquat, -def_exp, atol=1e-5
-  ), "body_iquat changed unexpectedly under zero perturbation"
+  # For bodies with degenerate eigenvalues (2+ equal principal moments), the
+  # eigenvector basis is non-unique, so the (inertia, iquat) decomposition may differ
+  # while producing the same physical inertia tensor. Compare the full tensor
+  # R @ diag(inertia) @ R^T rather than individual components.
+  R_def = _matrix_from_quat(def_iquat)
+  I_def = R_def @ torch.diag_embed(def_inertia) @ R_def.mT
+  R_new = _matrix_from_quat(iquat)
+  I_new = R_new @ torch.diag_embed(inertia) @ R_new.mT
+  assert torch.allclose(I_new, I_def.unsqueeze(0).expand_as(I_new), atol=1e-5), (
+    "Inertia tensor changed unexpectedly under zero perturbation"
+  )
 
 
 def test_pseudo_inertia_zero_perturbation_offset_body(device):
   """Zero perturbation preserves physics for a body with non-trivial ipos/iquat.
 
-  Since ``eigh`` returns eigenvalues in ascending order while MuJoCo may
-  store them differently, we compare the reconstructed pseudo-inertia
-  matrix J (which is representation-independent) rather than the raw
-  principal moments and iquat individually.
+  Since ``eigh`` returns eigenvalues in ascending order while MuJoCo may store them
+  differently, we compare the reconstructed pseudo-inertia matrix J (which is
+  representation-independent) rather than the raw principal moments and iquat
+  individually.
   """
   env = _make_inertia_env(device)
   robot = env.scene["robot"]
@@ -794,8 +802,8 @@ def test_pseudo_inertia_zero_perturbation_offset_body(device):
   assert torch.allclose(mass, def_mass.unsqueeze(0).expand_as(mass), atol=1e-5)
   assert torch.allclose(ipos, def_ipos.unsqueeze(0).expand_as(ipos), atol=1e-5)
 
-  # Inertia and iquat may have different eigenvalue ordering, so compare
-  # the reconstructed J matrix instead.
+  # Inertia and iquat may have different eigenvalue ordering, so compare the
+  # reconstructed J matrix instead.
   J_default = _reconstruct_J(def_mass, def_ipos, def_inertia, def_iquat)
   J_result = _reconstruct_J(mass, ipos, inertia, iquat)
   assert torch.allclose(

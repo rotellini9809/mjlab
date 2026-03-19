@@ -27,7 +27,110 @@ from ._types import Distribution, Operation
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
 
+# Number of Jacobi sweeps for 3x3 eigendecomposition. Each sweep applies 3 Givens
+# rotations (one per off-diagonal pair). 5 sweeps are more than enough for 3x3 matrices
+# to converge to machine precision.
+_JACOBI_SWEEPS = 5
+
 # Pseudo-inertia helpers.
+
+
+def _cholesky_4x4(A: torch.Tensor) -> torch.Tensor:
+  """Analytical Cholesky for batched 4x4 SPD matrices.
+
+  Avoids ``torch.linalg.cholesky`` (and the cuSOLVER library it loads), which allocates
+  several GB of persistent GPU memory on first use.
+
+  Args:
+    A: ``(*batch, 4, 4)`` symmetric positive-definite matrix.
+
+  Returns:
+    L: ``(*batch, 4, 4)`` lower-triangular Cholesky factor.
+  """
+  L = torch.zeros_like(A)
+  L[..., 0, 0] = torch.sqrt(A[..., 0, 0])
+  L[..., 1, 0] = A[..., 1, 0] / L[..., 0, 0]
+  L[..., 2, 0] = A[..., 2, 0] / L[..., 0, 0]
+  L[..., 3, 0] = A[..., 3, 0] / L[..., 0, 0]
+  L[..., 1, 1] = torch.sqrt(A[..., 1, 1] - L[..., 1, 0] ** 2)
+  L[..., 2, 1] = (A[..., 2, 1] - L[..., 2, 0] * L[..., 1, 0]) / L[..., 1, 1]
+  L[..., 3, 1] = (A[..., 3, 1] - L[..., 3, 0] * L[..., 1, 0]) / L[..., 1, 1]
+  L[..., 2, 2] = torch.sqrt(A[..., 2, 2] - L[..., 2, 0] ** 2 - L[..., 2, 1] ** 2)
+  L[..., 3, 2] = (
+    A[..., 3, 2] - L[..., 3, 0] * L[..., 2, 0] - L[..., 3, 1] * L[..., 2, 1]
+  ) / L[..., 2, 2]
+  L[..., 3, 3] = torch.sqrt(
+    A[..., 3, 3] - L[..., 3, 0] ** 2 - L[..., 3, 1] ** 2 - L[..., 3, 2] ** 2
+  )
+  return L
+
+
+def _eigh_3x3_jacobi(
+  A: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+  """Batched eigendecomposition for 3x3 symmetric matrices via Jacobi.
+
+  Avoids ``torch.linalg.eigh`` (and the cuSOLVER library it loads), which allocates
+  several GB of persistent GPU memory on first use.
+
+  Uses cyclic Jacobi rotations over the three off-diagonal pairs. For 3x3 matrices,
+  ``_JACOBI_SWEEPS`` sweeps converge to machine precision.
+
+  Args:
+    A: ``(*batch, 3, 3)`` symmetric matrix.
+
+  Returns:
+    eigenvalues: ``(*batch, 3)`` in ascending order.
+    V: ``(*batch, 3, 3)`` orthogonal eigenvectors (columns).
+  """
+  D = A.clone()
+  V = torch.eye(3, device=A.device, dtype=A.dtype).expand_as(D).clone()
+
+  for _ in range(_JACOBI_SWEEPS):
+    for p, q in ((0, 1), (0, 2), (1, 2)):
+      r = 3 - p - q
+      apq = D[..., p, q]
+      app = D[..., p, p]
+      aqq = D[..., q, q]
+
+      # Jacobi rotation: tau = (aqq - app) / (2*apq),
+      # t = sign(tau) / (|tau| + sqrt(1 + tau^2)).
+      diff = aqq - app
+      denom = 2 * apq
+      tau = diff / denom
+      t = torch.sign(tau) / (torch.abs(tau) + torch.sqrt(1 + tau * tau))
+      # When apq ≈ 0, skip rotation (t = 0).
+      t = torch.where(torch.abs(denom) > 1e-30, t, torch.zeros_like(t))
+
+      c = 1 / torch.sqrt(1 + t * t)
+      s = t * c
+
+      # Update diagonal and off-diagonal elements.
+      D[..., p, p] = app - t * apq
+      D[..., q, q] = aqq + t * apq
+      D[..., p, q] = D[..., q, p] = 0
+
+      arp = D[..., r, p].clone()
+      arq = D[..., r, q].clone()
+      D[..., r, p] = D[..., p, r] = c * arp - s * arq
+      D[..., r, q] = D[..., q, r] = s * arp + c * arq
+
+      # Accumulate eigenvectors: V[:, p/q] = c*Vp ∓ s*Vq.
+      vp = V[..., :, p].clone()
+      vq = V[..., :, q].clone()
+      c_exp = c.unsqueeze(-1)
+      s_exp = s.unsqueeze(-1)
+      V[..., :, p] = c_exp * vp - s_exp * vq
+      V[..., :, q] = s_exp * vp + c_exp * vq
+
+  eigenvalues = torch.stack([D[..., 0, 0], D[..., 1, 1], D[..., 2, 2]], dim=-1)
+
+  # Sort in ascending order to match torch.linalg.eigh convention.
+  idx = eigenvalues.argsort(dim=-1)
+  eigenvalues = eigenvalues.gather(-1, idx)
+  V = V.gather(-1, idx.unsqueeze(-2).expand_as(V))
+
+  return eigenvalues, V
 
 
 def _reconstruct_pseudo_inertia_J(
@@ -117,7 +220,7 @@ def _decompose_pseudo_inertia_J(
   )  # (*batch, 3, 3)
 
   # Columns of V are principal axes in body frame; eigenvalues are principal moments.
-  principal_moments, V = torch.linalg.eigh(I_com)  # (*batch, 3), (*batch, 3, 3)
+  principal_moments, V = _eigh_3x3_jacobi(I_com)
 
   # Ensure V is a proper rotation (det = +1). eigh can return reflections.
   dets = torch.linalg.det(V)  # (*batch,)
@@ -401,7 +504,7 @@ def pseudo_inertia(
   J_default = _reconstruct_pseudo_inertia_J(def_mass, def_ipos, def_inertia, def_iquat)
 
   # Cholesky factor L: (n_bodies, 4, 4), lower triangular.
-  L = torch.linalg.cholesky(J_default)
+  L = _cholesky_4x4(J_default)
 
   # Sample perturbation parameters, each (n_envs, n_bodies).
   def sample(r: tuple[float, float]) -> torch.Tensor:

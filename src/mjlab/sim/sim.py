@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -28,6 +30,23 @@ else:
 # Minimum CUDA driver version supported for conditional CUDA graphs.
 _GRAPH_CAPTURE_MIN_DRIVER = (12, 4)
 
+
+@contextmanager
+def _suspend_gc():
+  """Temporarily disable the garbage collector.
+
+  Prevents GC from finalizing stale Warp Graph objects during wp.ScopedCapture, which
+  would record their destructor calls into the new graph and corrupt it on replay.
+  """
+  enabled = gc.isenabled()
+  gc.disable()
+  try:
+    yield
+  finally:
+    if enabled:
+      gc.enable()
+
+
 _JACOBIAN_MAP = {
   "auto": mujoco.mjtJacobian.mjJAC_AUTO,
   "dense": mujoco.mjtJacobian.mjJAC_DENSE,
@@ -45,6 +64,19 @@ _SOLVER_MAP = {
   "newton": mujoco.mjtSolver.mjSOL_NEWTON,
   "cg": mujoco.mjtSolver.mjSOL_CG,
   "pgs": mujoco.mjtSolver.mjSOL_PGS,
+}
+
+# Maps short flag names to MuJoCo enum values.
+# Names match the XML <flag> attribute names (e.g. <flag contact="disable"/>).
+_DISABLE_FLAG_MAP: dict[str, int] = {
+  name.removeprefix("mjDSBL_").lower(): getattr(mujoco.mjtDisableBit, name).value
+  for name in dir(mujoco.mjtDisableBit)
+  if name.startswith("mjDSBL_")
+}
+_ENABLE_FLAG_MAP: dict[str, int] = {
+  name.removeprefix("mjENBL_").lower(): getattr(mujoco.mjtEnableBit, name).value
+  for name in dir(mujoco.mjtEnableBit)
+  if name.startswith("mjENBL_")
 }
 
 
@@ -71,7 +103,12 @@ class MujocoCfg:
 
   # Other.
   gravity: tuple[float, float, float] = (0.0, 0.0, -9.81)
-  multiccd: bool = False
+  # Global MuJoCo option flags. Names match the XML <flag> attributes
+  # (e.g. "contact", "gravity", "sensor"). See mjtDisableBit / mjtEnableBit.
+  disableflags: tuple[str, ...] = ()
+  """Disable flags to set (e.g. ``("contact",)`` to disable contacts)."""
+  enableflags: tuple[str, ...] = ()
+  """Enable flags to set (e.g. ``("energy",)`` to enable energy computation)."""
 
   def apply(self, model: mujoco.MjModel) -> None:
     """Apply configuration settings to a compiled MjModel."""
@@ -87,8 +124,18 @@ class MujocoCfg:
     model.opt.ls_iterations = self.ls_iterations
     model.opt.ls_tolerance = self.ls_tolerance
     model.opt.ccd_iterations = self.ccd_iterations
-    if self.multiccd:
-      model.opt.enableflags |= mujoco.mjtEnableBit.mjENBL_MULTICCD
+    for flag in self.disableflags:
+      if flag not in _DISABLE_FLAG_MAP:
+        raise ValueError(
+          f"Unknown disable flag {flag!r}. Valid flags: {sorted(_DISABLE_FLAG_MAP)}"
+        )
+      model.opt.disableflags |= _DISABLE_FLAG_MAP[flag]
+    for flag in self.enableflags:
+      if flag not in _ENABLE_FLAG_MAP:
+        raise ValueError(
+          f"Unknown enable flag {flag!r}. Valid flags: {sorted(_ENABLE_FLAG_MAP)}"
+        )
+      model.opt.enableflags |= _ENABLE_FLAG_MAP[flag]
 
 
 @dataclass(kw_only=True)
@@ -192,7 +239,7 @@ class Simulation:
     self.reset_graph = None
     self.sense_graph = None
     if self.use_cuda_graph:
-      with wp.ScopedDevice(self.wp_device):
+      with _suspend_gc(), wp.ScopedDevice(self.wp_device):
         with wp.ScopedCapture() as capture:
           mjwarp.step(self.wp_model, self.wp_data)
         self.step_graph = capture.graph

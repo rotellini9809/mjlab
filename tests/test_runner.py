@@ -1,5 +1,6 @@
 """Tests for MjlabOnPolicyRunner."""
 
+import ast
 import tempfile
 from dataclasses import asdict
 from pathlib import Path
@@ -12,6 +13,7 @@ from conftest import get_test_device
 from rsl_rl.models import MLPModel
 from tensordict import TensorDict
 
+import mjlab.scripts.train as train_mod
 from mjlab.actuator import XmlMotorActuatorCfg
 from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
 from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg, mdp
@@ -23,6 +25,7 @@ from mjlab.scene import SceneCfg
 from mjlab.sim import MujocoCfg, SimulationCfg
 from mjlab.tasks.tracking.rl.runner import _OnnxMotionModel
 from mjlab.terrains import TerrainEntityCfg
+from mjlab.utils.os import dump_yaml
 
 
 @pytest.fixture(scope="module")
@@ -176,7 +179,6 @@ def _make_actor(obs_dim=8, output_dim=4, obs_normalization=True):
     hidden_dims=[32, 32],
     activation="elu",
     obs_normalization=obs_normalization,
-    stochastic=False,
   )
 
 
@@ -218,7 +220,36 @@ def test_onnx_export_without_normalization():
   assert out.shape == (4, 4)
 
 
-# -- CNN (spatial-softmax) ONNX export tests ---------------------------------
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_onnx_runtime_roundtrip_matches_pytorch():
+  """Exported .onnx file produces the same outputs as PyTorch via onnxruntime."""
+  ort = pytest.importorskip("onnxruntime")
+  actor = _make_actor(obs_normalization=True)
+  _train_normalizer(actor)
+  onnx_model = actor.as_onnx(verbose=False)
+  onnx_model.eval()
+
+  x = torch.randn(4, actor.obs_dim)
+  expected = _model_output(actor, x)
+
+  with tempfile.TemporaryDirectory() as tmpdir:
+    path = Path(tmpdir) / "policy.onnx"
+    torch.onnx.export(
+      onnx_model,
+      (x,),
+      str(path),
+      input_names=onnx_model.input_names,  # pyright: ignore[reportArgumentType]
+      output_names=onnx_model.output_names,  # pyright: ignore[reportArgumentType]
+      opset_version=18,
+      dynamo=False,
+    )
+    sess = ort.InferenceSession(str(path))
+    [actual] = sess.run(None, {"obs": x.numpy()})
+
+  torch.testing.assert_close(torch.from_numpy(actual), expected, atol=1e-5, rtol=0)
+
+
+# CNN (spatial-softmax) ONNX export tests.
 
 _IMG_H, _IMG_W, _IMG_C = 16, 16, 3
 _OBS_DIM_1D = 8
@@ -248,8 +279,20 @@ def _make_cnn_actor(obs_normalization=True):
     hidden_dims=[32, 32],
     activation="elu",
     obs_normalization=obs_normalization,
-    stochastic=False,
   )
+
+
+def _train_cnn_normalizer(actor, n_batches=50, batch_size=64):
+  actor.train()
+  for _ in range(n_batches):
+    obs = TensorDict(
+      {
+        "actor": torch.randn(batch_size, _OBS_DIM_1D) * 5 + 3,
+        "camera": torch.randn(batch_size, _IMG_C, _IMG_H, _IMG_W),
+      }
+    )
+    actor.update_normalization(obs)
+  actor.eval()
 
 
 def _cnn_model_output(actor, x_1d, x_2d):
@@ -261,17 +304,7 @@ def _cnn_model_output(actor, x_1d, x_2d):
 def test_cnn_onnx_export_matches_actor():
   """as_onnx() with SpatialSoftmaxCNNModel matches the original model."""
   actor = _make_cnn_actor(obs_normalization=True)
-  # Train normalizer on 1D observations.
-  actor.train()
-  for _ in range(50):
-    obs = TensorDict(
-      {
-        "actor": torch.randn(64, _OBS_DIM_1D) * 5 + 3,
-        "camera": torch.randn(64, _IMG_C, _IMG_H, _IMG_W),
-      }
-    )
-    actor.update_normalization(obs)
-  actor.eval()
+  _train_cnn_normalizer(actor)
 
   onnx_model = actor.as_onnx(verbose=False)
   onnx_model.eval()
@@ -308,6 +341,90 @@ def test_cnn_onnx_export_to_file():
     )
     assert onnx_path.exists()
     onnx.checker.check_model(str(onnx_path))
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_cnn_onnx_runtime_roundtrip_matches_pytorch():
+  """Exported CNN .onnx file produces the same outputs as PyTorch via onnxruntime."""
+  ort = pytest.importorskip("onnxruntime")
+  actor = _make_cnn_actor(obs_normalization=True)
+  _train_cnn_normalizer(actor)
+
+  onnx_model = actor.as_onnx(verbose=False)
+  onnx_model.eval()
+
+  x_1d = torch.randn(4, _OBS_DIM_1D)
+  x_2d = torch.randn(4, _IMG_C, _IMG_H, _IMG_W)
+  expected = _cnn_model_output(actor, x_1d, x_2d)
+
+  with tempfile.TemporaryDirectory() as tmpdir:
+    path = Path(tmpdir) / "cnn_policy.onnx"
+    torch.onnx.export(
+      onnx_model,
+      (x_1d, x_2d),
+      str(path),
+      input_names=onnx_model.input_names,  # pyright: ignore[reportArgumentType]
+      output_names=onnx_model.output_names,  # pyright: ignore[reportArgumentType]
+      opset_version=18,
+      dynamo=False,
+    )
+    sess = ort.InferenceSession(str(path))
+    [actual] = sess.run(None, {"obs": x_1d.numpy(), "camera": x_2d.numpy()})
+
+  torch.testing.assert_close(torch.from_numpy(actual), expected, atol=1e-5, rtol=0)
+
+
+def test_agent_cfg_serializable_after_runner_creation(env, device):
+  """dump_yaml must be called before runner creation.
+
+  The runner mutates agent_cfg in-place (e.g. resolve_symmetry_config injects
+  non-serializable objects). Verify that the train script writes config files before
+  constructing the runner.
+
+  Regression test for https://github.com/mjlab-org/mjlab/issues/764.
+  """
+  wrapped_env = RslRlVecEnvWrapper(env)
+  agent_cfg = asdict(
+    RslRlOnPolicyRunnerCfg(num_steps_per_env=4, max_iterations=10, save_interval=5)
+  )
+
+  # Dump should succeed before runner creation.
+  with tempfile.TemporaryDirectory() as tmpdir:
+    dump_yaml(Path(tmpdir) / "agent.yaml", agent_cfg)
+
+  # Create runner (mutates agent_cfg via resolve_symmetry_config).
+  with tempfile.TemporaryDirectory() as tmpdir:
+    MjlabOnPolicyRunner(wrapped_env, agent_cfg, log_dir=tmpdir, device=device)
+
+  # Confirm that the runner added non-serializable keys to agent_cfg.
+  sym_cfg = agent_cfg.get("algorithm", {}).get("symmetry_cfg")
+  runner_mutated = sym_cfg is not None or "multi_gpu" in agent_cfg
+  assert runner_mutated, "Expected runner to mutate agent_cfg"
+
+  # Verify the train script calls dump_yaml before runner_cls().
+  source = Path(train_mod.__file__).read_text()
+  tree = ast.parse(source)
+
+  dump_yaml_line = None
+  runner_cls_line = None
+  for node in ast.walk(tree):
+    if isinstance(node, ast.Call):
+      func = node.func
+      # Look for dump_yaml(..., agent_cfg)
+      if isinstance(func, ast.Name) and func.id == "dump_yaml":
+        for arg in node.args:
+          if isinstance(arg, ast.Name) and arg.id == "agent_cfg":
+            dump_yaml_line = node.lineno
+      # Look for runner_cls(...)
+      if isinstance(func, ast.Name) and func.id == "runner_cls":
+        runner_cls_line = node.lineno
+
+  assert dump_yaml_line is not None, "dump_yaml(agent_cfg) not found"
+  assert runner_cls_line is not None, "runner_cls() not found"
+  assert dump_yaml_line < runner_cls_line, (
+    f"dump_yaml (line {dump_yaml_line}) must be called before "
+    f"runner_cls (line {runner_cls_line})"
+  )
 
 
 class _MockMotion:

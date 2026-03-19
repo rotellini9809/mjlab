@@ -65,5 +65,7 @@ Projects built on mjlab. To add yours, open a pull request or post in
      - Velocity control for the Upkie wheeled biped.
    * - `unitreerobotics/unitree_rl_mjlab <https://github.com/unitreerobotics/unitree_rl_mjlab>`_
      - Official Unitree RL environments for Go2, G1, and H1\_2.
+   * - `pal-robotics/pal_mjlab <https://github.com/pal-robotics/pal_mjlab>`_
+     - PAL Robotics robots and tasks.
    * - `Msornerrrr/in-hand-rotation-mjlab <https://github.com/Msornerrrr/in-hand-rotation-mjlab>`_
      - Sim to real RL for in hand cube rotation with the LEAP Hand.

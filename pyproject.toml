@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "mjlab"
-version = "1.1.1"
+version = "1.2.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -36,15 +36,15 @@ dependencies = [
   "tyro>=1.0.1",
   "torch>=2.7.0",
   "torchrunx>=0.3.4",
-  "warp-lang>=1.12.0.dev",
-  "mujoco-warp>=3.5.0",
-  "mujoco>=3.5.0",
+  "warp-lang>=1.12.0",
+  "mujoco-warp>=3.6.0",
+  "mujoco>=3.6.0",
   "trimesh>=4.8.3",
   "viser>=1.0.24",
   "mediapy>=1.2.6",
   "imageio-ffmpeg",
   "tensordict",
-  "rsl-rl-lib==4.0.1",
+  "rsl-rl-lib==5.0.1",
   "tensorboard>=2.20.0",
   "onnxscript>=0.5.4",
   "wandb>=0.22.3",
@@ -65,12 +65,14 @@ train-motor-stage1 = "mjlab.scripts.train_motor_controller_stage1:main"
 eval-motor-stage1 = "mjlab.scripts.eval_motor_controller_stage1:main"
 play-motor-stage1 = "mjlab.scripts.play_motor_controller_stage1:main"
 view-portiere = "mjlab.scripts.view_portiere:main"
+export-scene = "mjlab.scripts.export_scene:main"
 
 [dependency-groups]
 dev = [
   "ipdb>=0.13.13",
   "pre-commit>=4.3.0",
   "pyright>=1.1.408",
+  "onnxruntime>=1.19.0; python_version >= '3.11'",
   "pytest>=v9.0.2",
   "ruff>=v0.14.14",
   "ty>=v0.0.14",
@@ -99,6 +101,10 @@ cpu = ["torch>=2.7.0"]
 conflicts = [
   [{extra = "cu128"}, {extra = "cpu"}],
 ]
+# The nightly index (py.mujoco.org) only has dev builds, and PEP 440 ranks
+# 3.6.0.devN < 3.6.0, so the >=3.6.0 floor in [project.dependencies] would
+# reject them. This override loosens the constraint for uv resolution only.
+override-dependencies = ["mujoco>=3.6.0.dev0"]
 required-environments = [
   "sys_platform == 'darwin' and platform_machine == 'arm64'",
   "sys_platform == 'linux' and platform_machine == 'x86_64'",
@@ -134,7 +140,7 @@ torch = [
   { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform != 'darwin'" },
 ]
 mujoco = { index = "mujoco" }
-mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "ebdadbf2df521dd5b47463436a8f4b96e6c34977" }
+mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "652abe0e41be5894a27156661d1ed936e36ebde3" }
 
 [tool.ruff]
 src = ["src"]  # Helpful for recognizing first-party imports.

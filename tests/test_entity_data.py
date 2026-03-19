@@ -1,12 +1,24 @@
 """Tests for EntityData."""
 
+import math
+from pathlib import Path
+
 import mujoco
+import numpy as np
 import pytest
 import torch
-from conftest import get_test_device
+from conftest import (
+  create_entity_with_actuator,
+  get_test_device,
+  initialize_entity,
+  load_fixture_xml,
+)
 
-from mjlab.entity import Entity, EntityCfg
+from mjlab.actuator import BuiltinMotorActuatorCfg
+from mjlab.actuator.actuator import TransmissionType
+from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
 from mjlab.sim.sim import Simulation, SimulationCfg
+from mjlab.utils.lab_api.math import quat_apply, quat_apply_inverse
 
 FLOATING_BASE_XML = """
 <mujoco>
@@ -14,6 +26,18 @@ FLOATING_BASE_XML = """
     <body name="object" pos="0 0 1">
       <freejoint name="free_joint"/>
       <geom name="object_geom" type="box" size="0.1 0.1 0.1" rgba="0.3 0.3 0.8 1" mass="0.1"/>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+FLOATING_BASE_COM_OFFSET_XML = """
+<mujoco>
+  <worldbody>
+    <body name="object" pos="0 0 1">
+      <freejoint name="free_joint"/>
+      <inertial pos="0.1 0.05 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+      <geom type="box" size="0.1 0.1 0.1"/>
     </body>
   </worldbody>
 </mujoco>
@@ -77,10 +101,6 @@ def test_root_velocity_frame_conversion(device):
   stores it in body frame. This test verifies the conversion happens
   correctly by checking qvel directly.
   """
-  from mjlab.utils.lab_api.math import (
-    quat_apply_inverse,
-  )
-
   entity = create_floating_base_entity()
   entity, sim = initialize_entity_with_sim(entity, device)
 
@@ -130,6 +150,56 @@ def test_write_velocity_uses_qpos_not_xquat(device):
   vel_w_read = entity.data.root_link_vel_w
 
   assert torch.allclose(vel_w_read, vel_w, atol=1e-4)
+
+
+def test_write_root_com_velocity(device):
+  """COM velocity write must produce the same qvel as manual conversion."""
+  num_envs = 4
+  cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(FLOATING_BASE_COM_OFFSET_XML)
+  )
+  entity = Entity(cfg)
+  entity, sim = initialize_entity_with_sim(entity, device, num_envs=num_envs)
+
+  # Give each env a different non-identity orientation.
+  pose = torch.zeros(num_envs, 7, device=device)
+  pose[:, 2] = 1.0
+  quats = torch.tensor(
+    [
+      [1.0, 0.0, 0.0, 0.0],
+      [0.707, 0.707, 0.0, 0.0],
+      [0.5, 0.5, 0.5, 0.5],
+      [0.0, 0.707, 0.0, 0.707],
+    ],
+    device=device,
+  )
+  pose[:, 3:7] = quats
+  entity.write_root_link_pose_to_sim(pose)
+
+  com_vel = torch.tensor(
+    [[1.0, 0.5, -0.2, 0.1, 0.2, 0.3], [-0.5, 1.0, 0.0, -0.1, 0.0, 0.4]],
+    device=device,
+  )
+  env_ids = torch.tensor([1, 3], device=device)
+
+  # Write COM velocity via the API.
+  entity.write_root_com_velocity_to_sim(com_vel, env_ids=env_ids)
+  qvel_from_api = sim.data.qvel.clone()
+
+  # Manually convert COM velocity to link velocity and write that instead.
+  com_offset_b = sim.model.body_ipos[:, entity.indexing.root_body_id]
+  com_offset_w = quat_apply(quats[env_ids], com_offset_b[env_ids])
+  lin_vel_link = com_vel[:, :3] - torch.cross(com_vel[:, 3:], com_offset_w, dim=-1)
+  link_vel = torch.cat([lin_vel_link, com_vel[:, 3:]], dim=-1)
+  entity.write_root_link_velocity_to_sim(link_vel, env_ids=env_ids)
+  qvel_from_manual = sim.data.qvel.clone()
+
+  assert torch.allclose(qvel_from_api, qvel_from_manual, atol=1e-5)
+
+  # Untouched envs should have zero velocity.
+  v_adr = entity.indexing.free_joint_v_adr
+  assert torch.all(qvel_from_api[0, v_adr] == 0.0)
+  assert torch.all(qvel_from_api[2, v_adr] == 0.0)
 
 
 def test_read_requires_forward_to_be_current(device):
@@ -196,12 +266,6 @@ def test_entity_data_properties_accessible(device, property_name, expected_shape
 
 def test_entity_data_reset_clears_all_targets(device):
   """Test that EntityData.clear_state() zeros out all target buffers."""
-  from pathlib import Path
-
-  from mjlab.actuator.actuator import TransmissionType
-  from mjlab.actuator.builtin_actuator import BuiltinMotorActuatorCfg
-  from mjlab.entity import EntityArticulationInfoCfg
-
   xml_path = Path(__file__).parent / "fixtures" / "tendon_finger.xml"
 
   cfg = EntityCfg(
@@ -238,12 +302,6 @@ def test_entity_data_reset_clears_all_targets(device):
 
 def test_entity_data_reset_partial_envs(device):
   """Test that EntityData.clear_state() can reset specific environments."""
-  from pathlib import Path
-
-  from mjlab.actuator.actuator import TransmissionType
-  from mjlab.actuator.builtin_actuator import BuiltinMotorActuatorCfg
-  from mjlab.entity import EntityArticulationInfoCfg
-
   xml_path = Path(__file__).parent / "fixtures" / "tendon_finger.xml"
 
   cfg = EntityCfg(
@@ -282,3 +340,242 @@ def test_entity_data_reset_partial_envs(device):
   assert torch.all(entity.data.tendon_effort_target[1] == 0.0)
   assert torch.all(entity.data.tendon_effort_target[2] == 9.0)
   assert torch.all(entity.data.tendon_effort_target[3] == 0.0)
+
+
+# Joint limits tests.
+
+MIXED_LIMITS_XML = """
+<mujoco>
+  <worldbody>
+    <body name="base">
+      <body name="cart" pos="0 0 1">
+        <joint name="slider" type="slide" axis="1 0 0" limited="true" range="-2 2"/>
+        <geom type="box" size="0.1 0.1 0.1" mass="1"/>
+        <body name="pole">
+          <joint name="hinge" type="hinge" axis="0 1 0"/>
+          <geom type="capsule" fromto="0 0 0 0 0 0.5" size="0.02" mass="0.1"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+ALL_LIMITED_XML = """
+<mujoco>
+  <worldbody>
+    <body name="base">
+      <body name="link1" pos="0 0 0.1">
+        <joint name="j1" type="hinge" axis="0 0 1" limited="true" range="-1.5 1.5"/>
+        <geom type="box" size="0.05 0.05 0.1" mass="1"/>
+        <body name="link2" pos="0 0 0.2">
+          <joint name="j2" type="hinge" axis="0 1 0" limited="true" range="-1 1"/>
+          <geom type="box" size="0.05 0.05 0.1" mass="0.5"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+ALL_UNLIMITED_XML = """
+<mujoco>
+  <worldbody>
+    <body name="base">
+      <body name="link1" pos="0 0 0.1">
+        <joint name="j1" type="hinge" axis="0 0 1"/>
+        <geom type="box" size="0.05 0.05 0.1" mass="1"/>
+        <body name="link2" pos="0 0 0.2">
+          <joint name="j2" type="hinge" axis="0 1 0"/>
+          <geom type="box" size="0.05 0.05 0.1" mass="0.5"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+
+def test_soft_limits_unlimited_joints_are_infinite(device):
+  """Unlimited joints must have [-inf, inf] soft limits, not [0, 0]."""
+  cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(MIXED_LIMITS_XML))
+  entity = Entity(cfg)
+  entity, _ = initialize_entity_with_sim(entity, device)
+
+  limits = entity.data.soft_joint_pos_limits[0]
+  # slider (index 0) is limited: finite limits.
+  assert torch.isfinite(limits[0, 0]) and torch.isfinite(limits[0, 1])
+  assert limits[0, 0] == -2.0
+  assert limits[0, 1] == 2.0
+  # hinge (index 1) is unlimited: infinite limits.
+  assert limits[1, 0] == float("-inf")
+  assert limits[1, 1] == float("inf")
+
+
+def test_soft_limits_all_limited(device):
+  """All-limited joints should have finite soft limits."""
+  cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(ALL_LIMITED_XML))
+  entity = Entity(cfg)
+  entity, _ = initialize_entity_with_sim(entity, device)
+
+  limits = entity.data.soft_joint_pos_limits[0]
+  for j in range(limits.shape[0]):
+    assert torch.isfinite(limits[j, 0]) and torch.isfinite(limits[j, 1])
+
+
+def test_soft_limits_all_unlimited(device):
+  """All-unlimited joints should have infinite soft limits."""
+  cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(ALL_UNLIMITED_XML))
+  entity = Entity(cfg)
+  entity, _ = initialize_entity_with_sim(entity, device)
+
+  limits = entity.data.soft_joint_pos_limits[0]
+  for j in range(limits.shape[0]):
+    assert limits[j, 0] == float("-inf")
+    assert limits[j, 1] == float("inf")
+
+
+def test_joint_pos_limits_match_soft_limits_for_unlimited(device):
+  """joint_pos_limits and default_joint_pos_limits should also be inf for unlimited."""
+  cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(MIXED_LIMITS_XML))
+  entity = Entity(cfg)
+  entity, _ = initialize_entity_with_sim(entity, device)
+
+  # Hinge is joint index 1, unlimited.
+  for limits_tensor in (
+    entity.data.joint_pos_limits,
+    entity.data.default_joint_pos_limits,
+    entity.data.soft_joint_pos_limits,
+  ):
+    assert limits_tensor[0, 1, 0] == float("-inf")
+    assert limits_tensor[0, 1, 1] == float("inf")
+
+
+def test_reset_joints_by_offset_respects_unlimited(device):
+  """reset_joints_by_offset must not clamp unlimited joints to [0, 0]."""
+  cfg = EntityCfg(
+    spec_fn=lambda: mujoco.MjSpec.from_string(MIXED_LIMITS_XML),
+    init_state=EntityCfg.InitialStateCfg(
+      joint_pos={"slider": 0.0, "hinge": math.pi},
+      joint_vel={".*": 0.0},
+    ),
+  )
+  entity = Entity(cfg)
+  entity, _ = initialize_entity_with_sim(entity, device)
+
+  # Simulate what reset_joints_by_offset does.
+  default_pos = entity.data.default_joint_pos
+  soft_limits = entity.data.soft_joint_pos_limits
+  joint_pos = default_pos.clone()
+  joint_pos = joint_pos.clamp_(soft_limits[..., 0], soft_limits[..., 1])
+
+  # Hinge should stay at pi, not get clamped to 0.
+  assert torch.allclose(
+    joint_pos[0, 1], torch.tensor(math.pi, device=device), atol=1e-5
+  )
+
+
+# Generalized force accessor tests.
+
+TWO_LINK_ARM_XML = """
+<mujoco>
+  <worldbody>
+    <body name="base">
+      <body name="upper" pos="0 0 0.5">
+        <joint name="shoulder" type="hinge" axis="0 1 0"/>
+        <geom type="capsule" fromto="0 0 0 0 0 0.4" size="0.03" mass="1.0"/>
+        <body name="lower" pos="0 0 0.4">
+          <joint name="elbow" type="hinge" axis="0 1 0"/>
+          <geom type="capsule" fromto="0 0 0 0 0 0.3" size="0.02" mass="0.5"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+
+def test_qfrc_actuator_slices_joint_dofs_only(device):
+  """qfrc_actuator should expose only articulated joint DoFs."""
+  xml = load_fixture_xml("floating_base_articulated")
+  cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(xml))
+  entity = Entity(cfg)
+  entity, sim = initialize_entity_with_sim(entity, device)
+
+  joint_v_adr = entity.indexing.joint_v_adr
+  free_v_adr = entity.indexing.free_joint_v_adr
+  nv = sim.data.qvel.shape[1]
+
+  values = torch.arange(1, nv + 1, device=device, dtype=torch.float32)
+  sim.data.qfrc_actuator[0] = values
+  expected = values[joint_v_adr]
+  actual = entity.data.qfrc_actuator[0]
+  assert torch.equal(actual, expected)
+
+  assert free_v_adr.numel() > 0
+  assert entity.data.qfrc_actuator.shape[-1] == joint_v_adr.numel()
+  assert entity.data.qfrc_actuator.shape[-1] != free_v_adr.numel()
+
+
+def test_qfrc_actuator_matches_motor_command_with_gear(device):
+  """qfrc_actuator should equal actuator_force projected through joint gear."""
+  xml = load_fixture_xml("fixed_base_articulated")
+  entity = create_entity_with_actuator(
+    xml,
+    BuiltinMotorActuatorCfg(
+      target_names_expr=("joint.*",),
+      effort_limit=100.0,
+      gear=3.0,
+    ),
+  )
+  entity, sim = initialize_entity(entity, device)
+
+  commanded = torch.tensor([[2.0, -1.0]], device=device)
+  entity.set_joint_effort_target(commanded)
+  entity.write_data_to_sim()
+  sim.forward()
+
+  assert torch.allclose(entity.data.actuator_force, commanded, atol=1e-6)
+  assert torch.allclose(entity.data.qfrc_actuator, 3.0 * commanded, atol=1e-6)
+
+
+def test_qfrc_external_matches_mj_applyFT(device):
+  """qfrc_external should match J^T * xfrc_applied computed by CPU MuJoCo."""
+  cfg = EntityCfg(spec_fn=lambda: mujoco.MjSpec.from_string(TWO_LINK_ARM_XML))
+  entity = Entity(cfg)
+  entity, sim = initialize_entity_with_sim(entity, device)
+
+  entity.write_joint_state_to_sim(
+    torch.tensor([[0.5, -0.3]], device=device),
+    torch.tensor([[0.0, 0.0]], device=device),
+  )
+  sim.forward()
+
+  lower_body_id = int(entity.indexing.body_ids[1].item())
+  force = torch.tensor([1.0, 0.0, -2.0], device=device)
+  torque = torch.tensor([0.0, 0.5, 0.0], device=device)
+  sim.data.xfrc_applied[0, lower_body_id, 0:3] = force
+  sim.data.xfrc_applied[0, lower_body_id, 3:6] = torque
+  sim.forward()
+
+  mjd = mujoco.MjData(sim.mj_model)
+  mjd.qpos[:] = sim.data.qpos[0].cpu().numpy()
+  mjd.qvel[:] = sim.data.qvel[0].cpu().numpy()
+  mujoco.mj_forward(sim.mj_model, mjd)
+
+  qfrc_reference = np.zeros(sim.mj_model.nv)
+  mujoco.mj_applyFT(
+    sim.mj_model,
+    mjd,
+    force.cpu().numpy().astype(np.float64),
+    torque.cpu().numpy().astype(np.float64),
+    mjd.xipos[lower_body_id],
+    lower_body_id,
+    qfrc_reference,
+  )
+  expected = torch.from_numpy(qfrc_reference).to(device=device, dtype=torch.float32)
+
+  joint_v_adr = entity.indexing.joint_v_adr
+  assert torch.allclose(
+    entity.data.qfrc_external, expected[joint_v_adr].unsqueeze(0), atol=1e-5
+  )

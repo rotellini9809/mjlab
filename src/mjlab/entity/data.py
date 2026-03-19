@@ -122,9 +122,9 @@ class EntityData:
       raise ValueError("Cannot write root COM velocity for fixed-base entity.")
     assert velocity.shape[-1] == self.ROOT_VEL_DIM
 
-    env_ids = self._resolve_env_ids(env_ids)
+    env_ids = env_ids if env_ids is not None else slice(None)
     com_offset_b = self.model.body_ipos[:, self.indexing.root_body_id]
-    quat_w = self.data.qpos[env_ids, self.indexing.free_joint_q_adr[3:7]]
+    quat_w = self.data.qpos[:, self.indexing.free_joint_q_adr[3:7]][env_ids]
     com_offset_w = quat_apply(quat_w, com_offset_b[env_ids])
     lin_vel_com = velocity[:, :3]
     ang_vel_w = velocity[:, 3:]
@@ -233,6 +233,11 @@ class EntityData:
     if isinstance(env_ids, torch.Tensor):
       return env_ids[:, None]
     return env_ids
+
+  def _joint_dof_field(self, field_name: str) -> torch.Tensor:
+    """Return a generalized-force field sliced to this entity's joint DoFs."""
+    field = getattr(self.data, field_name)
+    return field[:, self.indexing.joint_v_adr]
 
   # Root properties
 
@@ -387,24 +392,55 @@ class EntityData:
     """Tendon velocities. Shape (num_envs, num_tendons)."""
     return self.data.ten_velocity[:, self.indexing.tendon_ids]
 
+  # Generalized forces
+
   @property
   def joint_torques(self) -> torch.Tensor:
     """Joint torques. Shape (num_envs, nv)."""
     raise NotImplementedError(
-      "Joint torques are not currently available. "
-      "Consider using 'actuator_force' property for actuation forces, "
-      "or 'generalized_force' property for generalized forces applied to the DoFs."
+      "Joint torques are ambiguous. Use 'qfrc_actuator' for actuator forces "
+      "in joint space, or 'qfrc_external' for body wrench contributions."
     )
 
   @property
   def actuator_force(self) -> torch.Tensor:
-    """Scalar actuation force in actuation space. Shape (num_envs, nu)."""
+    """Scalar actuator output in actuation space. Shape (num_envs, nu).
+
+    This is not the same as joint-space generalized force. Use ``qfrc_actuator`` for
+    the actuator contribution projected into DoF space.
+    """
     return self.data.actuator_force[:, self.indexing.ctrl_ids]
 
   @property
-  def generalized_force(self) -> torch.Tensor:
-    """Generalized forces applied to the DoFs. Shape (num_envs, nv)."""
-    return self.data.qfrc_applied[:, self.indexing.free_joint_v_adr]
+  def qfrc_actuator(self) -> torch.Tensor:
+    """Forces produced by all actuators, mapped into joint space.
+
+    For motors this is the commanded torque times the gear ratio. For position and
+    velocity actuators this is the force computed by the internal PD law. When
+    ``actuatorgravcomp`` is enabled on a joint, the gravity compensation force is
+    included here.
+    """
+    return self._joint_dof_field("qfrc_actuator")
+
+  @property
+  def qfrc_external(self) -> torch.Tensor:
+    """Forces on joints due to Cartesian wrenches applied to bodies.
+
+    When a force or torque is applied to a body via ``xfrc_applied``, this property
+    gives the equivalent joint forces (the Jacobian transpose mapping).
+    """
+    # MuJoCo folds J^T * xfrc_applied into qfrc_smooth without storing it.
+    # Recover via the qfrc_smooth identity:
+    #   qfrc_smooth = qfrc_actuator + qfrc_passive - qfrc_bias
+    #                 + qfrc_applied + J^T * xfrc_applied
+    f = self._joint_dof_field
+    return (
+      f("qfrc_smooth")
+      - f("qfrc_actuator")
+      - f("qfrc_applied")
+      - f("qfrc_passive")
+      + f("qfrc_bias")
+    )
 
   # Pose and velocity component accessors.
 
