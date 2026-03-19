@@ -55,11 +55,11 @@
     <link rel="icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="API Reference" href="../api/index.html" />
+    <link rel="next" title="Export Scene" href="export_scene.html" />
     <link rel="prev" title="Cloud Training" href="../training/cloud.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -515,8 +522,9 @@ size.</p>
 <section id="behavior">
 <h2>Behavior<a class="headerlink" href="#behavior" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>Captures</strong> simulation state before each step (<code class="docutils literal notranslate"><span class="pre">qpos</span></code>, <code class="docutils literal notranslate"><span class="pre">qvel</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">act</span></code> if the model has actuator activations)</p></li>
+<li><p><strong>Captures</strong> simulation state before each step (<code class="docutils literal notranslate"><span class="pre">qpos</span></code>, <code class="docutils literal notranslate"><span class="pre">qvel</span></code>,
+<code class="docutils literal notranslate"><span class="pre">act</span></code> if the model has actuator activations, and <code class="docutils literal notranslate"><span class="pre">mocap_pos</span></code>/<code class="docutils literal notranslate"><span class="pre">mocap_quat</span></code>
+if the model has mocap bodies)</p></li>
 <li><p><strong>Detects</strong> NaN/Inf in <code class="docutils literal notranslate"><span class="pre">qpos</span></code>, <code class="docutils literal notranslate"><span class="pre">qvel</span></code>, <code class="docutils literal notranslate"><span class="pre">qacc</span></code>,
 <code class="docutils literal notranslate"><span class="pre">qacc_warmstart</span></code>, and <code class="docutils literal notranslate"><span class="pre">sensordata</span></code> after each step</p></li>
 <li><p><strong>Dumps</strong> the rolling buffer and model to disk on first detection</p></li>
@@ -619,11 +627,11 @@ Monitor your <code class="docutils literal notranslate"><span class="pre">Episod
       </div>
     </a>
     <a class="right-next"
-       href="../api/index.html"
+       href="export_scene.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">API Reference</p>
+        <p class="prev-next-title">Export Scene</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -682,7 +690,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

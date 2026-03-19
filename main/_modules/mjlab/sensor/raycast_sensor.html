@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -177,7 +177,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../source/installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -211,11 +214,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -396,7 +403,7 @@ document.write(`
 <span class="sd">Ray Patterns</span>
 <span class="sd">------------</span>
 
-<span class="sd">This module provides two ray pattern types for different use cases:</span>
+<span class="sd">This module provides three ray pattern types for different use cases:</span>
 
 <span class="sd">**Grid Pattern** - Parallel rays in a 2D grid::</span>
 
@@ -428,16 +435,29 @@ document.write(`
 <span class="sd">- Lower altitude → tighter ground coverage, denser hits</span>
 <span class="sd">- Good for: simulating depth cameras, LiDAR with angular resolution</span>
 
+<span class="sd">**Ring Pattern** - Rays in concentric rings around the origin::</span>
+
+<span class="sd">    Ring (8 samples):</span>
+<span class="sd">         ●   ●</span>
+<span class="sd">       ●       ●     ← evenly spaced on circle</span>
+<span class="sd">       ●       ●</span>
+<span class="sd">         ●   ●</span>
+<span class="sd">           ●         ← center (optional)</span>
+
+<span class="sd">- Rays cast from offsets arranged in rings around the attachment frame</span>
+<span class="sd">- Supports multiple concentric rings at different radii</span>
+<span class="sd">- Good for: per-site height sensing, foot clearance, terrain sampling</span>
+
 <span class="sd">**Pattern Comparison**:</span>
 
-<span class="sd">============== ==================== ==========================</span>
-<span class="sd">Aspect         Grid                 Pinhole</span>
-<span class="sd">============== ==================== ==========================</span>
-<span class="sd">Ray direction  All parallel         Diverge from origin</span>
-<span class="sd">Spacing        Meters               Degrees (FOV)</span>
-<span class="sd">Height affect  No                   Yes</span>
-<span class="sd">Real-world     Orthographic proj.   Perspective camera / LiDAR</span>
-<span class="sd">============== ==================== ==========================</span>
+<span class="sd">============== ==================== ========================== =================</span>
+<span class="sd">Aspect         Grid                 Pinhole                    Ring</span>
+<span class="sd">============== ==================== ========================== =================</span>
+<span class="sd">Ray direction  All parallel         Diverge from origin        All parallel</span>
+<span class="sd">Spacing        Meters               Degrees (FOV)              Radius + count</span>
+<span class="sd">Height affect  No                   Yes                        No</span>
+<span class="sd">Real-world     Orthographic proj.   Perspective camera / LiDAR Terrain probe</span>
+<span class="sd">============== ==================== ========================== =================</span>
 
 <span class="sd">The pinhole behavior matches real depth sensors (RealSense, LiDAR) - when</span>
 <span class="sd">you&#39;re farther from an object, each pixel covers more area.</span>
@@ -446,13 +466,14 @@ document.write(`
 <span class="sd">Frame Attachment</span>
 <span class="sd">----------------</span>
 
-<span class="sd">Rays are attached to a frame in the scene via ``ObjRef``. Supported frame types:</span>
+<span class="sd">Rays are attached to one or more frames in the scene via ``ObjRef``. Supported</span>
+<span class="sd">frame types:</span>
 
 <span class="sd">- **body**: Attach to a body&#39;s origin. Rays follow body position and orientation.</span>
 <span class="sd">- **site**: Attach to a site. Useful for precise placement or offset from body.</span>
 <span class="sd">- **geom**: Attach to a geometry. Useful for sensors mounted on specific parts.</span>
 
-<span class="sd">Example::</span>
+<span class="sd">Single frame::</span>
 
 <span class="sd">    from mjlab.sensor import ObjRef, RayCastSensorCfg, GridPatternCfg</span>
 
@@ -461,6 +482,21 @@ document.write(`
 <span class="sd">        frame=ObjRef(type=&quot;body&quot;, name=&quot;base&quot;, entity=&quot;robot&quot;),</span>
 <span class="sd">        pattern=GridPatternCfg(size=(1.0, 1.0), resolution=0.1),</span>
 <span class="sd">    )</span>
+
+<span class="sd">Multiple frames (e.g. per-foot height sensing)::</span>
+
+<span class="sd">    cfg = RayCastSensorCfg(</span>
+<span class="sd">        name=&quot;foot_heights&quot;,</span>
+<span class="sd">        frame=(</span>
+<span class="sd">            ObjRef(type=&quot;site&quot;, name=&quot;left_foot&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">            ObjRef(type=&quot;site&quot;, name=&quot;right_foot&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">        ),</span>
+<span class="sd">        pattern=RingPatternCfg.single_ring(radius=0.05, num_samples=8),</span>
+<span class="sd">    )</span>
+
+<span class="sd">With multiple frames, the output ``distances`` has shape ``[B, F*N]`` where</span>
+<span class="sd">F is the number of frames and N is rays per frame. Each frame&#39;s parent body</span>
+<span class="sd">is excluded independently when ``exclude_parent_body`` is True.</span>
 
 <span class="sd">The ``exclude_parent_body`` option (default: True) prevents rays from hitting</span>
 <span class="sd">the body they&#39;re attached to.</span>
@@ -543,10 +579,12 @@ document.write(`
 <span class="sd">- ``distances``: [B, N] Distance to hit, or -1 if no hit / beyond max_distance</span>
 <span class="sd">- ``hit_pos_w``: [B, N, 3] World-space hit positions</span>
 <span class="sd">- ``normals_w``: [B, N, 3] Surface normals at hit points (world frame)</span>
-<span class="sd">- ``pos_w``: [B, 3] Sensor frame position</span>
-<span class="sd">- ``quat_w``: [B, 4] Sensor frame orientation (w, x, y, z)</span>
+<span class="sd">- ``pos_w``: [B, 3] First frame position (backward compat)</span>
+<span class="sd">- ``quat_w``: [B, 4] First frame orientation (backward compat)</span>
+<span class="sd">- ``frame_pos_w``: [B, F, 3] All frame positions</span>
+<span class="sd">- ``frame_quat_w``: [B, F, 4] All frame orientations</span>
 
-<span class="sd">Where B = number of environments, N = number of rays.</span>
+<span class="sd">Where B = environments, F = frames, N = F * num_rays_per_frame (total rays).</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -570,12 +608,25 @@ document.write(`
   <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.sensor.sensor_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">SensorContext</span>
   <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.viewer.debug_visualizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">DebugVisualizer</span>
 
-
-<span class="c1"># NOTE: Need to define this here because it&#39;s not publicly exposed by mujoco_warp.</span>
-<span class="n">vec6</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">vector</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-
-<span class="c1"># Type aliases for configuration choices.</span>
 <span class="n">RayAlignment</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;base&quot;</span><span class="p">,</span> <span class="s2">&quot;yaw&quot;</span><span class="p">,</span> <span class="s2">&quot;world&quot;</span><span class="p">]</span>
+
+<span class="c1"># NOTE: Not publicly exposed by mujoco_warp.</span>
+<span class="n">_vec6</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">vector</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">_ALL_GROUPS</span> <span class="o">=</span> <span class="n">_vec6</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_geom_groups_to_vec6</span><span class="p">(</span><span class="n">groups</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>  <span class="c1"># -&gt; _vec6</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Convert geom group tuple to mujoco_warp vec6 format.</span>
+
+<span class="sd">  In the vec6 format, -1 means include and 0 means exclude.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="n">groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">_ALL_GROUPS</span>
+  <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+  <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+    <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">g</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
+      <span class="n">out</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+  <span class="k">return</span> <span class="n">_vec6</span><span class="p">(</span><span class="o">*</span><span class="n">out</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="GridPatternCfg">
@@ -760,7 +811,102 @@ document.write(`
 
 
 
-<span class="n">PatternCfg</span> <span class="o">=</span> <span class="n">GridPatternCfg</span> <span class="o">|</span> <span class="n">PinholeCameraPatternCfg</span>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RingPatternCfg</span><span class="p">:</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Ring pattern - rays in concentric rings around the origin.</span>
+
+<span class="sd">  Useful for per-site height sensing where you want to sample the</span>
+<span class="sd">  terrain around each attachment frame.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="nd">@dataclass</span>
+  <span class="k">class</span><span class="w"> </span><span class="nc">Ring</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single ring in the pattern.&quot;&quot;&quot;</span>
+
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Radius of this ring in meters.&quot;&quot;&quot;</span>
+
+    <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of evenly spaced sample points on this ring.&quot;&quot;&quot;</span>
+
+  <span class="n">rings</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Ring</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Ring definitions. Multiple rings create a concentric pattern.&quot;&quot;&quot;</span>
+
+  <span class="n">include_center</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Whether to include a ray at the center (zero offset).&quot;&quot;&quot;</span>
+
+  <span class="n">direction</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Ray direction in frame-local coordinates.&quot;&quot;&quot;</span>
+
+  <span class="nd">@classmethod</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">single_ring</span><span class="p">(</span>
+    <span class="bp">cls</span><span class="p">,</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="n">include_center</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">direction</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RingPatternCfg</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a single-ring pattern.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      radius: Ring radius in meters.</span>
+<span class="sd">      num_samples: Number of evenly spaced points on the ring.</span>
+<span class="sd">      include_center: Whether to include a center ray.</span>
+<span class="sd">      direction: Ray direction in frame-local coordinates.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      RingPatternCfg with one ring.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+      <span class="n">rings</span><span class="o">=</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Ring</span><span class="p">(</span><span class="n">radius</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">),),</span>
+      <span class="n">include_center</span><span class="o">=</span><span class="n">include_center</span><span class="p">,</span>
+      <span class="n">direction</span><span class="o">=</span><span class="n">direction</span><span class="p">,</span>
+    <span class="p">)</span>
+
+  <span class="k">def</span><span class="w"> </span><span class="nf">generate_rays</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">mj_model</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate ray pattern.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      mj_model: MuJoCo model (unused for ring pattern).</span>
+<span class="sd">      device: Device for tensor operations.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      Tuple of (local_offsets [N, 3], local_directions [N, 3]).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">del</span> <span class="n">mj_model</span>
+    <span class="n">offsets</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_center</span><span class="p">:</span>
+      <span class="n">offsets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">ring</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rings</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ring</span><span class="o">.</span><span class="n">num_samples</span><span class="p">):</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">i</span> <span class="o">/</span> <span class="n">ring</span><span class="o">.</span><span class="n">num_samples</span>
+        <span class="n">offsets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+          <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+            <span class="p">[</span>
+              <span class="n">ring</span><span class="o">.</span><span class="n">radius</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">),</span>
+              <span class="n">ring</span><span class="o">.</span><span class="n">radius</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">),</span>
+              <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">],</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+          <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">local_offsets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">offsets</span><span class="p">)</span>  <span class="c1"># [N, 3]</span>
+    <span class="n">num_rays</span> <span class="o">=</span> <span class="n">local_offsets</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">direction</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">/</span> <span class="n">direction</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
+    <span class="n">local_directions</span> <span class="o">=</span> <span class="n">direction</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">local_offsets</span><span class="p">,</span> <span class="n">local_directions</span>
+
+
+<span class="n">PatternCfg</span> <span class="o">=</span> <span class="n">GridPatternCfg</span> <span class="o">|</span> <span class="n">PinholeCameraPatternCfg</span> <span class="o">|</span> <span class="n">RingPatternCfg</span>
 
 
 <div class="viewcode-block" id="RayCastData">
@@ -775,7 +921,10 @@ document.write(`
 <span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">distances</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] Distance to hit point. -1 if no hit.&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] Distance to hit point. -1 if no hit.</span>
+
+<span class="sd">  N = num_frames * num_rays_per_frame.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">normals_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N, 3] Surface normal at hit point (world frame). Zero if no hit.&quot;&quot;&quot;</span>
@@ -784,10 +933,16 @@ document.write(`
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N, 3] Hit position in world frame. Ray origin if no hit.&quot;&quot;&quot;</span>
 
   <span class="n">pos_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, 3] Frame position in world coordinates.&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, 3] First frame position in world coordinates.&quot;&quot;&quot;</span>
 
   <span class="n">quat_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, 4] Frame orientation quaternion (w, x, y, z) in world coordinates.&quot;&quot;&quot;</span></div>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, 4] First frame orientation quaternion (w, x, y, z).&quot;&quot;&quot;</span>
+
+  <span class="n">frame_pos_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, F, 3] All frame positions in world coordinates.&quot;&quot;&quot;</span>
+
+  <span class="n">frame_quat_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, F, 4] All frame orientations (w, x, y, z).&quot;&quot;&quot;</span></div>
 
 
 
@@ -797,7 +952,7 @@ document.write(`
 <span class="k">class</span><span class="w"> </span><span class="nc">RayCastSensorCfg</span><span class="p">(</span><span class="n">SensorCfg</span><span class="p">):</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Raycast sensor configuration.</span>
 
-<span class="sd">  Supports multiple ray patterns (grid, pinhole camera) and alignment modes.</span>
+<span class="sd">  Supports multiple ray patterns (grid, pinhole camera, ring) and alignment modes.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="RayCastSensorCfg.VizCfg">
@@ -831,18 +986,25 @@ document.write(`
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Length of surface normal arrows (multiplier of meansize).&quot;&quot;&quot;</span></div>
 
 
-  <span class="n">frame</span><span class="p">:</span> <span class="n">ObjRef</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Body or site to attach rays to.&quot;&quot;&quot;</span>
+  <span class="n">frame</span><span class="p">:</span> <span class="n">ObjRef</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ObjRef</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Body, site, or geom to attach rays to.</span>
+
+<span class="sd">  Pass a single ``ObjRef`` for one frame, or a tuple for multi-frame</span>
+<span class="sd">  sensing (e.g. per-foot height sensors). Each frame&#39;s parent body is</span>
+<span class="sd">  excluded independently when ``exclude_parent_body`` is True.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">pattern</span><span class="p">:</span> <span class="n">PatternCfg</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">GridPatternCfg</span><span class="p">)</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Ray pattern configuration. Defaults to GridPatternCfg.&quot;&quot;&quot;</span>
 
   <span class="n">ray_alignment</span><span class="p">:</span> <span class="n">RayAlignment</span> <span class="o">=</span> <span class="s2">&quot;base&quot;</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;How rays align with the frame.</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;How rays are oriented relative to the frame. Controls direction only;</span>
+<span class="sd">  the ray origin is always the physical frame position (``site_xpos`` /</span>
+<span class="sd">  ``geom_xpos`` / ``body_xpos``).</span>
 
-<span class="sd">  - &quot;base&quot;: Full position + rotation (default).</span>
-<span class="sd">  - &quot;yaw&quot;: Position + yaw only, ignores pitch/roll (good for height maps).</span>
-<span class="sd">  - &quot;world&quot;: Fixed in world frame, position only follows body.</span>
+<span class="sd">  - &quot;base&quot;: Full rotation (default). Rays rotate with the body.</span>
+<span class="sd">  - &quot;yaw&quot;: Yaw only, ignores pitch/roll (good for height maps).</span>
+<span class="sd">  - &quot;world&quot;: Fixed in world frame, rays always point the same direction.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">max_distance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>
@@ -889,13 +1051,13 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_wp_device</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">Device</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;geom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;body&quot;</span>
+    <span class="c1"># Per-frame info: list of (frame_type, obj_id, body_id).</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;geom&quot;</span><span class="p">],</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># [N, 3] per-ray directions</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># [rays_per_frame, 3]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -904,19 +1066,22 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_ray_geomid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_ray_bodyexclude</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_geomgroup</span> <span class="o">=</span> <span class="n">vec6</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_geomgroup</span> <span class="o">=</span> <span class="n">_vec6</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_hit_pos_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_pos_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_quat_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_origins</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_rays</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
+    <span class="bp">self</span><span class="o">.</span><span class="n">_debug_vis_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="p">:</span> <span class="n">SensorContext</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
@@ -946,33 +1111,39 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_wp_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
     <span class="n">num_envs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">nworld</span>
 
-    <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">frame</span>
-    <span class="n">frame_name</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">prefixed_name</span><span class="p">()</span>
+    <span class="c1"># Normalize frame to tuple.</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">frame</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ObjRef</span><span class="p">):</span>
+      <span class="n">frames</span> <span class="o">=</span> <span class="p">(</span><span class="n">frames</span><span class="p">,)</span>
 
-    <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span> <span class="o">=</span> <span class="n">mj_model</span><span class="o">.</span><span class="n">body</span><span class="p">(</span><span class="n">frame_name</span><span class="p">)</span><span class="o">.</span><span class="n">id</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">=</span> <span class="s2">&quot;body&quot;</span>
-    <span class="k">elif</span> <span class="n">frame</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;site&quot;</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span> <span class="o">=</span> <span class="n">mj_model</span><span class="o">.</span><span class="n">site</span><span class="p">(</span><span class="n">frame_name</span><span class="p">)</span><span class="o">.</span><span class="n">id</span>
-      <span class="c1"># Look up parent body for exclusion.</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mj_model</span><span class="o">.</span><span class="n">site_bodyid</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span><span class="p">])</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">=</span> <span class="s2">&quot;site&quot;</span>
-    <span class="k">elif</span> <span class="n">frame</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;geom&quot;</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span> <span class="o">=</span> <span class="n">mj_model</span><span class="o">.</span><span class="n">geom</span><span class="p">(</span><span class="n">frame_name</span><span class="p">)</span><span class="o">.</span><span class="n">id</span>
-      <span class="c1"># Look up parent body for exclusion.</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mj_model</span><span class="o">.</span><span class="n">geom_bodyid</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span><span class="p">])</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">=</span> <span class="s2">&quot;geom&quot;</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;RayCastSensor frame must be &#39;body&#39;, &#39;site&#39;, or &#39;geom&#39;, got &#39;</span><span class="si">{</span><span class="n">frame</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
-      <span class="p">)</span>
+    <span class="c1"># Resolve per-frame IDs.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">frames</span><span class="p">:</span>
+      <span class="n">frame_name</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">prefixed_name</span><span class="p">()</span>
+      <span class="n">info</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;geom&quot;</span><span class="p">],</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+      <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span>
+        <span class="n">bid</span> <span class="o">=</span> <span class="n">mj_model</span><span class="o">.</span><span class="n">body</span><span class="p">(</span><span class="n">frame_name</span><span class="p">)</span><span class="o">.</span><span class="n">id</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="n">bid</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">frame</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;site&quot;</span><span class="p">:</span>
+        <span class="n">sid</span> <span class="o">=</span> <span class="n">mj_model</span><span class="o">.</span><span class="n">site</span><span class="p">(</span><span class="n">frame_name</span><span class="p">)</span><span class="o">.</span><span class="n">id</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="n">sid</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">mj_model</span><span class="o">.</span><span class="n">site_bodyid</span><span class="p">[</span><span class="n">sid</span><span class="p">]))</span>
+      <span class="k">elif</span> <span class="n">frame</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;geom&quot;</span><span class="p">:</span>
+        <span class="n">gid</span> <span class="o">=</span> <span class="n">mj_model</span><span class="o">.</span><span class="n">geom</span><span class="p">(</span><span class="n">frame_name</span><span class="p">)</span><span class="o">.</span><span class="n">id</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;geom&quot;</span><span class="p">,</span> <span class="n">gid</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">mj_model</span><span class="o">.</span><span class="n">geom_bodyid</span><span class="p">[</span><span class="n">gid</span><span class="p">]))</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+          <span class="sa">f</span><span class="s2">&quot;RayCastSensor frame must be &#39;body&#39;, &#39;site&#39;, or &#39;geom&#39;, got &#39;</span><span class="si">{</span><span class="n">frame</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+        <span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">)</span>
 
     <span class="c1"># Generate ray pattern.</span>
     <span class="n">pattern</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">pattern</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">generate_rays</span><span class="p">(</span>
       <span class="n">mj_model</span><span class="p">,</span> <span class="n">device</span>
     <span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
@@ -982,38 +1153,34 @@ document.write(`
       <span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
     <span class="p">)</span>
 
-    <span class="n">body_exclude</span> <span class="o">=</span> <span class="p">(</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span>
-      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">exclude_parent_body</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-      <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
-    <span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_ray_bodyexclude</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
-      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,),</span>
-      <span class="n">body_exclude</span><span class="p">,</span>
-      <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
-      <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Convert include_geom_groups to vec6 format (-1 = include, 0 = exclude).</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">include_geom_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="n">groups</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-      <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">include_geom_groups</span><span class="p">:</span>
-        <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">g</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
-          <span class="n">groups</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_geomgroup</span> <span class="o">=</span> <span class="n">vec6</span><span class="p">(</span><span class="o">*</span><span class="n">groups</span><span class="p">)</span>
+    <span class="c1"># Body exclusion: each frame&#39;s body_id repeated N times.</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">exclude_parent_body</span><span class="p">:</span>
+      <span class="n">body_excludes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+      <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">body_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">:</span>
+        <span class="n">body_excludes</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">body_id</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_geomgroup</span> <span class="o">=</span> <span class="n">vec6</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># All groups</span>
+      <span class="n">body_excludes</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_ray_bodyexclude</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">body_excludes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_geomgroup</span> <span class="o">=</span> <span class="n">_geom_groups_to_vec6</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">include_geom_groups</span><span class="p">)</span>
 
     <span class="c1"># Pre-allocate output tensors so shape inference works before</span>
     <span class="c1"># the first sense() call.</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_hit_pos_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_pos_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_quat_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
 
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wp_device</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
 
+
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">include_geom_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">include_geom_groups</span>
 
 <div class="viewcode-block" id="RayCastSensor.set_context">
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.RayCastSensor.set_context">[docs]</a>
@@ -1032,44 +1199,63 @@ document.write(`
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hit_pos_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quat_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">return</span> <span class="n">RayCastData</span><span class="p">(</span>
       <span class="n">distances</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_distances</span><span class="p">,</span>
       <span class="n">normals_w</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span><span class="p">,</span>
       <span class="n">hit_pos_w</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_hit_pos_w</span><span class="p">,</span>
       <span class="n">pos_w</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos_w</span><span class="p">,</span>
       <span class="n">quat_w</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_quat_w</span><span class="p">,</span>
+      <span class="n">frame_pos_w</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span><span class="p">,</span>
+      <span class="n">frame_quat_w</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span><span class="p">,</span>
     <span class="p">)</span>
 
   <span class="nd">@property</span>
   <span class="k">def</span><span class="w"> </span><span class="nf">num_rays</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Total number of rays (num_frames * num_rays_per_frame).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">num_frames</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of attachment frames.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">num_rays_per_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of rays per attachment frame.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span>
 
 <div class="viewcode-block" id="RayCastSensor.debug_vis">
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.RayCastSensor.debug_vis">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="nf">debug_vis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">visualizer</span><span class="p">:</span> <span class="n">DebugVisualizer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">debug_vis</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">debug_vis</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_debug_vis_enabled</span><span class="p">:</span>
       <span class="k">return</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
     <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
     <span class="n">env_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">visualizer</span><span class="o">.</span><span class="n">get_env_indices</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">distances</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">env_indices</span><span class="p">:</span>
       <span class="k">return</span>
 
-    <span class="c1"># Gather frame poses for selected environments only.</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">==</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span>
-      <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xpos</span><span class="p">[</span><span class="n">env_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span><span class="p">]</span>
-      <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xmat</span><span class="p">[</span><span class="n">env_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span><span class="p">]</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">==</span> <span class="s2">&quot;site&quot;</span><span class="p">:</span>
-      <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">site_xpos</span><span class="p">[</span><span class="n">env_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span><span class="p">]</span>
-      <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">site_xmat</span><span class="p">[</span><span class="n">env_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span><span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>  <span class="c1"># geom</span>
-      <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">geom_xpos</span><span class="p">[</span><span class="n">env_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span><span class="p">]</span>
-      <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">geom_xmat</span><span class="p">[</span><span class="n">env_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span><span class="p">]</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span>
 
-    <span class="n">rot_mats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_alignment_rotation</span><span class="p">(</span><span class="n">frame_mat</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="c1"># Use cached frame poses [B, F, 3] / [B, F, 3, 3].</span>
+    <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span><span class="p">[</span><span class="n">env_indices</span><span class="p">]</span>  <span class="c1"># [K, F, 3]</span>
+    <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span><span class="p">[</span><span class="n">env_indices</span><span class="p">]</span>  <span class="c1"># [K, F, 3, 3]</span>
+
+    <span class="n">K_envs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">env_indices</span><span class="p">)</span>
+    <span class="c1"># Compute alignment rotation for all frames.</span>
+    <span class="n">rot_mats</span> <span class="o">=</span> <span class="p">(</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_compute_alignment_rotation</span><span class="p">(</span><span class="n">frame_mat</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">K_envs</span> <span class="o">*</span> <span class="n">F</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+      <span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">K_envs</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="p">)</span>
     <span class="n">origins</span> <span class="o">=</span> <span class="n">frame_pos</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
     <span class="n">offsets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
     <span class="n">directions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -1085,45 +1271,46 @@ document.write(`
     <span class="n">miss_extent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">max_distance</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
     <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span>
 
-    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">env_indices</span><span class="p">)):</span>
-      <span class="n">rot</span> <span class="o">=</span> <span class="n">rot_mats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K_envs</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">F</span><span class="p">):</span>
+        <span class="n">rot</span> <span class="o">=</span> <span class="n">rot_mats</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">f</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+          <span class="n">ray_idx</span> <span class="o">=</span> <span class="n">f</span> <span class="o">*</span> <span class="n">N</span> <span class="o">+</span> <span class="n">i</span>
+          <span class="n">origin</span> <span class="o">=</span> <span class="n">origins</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">f</span><span class="p">]</span> <span class="o">+</span> <span class="n">rot</span> <span class="o">@</span> <span class="n">offsets</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+          <span class="n">hit</span> <span class="o">=</span> <span class="n">distances</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">ray_idx</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 
-      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">):</span>
-        <span class="n">origin</span> <span class="o">=</span> <span class="n">origins</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">rot</span> <span class="o">@</span> <span class="n">offsets</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="n">hit</span> <span class="o">=</span> <span class="n">distances</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+          <span class="k">if</span> <span class="n">hit</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">hit_positions</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">ray_idx</span><span class="p">]</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">hit_color</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">rot</span> <span class="o">@</span> <span class="n">directions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">miss_extent</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">miss_color</span>
 
-        <span class="k">if</span> <span class="n">hit</span><span class="p">:</span>
-          <span class="n">end</span> <span class="o">=</span> <span class="n">hit_positions</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
-          <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">hit_color</span>
-        <span class="k">else</span><span class="p">:</span>
-          <span class="n">end</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">rot</span> <span class="o">@</span> <span class="n">directions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">miss_extent</span>
-          <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">miss_color</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">show_rays</span><span class="p">:</span>
-          <span class="n">visualizer</span><span class="o">.</span><span class="n">add_arrow</span><span class="p">(</span>
-            <span class="n">start</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span>
-            <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
-            <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-            <span class="n">width</span><span class="o">=</span><span class="n">ray_width</span><span class="p">,</span>
-            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_ray_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-          <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">hit</span><span class="p">:</span>
-          <span class="n">visualizer</span><span class="o">.</span><span class="n">add_sphere</span><span class="p">(</span>
-            <span class="n">center</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
-            <span class="n">radius</span><span class="o">=</span><span class="n">sphere_radius</span><span class="p">,</span>
-            <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">hit_sphere_color</span><span class="p">,</span>
-            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_hit_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-          <span class="p">)</span>
-          <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">show_normals</span><span class="p">:</span>
-            <span class="n">normal_end</span> <span class="o">=</span> <span class="n">end</span> <span class="o">+</span> <span class="n">normals</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">normal_length</span>
+          <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">show_rays</span><span class="p">:</span>
             <span class="n">visualizer</span><span class="o">.</span><span class="n">add_arrow</span><span class="p">(</span>
-              <span class="n">start</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
-              <span class="n">end</span><span class="o">=</span><span class="n">normal_end</span><span class="p">,</span>
-              <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">normal_color</span><span class="p">,</span>
-              <span class="n">width</span><span class="o">=</span><span class="n">normal_width</span><span class="p">,</span>
-              <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_normal_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="p">)</span></div>
+              <span class="n">start</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span>
+              <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+              <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+              <span class="n">width</span><span class="o">=</span><span class="n">ray_width</span><span class="p">,</span>
+              <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_ray_</span><span class="si">{</span><span class="n">ray_idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+          <span class="k">if</span> <span class="n">hit</span><span class="p">:</span>
+            <span class="n">visualizer</span><span class="o">.</span><span class="n">add_sphere</span><span class="p">(</span>
+              <span class="n">center</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+              <span class="n">radius</span><span class="o">=</span><span class="n">sphere_radius</span><span class="p">,</span>
+              <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">hit_sphere_color</span><span class="p">,</span>
+              <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_hit_</span><span class="si">{</span><span class="n">ray_idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">show_normals</span><span class="p">:</span>
+              <span class="n">normal_end</span> <span class="o">=</span> <span class="n">end</span> <span class="o">+</span> <span class="n">normals</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">ray_idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">normal_length</span>
+              <span class="n">visualizer</span><span class="o">.</span><span class="n">add_arrow</span><span class="p">(</span>
+                <span class="n">start</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+                <span class="n">end</span><span class="o">=</span><span class="n">normal_end</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">normal_color</span><span class="p">,</span>
+                <span class="n">width</span><span class="o">=</span><span class="n">normal_width</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_normal_</span><span class="si">{</span><span class="n">ray_idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+              <span class="p">)</span></div>
 
 
   <span class="c1"># Private methods.</span>
@@ -1140,34 +1327,53 @@ document.write(`
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">==</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span>
-      <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xpos</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span><span class="p">]</span>
-      <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xmat</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_body_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_type</span> <span class="o">==</span> <span class="s2">&quot;site&quot;</span><span class="p">:</span>
-      <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">site_xpos</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span><span class="p">]</span>
-      <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">site_xmat</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_site_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>  <span class="c1"># geom</span>
-      <span class="n">frame_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">geom_xpos</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span><span class="p">]</span>
-      <span class="n">frame_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">geom_xmat</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_geom_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="c1"># Gather per-frame poses: [B, F, 3] and [B, F, 3, 3].</span>
+    <span class="c1"># Position is always the physical world position. Alignment only</span>
+    <span class="c1"># affects ray directions (applied to frame_mat below).</span>
+    <span class="n">pos_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mat_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">frame_type</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">,</span> <span class="n">_body_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">frame_type</span> <span class="o">==</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span>
+        <span class="n">pos_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xpos</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">])</span>
+        <span class="n">mat_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xmat</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+      <span class="k">elif</span> <span class="n">frame_type</span> <span class="o">==</span> <span class="s2">&quot;site&quot;</span><span class="p">:</span>
+        <span class="n">pos_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">site_xpos</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">])</span>
+        <span class="n">mat_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">site_xmat</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+      <span class="k">else</span><span class="p">:</span>  <span class="c1"># geom</span>
+        <span class="n">pos_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">geom_xpos</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">])</span>
+        <span class="n">mat_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">geom_xmat</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 
-    <span class="n">num_envs</span> <span class="o">=</span> <span class="n">frame_pos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">rot_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_alignment_rotation</span><span class="p">(</span><span class="n">frame_mat</span><span class="p">)</span>
+    <span class="n">frame_pos</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">pos_list</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [B, F, 3]</span>
+    <span class="n">frame_mat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">mat_list</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [B, F, 3, 3]</span>
 
-    <span class="n">world_offsets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;bij,nj-&gt;bni&quot;</span><span class="p">,</span> <span class="n">rot_mat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="p">)</span>
-    <span class="n">world_origins</span> <span class="o">=</span> <span class="n">frame_pos</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">world_offsets</span>
-    <span class="n">world_rays</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;bij,nj-&gt;bni&quot;</span><span class="p">,</span> <span class="n">rot_mat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span><span class="p">)</span>
+    <span class="n">B</span><span class="p">,</span> <span class="n">F</span> <span class="o">=</span> <span class="n">frame_pos</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays_per_frame</span>
+
+    <span class="c1"># Compute alignment rotation for all frames at once.</span>
+    <span class="n">rot_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_alignment_rotation</span><span class="p">(</span><span class="n">frame_mat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span> <span class="o">*</span> <span class="n">F</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+      <span class="n">B</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Compute world offsets and directions: [B, F, N, 3].</span>
+    <span class="n">world_offsets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;bfij,nj-&gt;bfni&quot;</span><span class="p">,</span> <span class="n">rot_mat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_offsets</span><span class="p">)</span>
+    <span class="n">world_origins</span> <span class="o">=</span> <span class="n">frame_pos</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">world_offsets</span>
+    <span class="n">world_rays</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;bfij,nj-&gt;bfni&quot;</span><span class="p">,</span> <span class="n">rot_mat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_directions</span><span class="p">)</span>
+
+    <span class="c1"># Flatten to [B, F*N, 3] for raycasting.</span>
+    <span class="n">world_origins_flat</span> <span class="o">=</span> <span class="n">world_origins</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">F</span> <span class="o">*</span> <span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">world_rays_flat</span> <span class="o">=</span> <span class="n">world_rays</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">F</span> <span class="o">*</span> <span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="n">pnt_torch</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-    <span class="n">vec_torch</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-    <span class="n">pnt_torch</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">world_origins</span><span class="p">)</span>
-    <span class="n">vec_torch</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">world_rays</span><span class="p">)</span>
+    <span class="n">pnt_torch</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">vec_torch</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">pnt_torch</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">world_origins_flat</span><span class="p">)</span>
+    <span class="n">vec_torch</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">world_rays_flat</span><span class="p">)</span>
 
-    <span class="c1"># Cache for postprocess_rays().</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_origins</span> <span class="o">=</span> <span class="n">world_origins</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_rays</span> <span class="o">=</span> <span class="n">world_rays</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span> <span class="o">=</span> <span class="n">frame_pos</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span> <span class="o">=</span> <span class="n">frame_mat</span></div>
+    <span class="c1"># Cache for postprocess_rays() and debug_vis().</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_origins</span> <span class="o">=</span> <span class="n">world_origins_flat</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_rays</span> <span class="o">=</span> <span class="n">world_rays_flat</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span> <span class="o">=</span> <span class="n">frame_pos</span>  <span class="c1"># [B, F, 3]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span> <span class="o">=</span> <span class="n">frame_mat</span>  <span class="c1"># [B, F, 3, 3]</span></div>
 
 
 <div class="viewcode-block" id="RayCastSensor.raycast_kernel">
@@ -1198,11 +1404,12 @@ document.write(`
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
-    <span class="n">num_envs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span>
 
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">max_distance</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
 
     <span class="n">hit_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">&gt;=</span> <span class="mi">0</span>
@@ -1215,8 +1422,16 @@ document.write(`
     <span class="c1"># Zero out normals for misses.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span><span class="p">[</span><span class="o">~</span><span class="n">hit_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">_pos_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_quat_w</span> <span class="o">=</span> <span class="n">quat_from_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span><span class="p">)</span></div>
+    <span class="c1"># All frames: [B, F, 3] / [B, F, 4].</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span> <span class="o">=</span> <span class="n">quat_from_matrix</span><span class="p">(</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_mat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span> <span class="o">*</span> <span class="n">F</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+    <span class="c1"># First frame for backward compat: [B, 3] / [B, 4].</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_pos_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_quat_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_quat_w</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span></div>
 
 
   <span class="k">def</span><span class="w"> </span><span class="nf">_compute_alignment_rotation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame_mat</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
@@ -1333,7 +1548,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

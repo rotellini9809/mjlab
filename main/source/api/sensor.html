@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.actuator" href="actuator.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -567,6 +574,9 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.edit_spec"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.edit_spec()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.initialize"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.initialize()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.set_context"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.set_context()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.num_rays"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.num_rays</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.num_frames"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.num_frames</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.num_rays_per_frame"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.num_rays_per_frame</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.debug_vis"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.debug_vis()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.prepare_rays"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.prepare_rays()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.raycast_kernel"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.raycast_kernel()</span></code></a></li>
@@ -602,6 +612,8 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.hit_pos_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.hit_pos_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.pos_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.pos_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.quat_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.quat_w</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.frame_pos_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.frame_pos_w</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.frame_quat_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.frame_quat_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.__init__"><code class="docutils literal notranslate"><span class="pre">RayCastData.__init__()</span></code></a></li>
 </ul>
 </li>
@@ -835,7 +847,7 @@ sensors (for BVH-accelerated ray intersection). The actual graph capture and
 execution is handled by Simulation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.sensor.SensorContext.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mj_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mujoco.MjModel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mjwarp.Model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mjwarp.Data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">camera_sensors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#mjlab.sensor.CameraSensor" title="mjlab.sensor.CameraSensor"><span class="pre">CameraSensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raycast_sensors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#mjlab.sensor.RayCastSensor" title="mjlab.sensor.RayCastSensor"><span class="pre">RayCastSensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/sensor/sensor_context.html#SensorContext.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.sensor.SensorContext.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mj_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mujoco.MjModel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mjwarp.Model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mjwarp.Data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">camera_sensors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#mjlab.sensor.CameraSensor" title="mjlab.sensor.CameraSensor"><span class="pre">CameraSensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raycast_sensors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#mjlab.sensor.RayCastSensor" title="mjlab.sensor.RayCastSensor"><span class="pre">RayCastSensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/sensor/sensor_context.html#SensorContext.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.sensor.SensorContext.__init__" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1364,6 +1376,24 @@ is ready to run. Use this to cache sensor indices, allocate buffers, etc.</p>
 <dd><p>Wire this sensor to a SensorContext for BVH-accelerated raycasting.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="mjlab.sensor.RayCastSensor.num_rays">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_rays</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#mjlab.sensor.RayCastSensor.num_rays" title="Link to this definition">#</a></dt>
+<dd><p>Total number of rays (num_frames * num_rays_per_frame).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mjlab.sensor.RayCastSensor.num_frames">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_frames</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#mjlab.sensor.RayCastSensor.num_frames" title="Link to this definition">#</a></dt>
+<dd><p>Number of attachment frames.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mjlab.sensor.RayCastSensor.num_rays_per_frame">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_rays_per_frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#mjlab.sensor.RayCastSensor.num_rays_per_frame" title="Link to this definition">#</a></dt>
+<dd><p>Number of rays per attachment frame.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastSensor.debug_vis">
 <span class="sig-name descname"><span class="pre">debug_vis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visualizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DebugVisualizer</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/sensor/raycast_sensor.html#RayCastSensor.debug_vis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.sensor.RayCastSensor.debug_vis" title="Link to this definition">#</a></dt>
@@ -1404,7 +1434,7 @@ world-frame tensors for postprocess_rays().</p>
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastSensorCfg">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.sensor.</span></span><span class="sig-name descname"><span class="pre">RayCastSensorCfg</span></span><a class="reference internal" href="../../_modules/mjlab/sensor/raycast_sensor.html#RayCastSensorCfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.sensor.RayCastSensorCfg" title="Link to this definition">#</a></dt>
 <dd><p>Raycast sensor configuration.</p>
-<p>Supports multiple ray patterns (grid, pinhole camera) and alignment modes.</p>
+<p>Supports multiple ray patterns (grid, pinhole camera, ring) and alignment modes.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastSensorCfg.VizCfg">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">VizCfg</span></span><a class="reference internal" href="../../_modules/mjlab/sensor/raycast_sensor.html#RayCastSensorCfg.VizCfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.sensor.RayCastSensorCfg.VizCfg" title="Link to this definition">#</a></dt>
@@ -1461,8 +1491,11 @@ world-frame tensors for postprocess_rays().</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastSensorCfg.frame">
-<span class="sig-name descname"><span class="pre">frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#mjlab.sensor.ObjRef" title="mjlab.sensor.ObjRef"><span class="pre">ObjRef</span></a></em><a class="headerlink" href="#mjlab.sensor.RayCastSensorCfg.frame" title="Link to this definition">#</a></dt>
-<dd><p>Body or site to attach rays to.</p>
+<span class="sig-name descname"><span class="pre">frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#mjlab.sensor.ObjRef" title="mjlab.sensor.ObjRef"><span class="pre">ObjRef</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#mjlab.sensor.ObjRef" title="mjlab.sensor.ObjRef"><span class="pre">ObjRef</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.sensor.RayCastSensorCfg.frame" title="Link to this definition">#</a></dt>
+<dd><p>Body, site, or geom to attach rays to.</p>
+<p>Pass a single <code class="docutils literal notranslate"><span class="pre">ObjRef</span></code> for one frame, or a tuple for multi-frame
+sensing (e.g. per-foot height sensors). Each frame’s parent body is
+excluded independently when <code class="docutils literal notranslate"><span class="pre">exclude_parent_body</span></code> is True.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1474,11 +1507,13 @@ world-frame tensors for postprocess_rays().</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastSensorCfg.ray_alignment">
 <span class="sig-name descname"><span class="pre">ray_alignment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RayAlignment</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'base'</span></em><a class="headerlink" href="#mjlab.sensor.RayCastSensorCfg.ray_alignment" title="Link to this definition">#</a></dt>
-<dd><p>How rays align with the frame.</p>
+<dd><p>How rays are oriented relative to the frame. Controls direction only;
+the ray origin is always the physical frame position (<code class="docutils literal notranslate"><span class="pre">site_xpos</span></code> /
+<code class="docutils literal notranslate"><span class="pre">geom_xpos</span></code> / <code class="docutils literal notranslate"><span class="pre">body_xpos</span></code>).</p>
 <ul class="simple">
-<li><p>“base”: Full position + rotation (default).</p></li>
-<li><p>“yaw”: Position + yaw only, ignores pitch/roll (good for height maps).</p></li>
-<li><p>“world”: Fixed in world frame, position only follows body.</p></li>
+<li><p>“base”: Full rotation (default). Rays rotate with the body.</p></li>
+<li><p>“yaw”: Yaw only, ignores pitch/roll (good for height maps).</p></li>
+<li><p>“world”: Fixed in world frame, rays always point the same direction.</p></li>
 </ul>
 </dd></dl>
 
@@ -1534,6 +1569,7 @@ world-frame tensors for postprocess_rays().</p>
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastData.distances">
 <span class="sig-name descname"><span class="pre">distances</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.sensor.RayCastData.distances" title="Link to this definition">#</a></dt>
 <dd><p>[B, N] Distance to hit point. -1 if no hit.</p>
+<p>N = num_frames * num_rays_per_frame.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1551,18 +1587,30 @@ world-frame tensors for postprocess_rays().</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastData.pos_w">
 <span class="sig-name descname"><span class="pre">pos_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.sensor.RayCastData.pos_w" title="Link to this definition">#</a></dt>
-<dd><p>[B, 3] Frame position in world coordinates.</p>
+<dd><p>[B, 3] First frame position in world coordinates.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastData.quat_w">
 <span class="sig-name descname"><span class="pre">quat_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.sensor.RayCastData.quat_w" title="Link to this definition">#</a></dt>
-<dd><p>[B, 4] Frame orientation quaternion (w, x, y, z) in world coordinates.</p>
+<dd><p>[B, 4] First frame orientation quaternion (w, x, y, z).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.sensor.RayCastData.frame_pos_w">
+<span class="sig-name descname"><span class="pre">frame_pos_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.sensor.RayCastData.frame_pos_w" title="Link to this definition">#</a></dt>
+<dd><p>[B, F, 3] All frame positions in world coordinates.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.sensor.RayCastData.frame_quat_w">
+<span class="sig-name descname"><span class="pre">frame_quat_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.sensor.RayCastData.frame_quat_w" title="Link to this definition">#</a></dt>
+<dd><p>[B, F, 4] All frame orientations (w, x, y, z).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.sensor.RayCastData.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">distances</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normals_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hit_pos_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quat_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.sensor.RayCastData.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">distances</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normals_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hit_pos_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quat_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_pos_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_quat_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#mjlab.sensor.RayCastData.__init__" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -2046,6 +2094,9 @@ enabled.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.edit_spec"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.edit_spec()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.initialize"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.initialize()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.set_context"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.set_context()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.num_rays"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.num_rays</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.num_frames"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.num_frames</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.num_rays_per_frame"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.num_rays_per_frame</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.debug_vis"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.debug_vis()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.prepare_rays"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.prepare_rays()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastSensor.raycast_kernel"><code class="docutils literal notranslate"><span class="pre">RayCastSensor.raycast_kernel()</span></code></a></li>
@@ -2081,6 +2132,8 @@ enabled.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.hit_pos_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.hit_pos_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.pos_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.pos_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.quat_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.quat_w</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.frame_pos_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.frame_pos_w</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.frame_quat_w"><code class="docutils literal notranslate"><span class="pre">RayCastData.frame_quat_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sensor.RayCastData.__init__"><code class="docutils literal notranslate"><span class="pre">RayCastData.__init__()</span></code></a></li>
 </ul>
 </li>
@@ -2168,7 +2221,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

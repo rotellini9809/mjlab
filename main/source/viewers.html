@@ -56,10 +56,10 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Distributed Training" href="training/distributed_training.html" />
-    <link rel="prev" title="Training with RSL-RL" href="training/rsl_rl.html" />
+    <link rel="prev" title="Motion Imitation" href="training/motion_imitation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -626,6 +633,12 @@ Click and drag any body in the scene to apply external forces during
 playback. The force transfers into the simulation on the next step,
 making it easy to test balance recovery, grasp robustness, or
 disturbance rejection without writing any code.</p>
+<p>Mouse perturbation forces are kept separate from programmatic forces
+(e.g. <code class="docutils literal notranslate"><span class="pre">apply_body_impulse</span></code>) by routing them through different MuJoCo
+channels: programmatic forces use <code class="docutils literal notranslate"><span class="pre">xfrc_applied</span></code> (Cartesian body
+forces), while mouse forces are converted to <code class="docutils literal notranslate"><span class="pre">qfrc_applied</span></code>
+(generalized joint forces) via <code class="docutils literal notranslate"><span class="pre">mj_applyFT</span></code>. Both channels are summed
+during forward dynamics, so they coexist without conflict.</p>
 <p><strong>Domain randomization visualization.</strong>
 The native viewer syncs all visual DR fields from GPU to CPU each
 frame. Randomized geom colors, sizes, positions, material colors,
@@ -800,12 +813,12 @@ is set:</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="training/rsl_rl.html"
+       href="training/motion_imitation.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Training with RSL-RL</p>
+        <p class="prev-next-title">Motion Imitation</p>
       </div>
     </a>
     <a class="right-next"
@@ -874,7 +887,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

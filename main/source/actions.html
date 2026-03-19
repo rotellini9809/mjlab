@@ -59,7 +59,7 @@
     <link rel="prev" title="Observations" href="observations.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -504,8 +511,18 @@ mapping to physically meaningful units. <code class="docutils literal notranslat
 scaling; joint action types also provide <code class="docutils literal notranslate"><span class="pre">use_default_offset</span></code>, which
 automatically loads the entity’s default joint positions or velocities
 as the offset so that a raw output of zero produces the default pose.</p>
-<p><code class="docutils literal notranslate"><span class="pre">clip</span></code> optionally clamps the processed action before it reaches the
-actuator.</p>
+<p><code class="docutils literal notranslate"><span class="pre">clip</span></code> optionally clamps the processed action (after scale and offset)
+before it reaches the actuator. It accepts a dict mapping actuator name
+patterns to <code class="docutils literal notranslate"><span class="pre">(min,</span> <span class="pre">max)</span></code> tuples, resolved the same way as <code class="docutils literal notranslate"><span class="pre">scale</span></code>
+and <code class="docutils literal notranslate"><span class="pre">offset</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">JointPositionActionCfg</span><span class="p">(</span>
+    <span class="n">entity_name</span><span class="o">=</span><span class="s2">&quot;robot&quot;</span><span class="p">,</span>
+    <span class="n">actuator_names</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;.*&quot;</span><span class="p">,),</span>
+    <span class="n">scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">clip</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;.*_hip_.*&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="s2">&quot;.*_knee_.*&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <p>Actions are written to actuator targets on every decimation substep
 (physics step), not just once per policy step. This is in contrast to
 observation delay, which operates in units of policy steps.</p>
@@ -705,7 +722,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

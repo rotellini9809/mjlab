@@ -59,7 +59,7 @@
     <link rel="prev" title="Commands" href="commands.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -510,14 +517,27 @@ dedicated reference page. See <a class="reference internal" href="randomization.
             <span class="s2">&quot;velocity_range&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)},</span>
         <span class="p">},</span>
     <span class="p">),</span>
+    <span class="c1"># Transient random impulses with duration and cooldown.</span>
+    <span class="s2">&quot;impulse&quot;</span><span class="p">:</span> <span class="n">EventTermCfg</span><span class="p">(</span>
+        <span class="n">func</span><span class="o">=</span><span class="n">event_fns</span><span class="o">.</span><span class="n">apply_body_impulse</span><span class="p">,</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;force_range&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">),</span>
+            <span class="s2">&quot;torque_range&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span>
+            <span class="s2">&quot;cooldown_s&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span>
+            <span class="s2">&quot;asset_cfg&quot;</span><span class="p">:</span> <span class="n">SceneEntityCfg</span><span class="p">(</span><span class="s2">&quot;robot&quot;</span><span class="p">,</span> <span class="n">body_names</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;base&quot;</span><span class="p">,)),</span>
+        <span class="p">},</span>
+    <span class="p">),</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <section id="lifecycle-modes">
 <h2>Lifecycle modes<a class="headerlink" href="#lifecycle-modes" title="Link to this heading">#</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">mode</span></code> field on <code class="docutils literal notranslate"><span class="pre">EventTermCfg</span></code> determines when the term fires. The
-three modes correspond to the three timescales of an RL training run: once
-at process startup, once per episode, and periodically within an episode.</p>
+four modes correspond to the timescales of an RL training run: once at
+process startup, once per episode, periodically within an episode, and on
+every environment step.</p>
 <dl>
 <dt><code class="docutils literal notranslate"><span class="pre">&quot;startup&quot;</span></code></dt><dd><p>Fires once during environment initialization, after all managers are
 constructed. Every environment receives the event simultaneously. This
@@ -542,6 +562,13 @@ its own independent timer by default; setting <code class="docutils literal notr
 synchronizes all environments to a single shared timer. Interval events
 are the natural home for mid-episode perturbations such as external
 pushes or drifting model parameters.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">&quot;step&quot;</span></code></dt><dd><p>Fires on every environment step, for all environments. This mode is
+intended for continuous effects that must be evaluated each step, such
+as <code class="docutils literal notranslate"><span class="pre">apply_body_impulse</span></code> which manages its own internal duration and
+cooldown timers. Because step events run every step, they should be
+lightweight or manage their own activation logic internally to avoid
+unnecessary computation.</p>
 </dd>
 </dl>
 <p>As with all manager terms, <code class="docutils literal notranslate"><span class="pre">func</span></code> points to the callable and <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -602,7 +629,16 @@ velocity, simulating an external push. Typically used with
 <td><p>Applies random forces and torques to one or more bodies via the
 MuJoCo external wrench mechanism.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">randomize_terrain</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">apply_body_impulse</span></code></p></td>
+<td><p>Applies transient external wrenches to bodies with configurable
+duration and cooldown. Each environment independently samples a
+random force direction and holds it for a sampled duration, then
+waits through a cooldown before firing again. Supports an optional
+<code class="docutils literal notranslate"><span class="pre">body_point_offset</span></code> to shift the application point away from the
+center of mass. Includes built in debug visualization that draws
+force arrows in the viewer. Use with <code class="docutils literal notranslate"><span class="pre">mode=&quot;step&quot;</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">randomize_terrain</span></code></p></td>
 <td><p>Assigns each environment to a random sub-terrain row and column,
 ignoring the curriculum. Useful for evaluation or play mode.</p></td>
 </tr>
@@ -732,7 +768,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

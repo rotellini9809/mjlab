@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.sim" href="sim.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -466,6 +473,11 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.compile"><code class="docutils literal notranslate"><span class="pre">Entity.compile()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_xml"><code class="docutils literal notranslate"><span class="pre">Entity.write_xml()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.to_zip"><code class="docutils literal notranslate"><span class="pre">Entity.to_zip()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.initialize"><code class="docutils literal notranslate"><span class="pre">Entity.initialize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.update"><code class="docutils literal notranslate"><span class="pre">Entity.update()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.reset"><code class="docutils literal notranslate"><span class="pre">Entity.reset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.clear_state"><code class="docutils literal notranslate"><span class="pre">Entity.clear_state()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_data_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_data_to_sim()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_ctrl_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_ctrl_to_sim()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_state_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_state_to_sim()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_link_pose_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_link_pose_to_sim()</span></code></a></li>
@@ -498,6 +510,7 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.init_state"><code class="docutils literal notranslate"><span class="pre">EntityCfg.init_state</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.spec_fn"><code class="docutils literal notranslate"><span class="pre">EntityCfg.spec_fn</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.articulation"><code class="docutils literal notranslate"><span class="pre">EntityCfg.articulation</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.sort_actuators"><code class="docutils literal notranslate"><span class="pre">EntityCfg.sort_actuators</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.lights"><code class="docutils literal notranslate"><span class="pre">EntityCfg.lights</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.cameras"><code class="docutils literal notranslate"><span class="pre">EntityCfg.cameras</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.textures"><code class="docutils literal notranslate"><span class="pre">EntityCfg.textures</span></code></a></li>
@@ -543,7 +556,8 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.tendon_vel"><code class="docutils literal notranslate"><span class="pre">EntityData.tendon_vel</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.joint_torques"><code class="docutils literal notranslate"><span class="pre">EntityData.joint_torques</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.actuator_force"><code class="docutils literal notranslate"><span class="pre">EntityData.actuator_force</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.generalized_force"><code class="docutils literal notranslate"><span class="pre">EntityData.generalized_force</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.qfrc_actuator"><code class="docutils literal notranslate"><span class="pre">EntityData.qfrc_actuator</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.qfrc_external"><code class="docutils literal notranslate"><span class="pre">EntityData.qfrc_external</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.root_link_pos_w"><code class="docutils literal notranslate"><span class="pre">EntityData.root_link_pos_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.root_link_quat_w"><code class="docutils literal notranslate"><span class="pre">EntityData.root_link_quat_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.root_link_lin_vel_w"><code class="docutils literal notranslate"><span class="pre">EntityData.root_link_lin_vel_w</span></code></a></li>
@@ -700,12 +714,51 @@ adjustable position and orientation.</p>
 <dt class="sig sig-object py" id="mjlab.entity.Entity.write_xml">
 <span class="sig-name descname"><span class="pre">write_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">xml_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.write_xml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.write_xml" title="Link to this definition">#</a></dt>
 <dd><p>Write the MjSpec to disk.</p>
+<p>Operates on a copy of the spec to avoid mutating the original.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.entity.Entity.to_zip">
 <span class="sig-name descname"><span class="pre">to_zip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.to_zip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.to_zip" title="Link to this definition">#</a></dt>
 <dd><p>Write the MjSpec to a zip file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.Entity.initialize">
+<span class="sig-name descname"><span class="pre">initialize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mj_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">MjModel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mujoco_warp.Model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mujoco_warp.Data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.initialize" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the entity for simulation after the spec has been compiled.</p>
+<p>Computes global index mappings, initializes actuators, and allocates all nworld
+state and target tensors in <code class="docutils literal notranslate"><span class="pre">EntityData</span></code>. Called once by the scene during
+environment construction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.Entity.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.update" title="Link to this definition">#</a></dt>
+<dd><p>Advance actuator internal state by one physics substep.</p>
+<p>Called after each <code class="docutils literal notranslate"><span class="pre">sim.step()</span></code> within the decimation loop.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.Entity.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.reset" title="Link to this definition">#</a></dt>
+<dd><p>Zero actuator targets and reset actuator internal state.</p>
+<p>Called by the scene when environments are reset at episode boundaries,
+and by commands that teleport the robot to a new pose mid-episode.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.Entity.clear_state">
+<span class="sig-name descname"><span class="pre">clear_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.clear_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.clear_state" title="Link to this definition">#</a></dt>
+<dd><p>Deprecated. Use <code class="docutils literal notranslate"><span class="pre">reset</span></code> instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.entity.Entity.write_data_to_sim">
+<span class="sig-name descname"><span class="pre">write_data_to_sim</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/entity/entity.html#Entity.write_data_to_sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.entity.Entity.write_data_to_sim" title="Link to this definition">#</a></dt>
+<dd><p>Convert actuator targets into low-level controls and write them to the sim.</p>
+<p>Called before each <code class="docutils literal notranslate"><span class="pre">sim.step()</span></code> within the decimation loop. Builtin actuators are
+applied in a single batched operation; custom actuators are applied individually.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1051,6 +1104,14 @@ None, all environments are set.</p></li>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.entity.EntityCfg.sort_actuators">
+<span class="sig-name descname"><span class="pre">sort_actuators</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#mjlab.entity.EntityCfg.sort_actuators" title="Link to this definition">#</a></dt>
+<dd><p>When True, reorder actuators so that <code class="docutils literal notranslate"><span class="pre">model.ctrl</span></code> follows joint/tendon/site
+definition order rather than the order actuators appear in the config. XML actuators
+are excluded from sorting and always retain their declaration order.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.entity.EntityCfg.lights">
 <span class="sig-name descname"><span class="pre">lights</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">spec_cfg.LightCfg</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.entity.EntityCfg.lights" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1247,13 +1308,27 @@ All inputs/outputs use world frame.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="mjlab.entity.EntityData.actuator_force">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">actuator_force</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.actuator_force" title="Link to this definition">#</a></dt>
-<dd><p>Scalar actuation force in actuation space. Shape (num_envs, nu).</p>
+<dd><p>Scalar actuator output in actuation space. Shape (num_envs, nu).</p>
+<p>This is not the same as joint-space generalized force. Use <code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code> for
+the actuator contribution projected into DoF space.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="mjlab.entity.EntityData.generalized_force">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generalized_force</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.generalized_force" title="Link to this definition">#</a></dt>
-<dd><p>Generalized forces applied to the DoFs. Shape (num_envs, nv).</p>
+<dt class="sig sig-object py" id="mjlab.entity.EntityData.qfrc_actuator">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qfrc_actuator</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.qfrc_actuator" title="Link to this definition">#</a></dt>
+<dd><p>Forces produced by all actuators, mapped into joint space.</p>
+<p>For motors this is the commanded torque times the gear ratio. For position and
+velocity actuators this is the force computed by the internal PD law. When
+<code class="docutils literal notranslate"><span class="pre">actuatorgravcomp</span></code> is enabled on a joint, the gravity compensation force is
+included here.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mjlab.entity.EntityData.qfrc_external">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qfrc_external</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tensor</span></em><a class="headerlink" href="#mjlab.entity.EntityData.qfrc_external" title="Link to this definition">#</a></dt>
+<dd><p>Forces on joints due to Cartesian wrenches applied to bodies.</p>
+<p>When a force or torque is applied to a body via <code class="docutils literal notranslate"><span class="pre">xfrc_applied</span></code>, this property
+gives the equivalent joint forces (the Jacobian transpose mapping).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1515,6 +1590,11 @@ All inputs/outputs use world frame.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.compile"><code class="docutils literal notranslate"><span class="pre">Entity.compile()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_xml"><code class="docutils literal notranslate"><span class="pre">Entity.write_xml()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.to_zip"><code class="docutils literal notranslate"><span class="pre">Entity.to_zip()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.initialize"><code class="docutils literal notranslate"><span class="pre">Entity.initialize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.update"><code class="docutils literal notranslate"><span class="pre">Entity.update()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.reset"><code class="docutils literal notranslate"><span class="pre">Entity.reset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.clear_state"><code class="docutils literal notranslate"><span class="pre">Entity.clear_state()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_data_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_data_to_sim()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_ctrl_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_ctrl_to_sim()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_state_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_state_to_sim()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.Entity.write_root_link_pose_to_sim"><code class="docutils literal notranslate"><span class="pre">Entity.write_root_link_pose_to_sim()</span></code></a></li>
@@ -1547,6 +1627,7 @@ All inputs/outputs use world frame.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.init_state"><code class="docutils literal notranslate"><span class="pre">EntityCfg.init_state</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.spec_fn"><code class="docutils literal notranslate"><span class="pre">EntityCfg.spec_fn</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.articulation"><code class="docutils literal notranslate"><span class="pre">EntityCfg.articulation</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.sort_actuators"><code class="docutils literal notranslate"><span class="pre">EntityCfg.sort_actuators</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.lights"><code class="docutils literal notranslate"><span class="pre">EntityCfg.lights</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.cameras"><code class="docutils literal notranslate"><span class="pre">EntityCfg.cameras</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityCfg.textures"><code class="docutils literal notranslate"><span class="pre">EntityCfg.textures</span></code></a></li>
@@ -1592,7 +1673,8 @@ All inputs/outputs use world frame.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.tendon_vel"><code class="docutils literal notranslate"><span class="pre">EntityData.tendon_vel</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.joint_torques"><code class="docutils literal notranslate"><span class="pre">EntityData.joint_torques</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.actuator_force"><code class="docutils literal notranslate"><span class="pre">EntityData.actuator_force</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.generalized_force"><code class="docutils literal notranslate"><span class="pre">EntityData.generalized_force</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.qfrc_actuator"><code class="docutils literal notranslate"><span class="pre">EntityData.qfrc_actuator</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.qfrc_external"><code class="docutils literal notranslate"><span class="pre">EntityData.qfrc_external</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.root_link_pos_w"><code class="docutils literal notranslate"><span class="pre">EntityData.root_link_pos_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.root_link_quat_w"><code class="docutils literal notranslate"><span class="pre">EntityData.root_link_quat_w</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.entity.EntityData.root_link_lin_vel_w"><code class="docutils literal notranslate"><span class="pre">EntityData.root_link_lin_vel_w</span></code></a></li>
@@ -1663,7 +1745,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

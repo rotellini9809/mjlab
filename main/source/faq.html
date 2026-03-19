@@ -59,7 +59,7 @@
     <link rel="prev" title="Migrating from Isaac Lab" href="migration_isaac_lab.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -468,6 +475,7 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#training-debugging">Training &amp; Debugging</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-training-crashes-with-nan-errors">My training crashes with NaN errors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-can-i-inspect-the-generated-scene-xml">How can I inspect the generated scene XML?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-contact-sensor-misses-collisions-when-using-decimation">My contact sensor misses collisions when using decimation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-do-i-need-to-call-sim-forward">When do I need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code>?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-aren-t-my-training-runs-reproducible-even-with-a-fixed-seed">Why aren’t my training runs reproducible even with a fixed seed?</a></li>
@@ -566,7 +574,7 @@ faster</strong> than Isaac Lab.</p>
 <p>Yes, mjlab supports <strong>multi-GPU distributed training</strong> using
 <a class="reference external" href="https://github.com/apoorvkh/torchrunx">torchrunx</a>.</p>
 <ul class="simple">
-<li><p>Use <code class="docutils literal notranslate"><span class="pre">--gpu-ids</span> <span class="pre">0</span> <span class="pre">1</span></code> (or <code class="docutils literal notranslate"><span class="pre">--gpu-ids</span> <span class="pre">all</span></code>) when running the <code class="docutils literal notranslate"><span class="pre">train</span></code>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">--gpu-ids</span> <span class="pre">&quot;[0,</span> <span class="pre">1]&quot;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--gpu-ids</span> <span class="pre">all</span></code>) when running the <code class="docutils literal notranslate"><span class="pre">train</span></code>
 command.</p></li>
 <li><p>See the <a class="reference internal" href="training/distributed_training.html"><span class="doc">Distributed Training</span></a> for configuration details and examples.</p></li>
 </ul>
@@ -626,6 +634,20 @@ termination.</p>
 <a class="reference external" href="https://github.com/google-deepmind/mujoco_warp/issues">MuJoCo Warp team</a>.</p></li>
 </ul>
 <p>Reporting well-isolated issues helps improve the framework for everyone.</p>
+</section>
+<section id="how-can-i-inspect-the-generated-scene-xml">
+<h3>How can I inspect the generated scene XML?<a class="headerlink" href="#how-can-i-inspect-the-generated-scene-xml" title="Link to this heading">#</a></h3>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">export-scene</span></code> script to write the full scene (XML and mesh assets)
+to a directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>export-scene<span class="w"> </span>g1<span class="w"> </span>--output-dir<span class="w"> </span>/tmp/g1
+</pre></div>
+</div>
+<p>The exported <code class="docutils literal notranslate"><span class="pre">scene.xml</span></code> can be loaded directly in MuJoCo for visual
+inspection or diffing. This is useful for verifying that task configuration
+and physics are set up correctly, and for creating minimal reproducible
+examples to share with mjlab or MuJoCo Warp developers. The script accepts task IDs,
+entity aliases (<code class="docutils literal notranslate"><span class="pre">g1</span></code>, <code class="docutils literal notranslate"><span class="pre">go1</span></code>, <code class="docutils literal notranslate"><span class="pre">yam</span></code>), or arbitrary import paths. See
+<a class="reference internal" href="debugging/export_scene.html"><span class="doc">Export Scene</span></a> for full details.</p>
 </section>
 <section id="my-contact-sensor-misses-collisions-when-using-decimation">
 <h3>My contact sensor misses collisions when using decimation<a class="headerlink" href="#my-contact-sensor-misses-collisions-when-using-decimation" title="Link to this heading">#</a></h3>
@@ -1000,6 +1022,7 @@ being worked on.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#training-debugging">Training &amp; Debugging</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-training-crashes-with-nan-errors">My training crashes with NaN errors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-can-i-inspect-the-generated-scene-xml">How can I inspect the generated scene XML?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-contact-sensor-misses-collisions-when-using-decimation">My contact sensor misses collisions when using decimation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-do-i-need-to-call-sim-forward">When do I need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code>?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-aren-t-my-training-runs-reproducible-even-with-a-fixed-seed">Why aren’t my training runs reproducible even with a fixed seed?</a></li>
@@ -1062,7 +1085,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

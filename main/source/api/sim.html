@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.scene" href="scene.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -489,7 +496,8 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.ls_tolerance"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.ls_tolerance</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.ccd_iterations"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.ccd_iterations</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.gravity"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.gravity</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.multiccd"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.multiccd</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.disableflags"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.disableflags</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.enableflags"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.enableflags</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.apply"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.apply()</span></code></a></li>
 </ul>
 </li>
@@ -745,9 +753,16 @@ constraints. If None, a heuristic value is used.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="mjlab.sim.MujocoCfg.multiccd">
-<span class="sig-name descname"><span class="pre">multiccd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#mjlab.sim.MujocoCfg.multiccd" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="mjlab.sim.MujocoCfg.disableflags">
+<span class="sig-name descname"><span class="pre">disableflags</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em><a class="headerlink" href="#mjlab.sim.MujocoCfg.disableflags" title="Link to this definition">#</a></dt>
+<dd><p>Disable flags to set (e.g. <code class="docutils literal notranslate"><span class="pre">(&quot;contact&quot;,)</span></code> to disable contacts).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.sim.MujocoCfg.enableflags">
+<span class="sig-name descname"><span class="pre">enableflags</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em><a class="headerlink" href="#mjlab.sim.MujocoCfg.enableflags" title="Link to this definition">#</a></dt>
+<dd><p>Enable flags to set (e.g. <code class="docutils literal notranslate"><span class="pre">(&quot;energy&quot;,)</span></code> to enable energy computation).</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.sim.MujocoCfg.apply">
@@ -890,7 +905,8 @@ such as expand_model_fields(), to ensure the cache reflects the updated arrays.<
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.ls_tolerance"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.ls_tolerance</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.ccd_iterations"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.ccd_iterations</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.gravity"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.gravity</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.multiccd"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.multiccd</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.disableflags"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.disableflags</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.enableflags"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.enableflags</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.sim.MujocoCfg.apply"><code class="docutils literal notranslate"><span class="pre">MujocoCfg.apply()</span></code></a></li>
 </ul>
 </li>
@@ -945,7 +961,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

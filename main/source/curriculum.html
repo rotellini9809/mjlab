@@ -59,7 +59,7 @@
     <link rel="prev" title="Domain Randomization" href="randomization.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -455,6 +462,7 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-curriculum-functions">Built-in curriculum functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reward-curriculum">Reward curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#terrain-curriculum">Terrain curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-custom-curriculum-functions">Writing custom curriculum functions</a></li>
 </ul>
@@ -516,13 +524,64 @@ curriculum section below.</p></td>
 Each stage specifies a step threshold and the new ranges to
 apply once that threshold is exceeded.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_weight</span></code></p></td>
-<td><p>Ramps a reward term’s weight up or down according to training
-step thresholds. Useful for introducing penalty terms gradually
-after the policy has learned basic locomotion.</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_curriculum</span></code></p></td>
+<td><p>Adjusts a reward term’s weight and/or params according to
+training step thresholds. Replaces the older <code class="docutils literal notranslate"><span class="pre">reward_weight</span></code>
+function and also supports modifying reward function parameters.</p></td>
 </tr>
 </tbody>
 </table>
+</div>
+</section>
+<section id="reward-curriculum">
+<h2>Reward curriculum<a class="headerlink" href="#reward-curriculum" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">reward_curriculum</span></code> schedules changes to a reward term’s weight or
+keyword arguments as training progresses. Each stage specifies a
+<code class="docutils literal notranslate"><span class="pre">step</span></code> threshold and an optional <code class="docutils literal notranslate"><span class="pre">weight</span></code> or <code class="docutils literal notranslate"><span class="pre">params</span></code> update.
+Stages are evaluated in order, and each one whose threshold has been
+reached is applied.</p>
+<p><strong>Ramping a penalty weight</strong></p>
+<p>A common pattern is to introduce a penalty term at low weight early in
+training and increase it once the policy has learned the basics:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.managers.curriculum_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">CurriculumTermCfg</span>
+
+<span class="n">curriculum</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;joint_vel_hinge_weight&quot;</span><span class="p">:</span> <span class="n">CurriculumTermCfg</span><span class="p">(</span>
+        <span class="n">func</span><span class="o">=</span><span class="n">mdp</span><span class="o">.</span><span class="n">reward_curriculum</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;reward_name&quot;</span><span class="p">:</span> <span class="s2">&quot;joint_vel_hinge&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;stages&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">12000</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">24000</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Adjusting reward parameters</strong></p>
+<p>You can also change the parameters passed to the reward function. For
+example, tightening a tracking tolerance as training progresses:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">curriculum</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;track_lin_vel_tighten&quot;</span><span class="p">:</span> <span class="n">CurriculumTermCfg</span><span class="p">(</span>
+        <span class="n">func</span><span class="o">=</span><span class="n">mdp</span><span class="o">.</span><span class="n">reward_curriculum</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;reward_name&quot;</span><span class="p">:</span> <span class="s2">&quot;track_linear_velocity&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;stages&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">20000</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">}},</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">50000</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Combining weight and params</strong></p>
+<p>A single stage can update both weight and params at once:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">24000</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;max_vel&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}}</span>
+</pre></div>
 </div>
 </section>
 <section id="terrain-curriculum">
@@ -598,6 +657,7 @@ level. See <a class="reference internal" href="environment_config.html#env-confi
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-curriculum-functions">Built-in curriculum functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reward-curriculum">Reward curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#terrain-curriculum">Terrain curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-custom-curriculum-functions">Writing custom curriculum functions</a></li>
 </ul>
@@ -633,7 +693,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

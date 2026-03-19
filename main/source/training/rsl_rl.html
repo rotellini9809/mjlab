@@ -55,11 +55,11 @@
     <link rel="icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Viewers" href="../viewers.html" />
+    <link rel="next" title="Motion Imitation" href="motion_imitation.html" />
     <link rel="prev" title="Metrics" href="../metrics.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Training with RSL-RL</a></li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Training with RSL-RL</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -624,15 +631,11 @@ Unitree G1 velocity task shows a typical configuration:</p>
             <span class="n">hidden_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
             <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;elu&quot;</span><span class="p">,</span>
             <span class="n">obs_normalization</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">stochastic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">init_noise_std</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
         <span class="p">),</span>
         <span class="n">critic</span><span class="o">=</span><span class="n">RslRlModelCfg</span><span class="p">(</span>
             <span class="n">hidden_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
             <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;elu&quot;</span><span class="p">,</span>
             <span class="n">obs_normalization</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">stochastic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="n">init_noise_std</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
         <span class="p">),</span>
         <span class="n">algorithm</span><span class="o">=</span><span class="n">RslRlPpoAlgorithmCfg</span><span class="p">(</span>
             <span class="n">value_loss_coef</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
@@ -682,6 +685,10 @@ config to disable uploads while keeping metric logging.</p>
 <code class="docutils literal notranslate"><span class="pre">logs/rsl_rl/{experiment_name}/</span></code> and loads the highest-numbered checkpoint.
 Narrow the search with <code class="docutils literal notranslate"><span class="pre">--agent.load-run</span></code> (regex on directory names) and
 <code class="docutils literal notranslate"><span class="pre">--agent.load-checkpoint</span></code> (regex on checkpoint filenames).</p>
+<p><code class="docutils literal notranslate"><span class="pre">--agent.max-iterations</span></code> controls how many <em>additional</em> iterations to run
+from the checkpoint. If you are resuming from iteration 11500 with
+<code class="docutils literal notranslate"><span class="pre">--agent.max-iterations</span> <span class="pre">300</span></code> (the default), training will run iterations
+11500 through 11800. Set this to the number of new iterations you want.</p>
 <p>To resume from a W&amp;B run:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>train<span class="w"> </span>Mjlab-Velocity-Flat-Unitree-G1<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--num-envs<span class="w"> </span><span class="m">4096</span><span class="w"> </span><span class="se">\</span>
@@ -700,6 +707,11 @@ Narrow the search with <code class="docutils literal notranslate"><span class="p
 <span class="w">    </span><span class="na">year</span><span class="p">=</span><span class="s">{2025}</span>
 <span class="p">}</span>
 </pre></div>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="motion_imitation.html">Motion Imitation</a></li>
+</ul>
 </div>
 </section>
 </section>
@@ -725,11 +737,11 @@ Narrow the search with <code class="docutils literal notranslate"><span class="p
       </div>
     </a>
     <a class="right-next"
-       href="../viewers.html"
+       href="motion_imitation.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Viewers</p>
+        <p class="prev-next-title">Motion Imitation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -788,7 +800,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

@@ -58,7 +58,7 @@
     <link rel="prev" title="Research" href="research.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -177,7 +177,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -211,11 +214,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -459,16 +466,22 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-2-0-march-6-2026">Version 1.2.0 (March 6, 2026)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Fixed</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-1-1-february-14-2026">Version 1.1.1 (February 14, 2026)</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Fixed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Changed</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-1-0-february-12-2026">Version 1.1.0 (February 12, 2026)</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id23">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id28">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id18">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id26">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id31">Fixed</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-0-0-january-28-2026">Version 1.0.0 (January 28, 2026)</a></li>
@@ -487,6 +500,103 @@ document.write(`
 <h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
 <section id="upcoming-version-not-yet-released">
 <h2>Upcoming version (not yet released)<a class="headerlink" href="#upcoming-version-not-yet-released" title="Link to this heading">#</a></h2>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Added cartpole balance and swingup tasks (<code class="docutils literal notranslate"><span class="pre">Mjlab-Cartpole-Balance</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Mjlab-Cartpole-Swingup</span></code>) with a <a class="reference internal" href="tutorials/cartpole.html#tutorial-cartpole"><span class="std std-ref">tutorial</span></a>
+that walks through building an environment from scratch.</p></li>
+<li><p>Added <a class="reference internal" href="training/motion_imitation.html#motion-imitation"><span class="std std-ref">motion imitation</span></a> documentation with
+preprocessing instructions. The README now links here instead of the
+BeyondMimic repository, which produced incompatible NPZ files when used
+with mjlab (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/777">#777</a>).</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">margin</span></code>, <code class="docutils literal notranslate"><span class="pre">gap</span></code>, and <code class="docutils literal notranslate"><span class="pre">solmix</span></code> fields to <code class="docutils literal notranslate"><span class="pre">CollisionCfg</span></code>
+for per geom contact parameter configuration (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/766">#766</a>).</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">DelayedBuiltinActuatorGroup</span></code> that fuses delayed builtin actuators
+sharing the same delay configuration into a single buffer operation.</p></li>
+<li><p>NaN guard now captures mocap body poses (<code class="docutils literal notranslate"><span class="pre">mocap_pos</span></code>, <code class="docutils literal notranslate"><span class="pre">mocap_quat</span></code>)
+when the model has mocap bodies, enabling full state reconstruction in
+the dump viewer for fixed-base entities.</p></li>
+<li><p>Implemented <code class="docutils literal notranslate"><span class="pre">ActionTermCfg.clip</span></code> for clamping processed actions after
+scale and offset (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/771">#771</a>).</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code> and <code class="docutils literal notranslate"><span class="pre">qfrc_external</span></code> generalized force accessors
+to <code class="docutils literal notranslate"><span class="pre">EntityData</span></code>. <code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code> gives actuator forces in joint space
+(projected through the transmission). <code class="docutils literal notranslate"><span class="pre">qfrc_external</span></code> recovers the
+generalized force from body external wrenches (<code class="docutils literal notranslate"><span class="pre">xfrc_applied</span></code>)
+(<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/776">#776</a>).</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">RewardBarPanel</span></code> to the Viser viewer, showing horizontal bars for
+each reward term with a running mean over ~1 second (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/800">#800</a>).</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>In curriculum terrain mode, each terrain type now gets exactly one column
+(<code class="docutils literal notranslate"><span class="pre">num_cols</span></code> is set to <code class="docutils literal notranslate"><span class="pre">len(sub_terrains)</span></code>). The <code class="docutils literal notranslate"><span class="pre">proportion</span></code> field
+now controls robot spawning distribution across columns rather than column
+count. Random mode is unchanged (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/811">#811</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BoxSteppingStonesTerrainCfg</span></code> stone size now decreases with difficulty,
+interpolating from the large end of <code class="docutils literal notranslate"><span class="pre">stone_size_range</span></code> at difficulty 0
+to the small end at difficulty 1 (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/785">#785</a>).</p></li>
+<li><p>Removed deprecated <code class="docutils literal notranslate"><span class="pre">TerrainImporter</span></code> and <code class="docutils literal notranslate"><span class="pre">TerrainImporterCfg</span></code> aliases.
+Use <code class="docutils literal notranslate"><span class="pre">TerrainEntity</span></code> and <code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg</span></code> instead (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/667">#667</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Entity.clear_state()</span></code> is deprecated. Use <code class="docutils literal notranslate"><span class="pre">Entity.reset()</span></code> instead.
+<code class="docutils literal notranslate"><span class="pre">clear_state</span></code> only zeroed actuator targets without resetting actuator
+internal state (e.g. delay buffers), which could cause stale commands
+after teleporting the robot to a new pose.</p></li>
+<li><p>Removed <code class="docutils literal notranslate"><span class="pre">EntityData.generalized_force</span></code>. The property was bugged (indexed
+free joint DOFs instead of articulated DOFs) and the name was ambiguous.
+Use <code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code> or <code class="docutils literal notranslate"><span class="pre">qfrc_external</span></code> instead (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/776">#776</a>).</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">electrical_power_cost</span></code> now uses <code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code> (joint space) instead
+of <code class="docutils literal notranslate"><span class="pre">actuator_force</span></code> (actuation space) for mechanical power computation.
+Previously the reward was incorrect for actuators with gear ratios other
+than 1 (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/776">#776</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create_velocity_actuator</span></code> no longer sets <code class="docutils literal notranslate"><span class="pre">ctrllimited=True</span></code> with
+<code class="docutils literal notranslate"><span class="pre">inheritrange=1.0</span></code>. This caused a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for continuous joints
+(e.g. wheels) that have no position range defined (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/787">#787</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">write_root_com_velocity_to_sim</span></code> no longer fails with tensor <code class="docutils literal notranslate"><span class="pre">env_ids</span></code>
+on floating base entities (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/793">#793</a>).</p></li>
+<li><p>Joint limits for unlimited joints are now set to [-inf, inf] instead of
+[0, 0]. Previously the zero range caused incorrect clamping for entities
+with unlimited hinge or slide joints.</p></li>
+<li><p>Contact force visualization now copies <code class="docutils literal notranslate"><span class="pre">ctrl</span></code> into the CPU <code class="docutils literal notranslate"><span class="pre">MjData</span></code>
+before calling <code class="docutils literal notranslate"><span class="pre">mj_forward</span></code>. Actuators that compute torques in Python
+(<code class="docutils literal notranslate"><span class="pre">DcMotorActuator</span></code>, <code class="docutils literal notranslate"><span class="pre">IdealPdActuator</span></code>) previously showed incorrect
+contact forces because the viewer ran with <code class="docutils literal notranslate"><span class="pre">ctrl=0</span></code>
+(<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/786">#786</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BoxSteppingStonesTerrainCfg</span></code> no longer creates a large gap around the
+platform. Stones are now only skipped when their center falls inside the
+platform; edges that extend under the platform are allowed since the
+platform covers them (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/785">#785</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dr.pseudo_inertia</span></code> no longer loads cuSOLVER, eliminating ~4 GB of
+persistent GPU memory overhead. Cholesky and eigendecomposition are now
+computed analytically for the small matrices involved (4x4 and 3x3)
+(<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/753">#753</a>).</p></li>
+<li><p>Set terrain geom mass to zero so that the static terrain body does not
+inflate <code class="docutils literal notranslate"><span class="pre">stat.meanmass</span></code>, which made force arrow visualization invisible
+on rough terrain (<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/734">#734</a>, <a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/537">#537</a>).</p></li>
+<li><p>Native viewer now syncs <code class="docutils literal notranslate"><span class="pre">qpos0</span></code> when domain randomized, fixing incorrect
+body positions after <code class="docutils literal notranslate"><span class="pre">dr.joint_default_pos</span></code> randomization
+(<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/760">#760</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">command_manager.compute()</span></code> is now called during <code class="docutils literal notranslate"><span class="pre">reset()</span></code> so that
+derived command state (e.g. relative body positions in tracking
+environments) is populated before the first observation is returned
+(<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/761">#761</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RayCastSensor</span></code> with <code class="docutils literal notranslate"><span class="pre">ray_alignment=&quot;yaw&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;world&quot;</span></code> now correctly
+aligns the frame offset when attached to a site or geom with a local offset
+from its parent body. Previously only ray directions and pattern offsets were
+aligned, causing the frame position to swing with body pitch/roll
+(<a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/775">#775</a>).</p></li>
+</ul>
+</section>
+</section>
+<section id="version-1-2-0-march-6-2026">
+<h2>Version 1.2.0 (March 6, 2026)<a class="headerlink" href="#version-1-2-0-march-6-2026" title="Link to this heading">#</a></h2>
 <div class="attention admonition">
 <p class="admonition-title">Breaking API changes</p>
 <ul class="simple">
@@ -495,13 +605,28 @@ from the new <code class="docutils literal notranslate"><span class="pre">dr</sp
 <li><p><code class="docutils literal notranslate"><span class="pre">EventTermCfg</span></code> no longer accepts <code class="docutils literal notranslate"><span class="pre">domain_randomization</span></code>. The
 <code class="docutils literal notranslate"><span class="pre">&#64;requires_model_fields</span></code> decorator on each <code class="docutils literal notranslate"><span class="pre">dr</span></code> function takes care
 of field expansion automatically.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Scene.to_zip()</span></code> is deprecated. Use <code class="docutils literal notranslate"><span class="pre">Scene.write(path,</span> <span class="pre">zip=True)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RslRlModelCfg</span></code> no longer accepts <code class="docutils literal notranslate"><span class="pre">stochastic</span></code>, <code class="docutils literal notranslate"><span class="pre">init_noise_std</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">noise_std_type</span></code>. Use <code class="docutils literal notranslate"><span class="pre">distribution_cfg</span></code> instead
+(e.g. <code class="docutils literal notranslate"><span class="pre">{&quot;class_name&quot;:</span> <span class="pre">&quot;GaussianDistribution&quot;,</span> <span class="pre">&quot;init_std&quot;:</span> <span class="pre">1.0,</span>
+<span class="pre">&quot;std_type&quot;:</span> <span class="pre">&quot;scalar&quot;}</span></code>). Existing checkpoints are automatically
+migrated on load.</p></li>
 </ul>
 </div>
-<section id="added">
-<h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
+<section id="id1">
+<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">&quot;step&quot;</span></code> event mode that fires every environment step.</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">apply_body_impulse</span></code> event for applying transient external wrenches
+to bodies with configurable duration and optional application point offset.</p></li>
 <li><p>ONNX auto-export and metadata attachment for manipulation tasks (lift cube)
 on every checkpoint save, matching the velocity and tracking task behavior.</p></li>
+<li><p>Multi-frame <code class="docutils literal notranslate"><span class="pre">RayCastSensor</span></code>: pass a tuple of <code class="docutils literal notranslate"><span class="pre">ObjRef</span></code> to <code class="docutils literal notranslate"><span class="pre">frame</span></code> for
+per-site raycasting with independent body exclusion. New properties:
+<code class="docutils literal notranslate"><span class="pre">num_frames</span></code>, <code class="docutils literal notranslate"><span class="pre">num_rays_per_frame</span></code>. New <code class="docutils literal notranslate"><span class="pre">RayCastData</span></code> fields:
+<code class="docutils literal notranslate"><span class="pre">frame_pos_w</span></code> and <code class="docutils literal notranslate"><span class="pre">frame_quat_w</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RingPatternCfg</span></code> ray pattern for concentric ring sampling around each
+frame.</p></li>
 <li><p>Cloud training support via <a class="reference external" href="https://skypilot.readthedocs.io/">SkyPilot</a>
 and Lambda Cloud, with documentation covering setup, monitoring, and
 cost management.</p></li>
@@ -545,6 +670,9 @@ surfaces. Material names are now supported in <code class="docutils literal notr
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">dr.body_com_offset</span></code> not triggering <code class="docutils literal notranslate"><span class="pre">set_const</span></code>.</p></li>
 </ul>
 </li>
+<li><p><code class="docutils literal notranslate"><span class="pre">export-scene</span></code> CLI script to export any task scene or asset_zoo entity
+(<code class="docutils literal notranslate"><span class="pre">g1</span></code>, <code class="docutils literal notranslate"><span class="pre">go1</span></code>, <code class="docutils literal notranslate"><span class="pre">yam</span></code>) to a directory or zip archive for inspection
+and debugging.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">yam_lift_cube_vision_env_cfg</span></code> now randomizes cube color (<code class="docutils literal notranslate"><span class="pre">dr.geom_rgba</span></code>)
 on every reset when <code class="docutils literal notranslate"><span class="pre">cam_type=&quot;rgb&quot;</span></code>.</p></li>
 <li><p>The native viewer now reflects per-world DR changes to visual model fields
@@ -588,11 +716,30 @@ deprecated in a future version.</p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">upload_model</span></code> option to <code class="docutils literal notranslate"><span class="pre">RslRlBaseRunnerCfg</span></code> to control W&amp;B model
 file uploads (<code class="docutils literal notranslate"><span class="pre">.pt</span></code> and <code class="docutils literal notranslate"><span class="pre">.onnx</span></code>) while keeping metric logging enabled
 (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/654">#654</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Scene.write(output_dir,</span> <span class="pre">zip=False)</span></code> exports the scene XML and mesh
+assets to a directory (or zip archive). Replaces <code class="docutils literal notranslate"><span class="pre">Scene.to_zip()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Entity.write_xml()</span></code> and <code class="docutils literal notranslate"><span class="pre">Scene.write()</span></code> now apply XML fixups
+(empty defaults, duplicate nested defaults) and strip buffer textures
+that <code class="docutils literal notranslate"><span class="pre">MjSpec.to_xml()</span></code> cannot serialize.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fix_spec_xml</span></code> and <code class="docutils literal notranslate"><span class="pre">strip_buffer_textures</span></code> utilities in
+<code class="docutils literal notranslate"><span class="pre">mjlab.utils.xml</span></code>.</p></li>
 </ul>
 </section>
-<section id="changed">
-<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Changed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Native viewer now syncs <code class="docutils literal notranslate"><span class="pre">xfrc_applied</span></code> to the render buffer and draws
+arrows for any nonzero applied forces. Mouse perturbation forces are
+converted to <code class="docutils literal notranslate"><span class="pre">qfrc_applied</span></code> (generalized joint space) so they coexist
+with programmatic forces on <code class="docutils literal notranslate"><span class="pre">xfrc_applied</span></code> without conflict.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ViewerConfig.OriginType.WORLD</span></code> now configures a free camera at the
+specified lookat point instead of auto tracking a body. A new <code class="docutils literal notranslate"><span class="pre">AUTO</span></code>
+origin type (now the default) preserves the previous auto tracking
+behavior.</p></li>
+<li><p>Upgraded <code class="docutils literal notranslate"><span class="pre">rsl-rl-lib</span></code> from 4.0.1 to 5.0.1. <code class="docutils literal notranslate"><span class="pre">RslRlModelCfg</span></code> now
+uses <code class="docutils literal notranslate"><span class="pre">distribution_cfg</span></code> dict instead of <code class="docutils literal notranslate"><span class="pre">stochastic</span></code> /
+<code class="docutils literal notranslate"><span class="pre">init_noise_std</span></code> / <code class="docutils literal notranslate"><span class="pre">noise_std_type</span></code>. Existing checkpoints are
+automatically migrated on load.</p></li>
 <li><p>Reorganized the Viser Controls tab into a cleaner folder hierarchy:
 Info, Simulation, Commands, Scene (with Environment, Camera, Debug Viz,
 Contacts sub-folders), and Camera Feeds. The Environment folder is
@@ -613,8 +760,8 @@ environments around the focused env instead of first N envs.</p></li>
 stacked shadows when robots are close.</p></li>
 </ul>
 </section>
-<section id="fixed">
-<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h3>Fixed<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixed actuator target resolution for entities whose <code class="docutils literal notranslate"><span class="pre">spec_fn</span></code> uses
 internal <code class="docutils literal notranslate"><span class="pre">MjSpec.attach(prefix=...)</span></code>
@@ -646,8 +793,8 @@ such as <code class="docutils literal notranslate"><span class="pre">VideoRecord
 </section>
 <section id="version-1-1-1-february-14-2026">
 <h2>Version 1.1.1 (February 14, 2026)<a class="headerlink" href="#version-1-1-1-february-14-2026" title="Link to this heading">#</a></h2>
-<section id="id7">
-<h3>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>Added<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added reward term visualization to the native viewer (toggle with <code class="docutils literal notranslate"><span class="pre">P</span></code>) (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/629">#629</a>).</p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">DifferentialIKAction</span></code> for task-space control via damped
@@ -656,8 +803,8 @@ soft joint-limit avoidance, and null-space posture regularization.
 Includes an interactive viser demo (<code class="docutils literal notranslate"><span class="pre">scripts/demos/differential_ik.py</span></code>) (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/632">#632</a>).</p></li>
 </ul>
 </section>
-<section id="id10">
-<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<section id="id13">
+<h3>Fixed<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">play.py</span></code> defaulting to the base rsl-rl <code class="docutils literal notranslate"><span class="pre">OnPolicyRunner</span></code> instead
 of <code class="docutils literal notranslate"><span class="pre">MjlabOnPolicyRunner</span></code>, which caused a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> from an unexpected
@@ -665,8 +812,8 @@ of <code class="docutils literal notranslate"><span class="pre">MjlabOnPolicyRun
 <a class="reference external" href="https://github.com/griffinaddison">&#64;griffinaddison</a>.</p></li>
 </ul>
 </section>
-<section id="id12">
-<h3>Changed<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<section id="id15">
+<h3>Changed<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Removed <code class="docutils literal notranslate"><span class="pre">body_mass</span></code>, <code class="docutils literal notranslate"><span class="pre">body_inertia</span></code>, <code class="docutils literal notranslate"><span class="pre">body_pos</span></code>, and <code class="docutils literal notranslate"><span class="pre">body_quat</span></code>
 from <code class="docutils literal notranslate"><span class="pre">FIELD_SPECS</span></code> in domain randomization. These fields have derived
@@ -683,8 +830,8 @@ handles cloud storage paths (GCS, S3) natively (<a class="reference external" hr
 </section>
 <section id="version-1-1-0-february-12-2026">
 <h2>Version 1.1.0 (February 12, 2026)<a class="headerlink" href="#version-1-1-0-february-12-2026" title="Link to this heading">#</a></h2>
-<section id="id15">
-<h3>Added<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id18">
+<h3>Added<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added RGB and depth camera sensors and BVH-accelerated raycasting (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/597">#597</a>).</p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">MetricsManager</span></code> for logging custom metrics during training (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/596">#596</a>).</p></li>
@@ -705,8 +852,8 @@ tabs unified into a single Groups tab) (<a class="reference external" href="http
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">env_ids</span></code> parameter to <code class="docutils literal notranslate"><span class="pre">Entity.write_ctrl_to_sim</span></code> (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/567">#567</a>).</p></li>
 </ul>
 </section>
-<section id="id23">
-<h3>Changed<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<section id="id26">
+<h3>Changed<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Upgraded <code class="docutils literal notranslate"><span class="pre">rsl-rl-lib</span></code> to 4.0.0 and replaced the custom ONNX
 exporter with rsl-rl’s built-in <code class="docutils literal notranslate"><span class="pre">as_onnx()</span></code> (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/589">#589</a>, <a class="reference external" href="https://github.com/mujocolab/mjlab/pull/595">#595</a>).</p></li>
@@ -716,8 +863,8 @@ loop. See <a class="reference internal" href="faq.html#faq-sim-forward"><span cl
 <code class="docutils literal notranslate"><span class="pre">KeyError</span></code> during entity init (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/545">#545</a>).</p></li>
 </ul>
 </section>
-<section id="id28">
-<h3>Fixed<a class="headerlink" href="#id28" title="Link to this heading">#</a></h3>
+<section id="id31">
+<h3>Fixed<a class="headerlink" href="#id31" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">randomize_pd_gains</span></code> crash with <code class="docutils literal notranslate"><span class="pre">num_envs</span> <span class="pre">&gt;</span> <span class="pre">1</span></code> (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/564">#564</a>).</p></li>
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">ctrl_ids</span></code> index error with multiple actuated entities (<a class="reference external" href="https://github.com/mujocolab/mjlab/pull/573">#573</a>).
@@ -778,16 +925,22 @@ Contribution by <a class="reference external" href="https://github.com/oxkitsune
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-2-0-march-6-2026">Version 1.2.0 (March 6, 2026)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Fixed</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-1-1-february-14-2026">Version 1.1.1 (February 14, 2026)</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Fixed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Changed</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-1-0-february-12-2026">Version 1.1.0 (February 12, 2026)</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id23">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id28">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id18">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id26">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id31">Fixed</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-1-0-0-january-28-2026">Version 1.0.0 (January 28, 2026)</a></li>
@@ -824,7 +977,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

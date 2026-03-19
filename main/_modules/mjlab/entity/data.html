@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -177,7 +177,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../source/installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -211,11 +214,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -517,9 +524,9 @@ document.write(`
       <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot write root COM velocity for fixed-base entity.&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">velocity</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ROOT_VEL_DIM</span>
 
-    <span class="n">env_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_env_ids</span><span class="p">(</span><span class="n">env_ids</span><span class="p">)</span>
+    <span class="n">env_ids</span> <span class="o">=</span> <span class="n">env_ids</span> <span class="k">if</span> <span class="n">env_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">com_offset_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">body_ipos</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">root_body_id</span><span class="p">]</span>
-    <span class="n">quat_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">qpos</span><span class="p">[</span><span class="n">env_ids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">free_joint_q_adr</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">7</span><span class="p">]]</span>
+    <span class="n">quat_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">qpos</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">free_joint_q_adr</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">7</span><span class="p">]][</span><span class="n">env_ids</span><span class="p">]</span>
     <span class="n">com_offset_w</span> <span class="o">=</span> <span class="n">quat_apply</span><span class="p">(</span><span class="n">quat_w</span><span class="p">,</span> <span class="n">com_offset_b</span><span class="p">[</span><span class="n">env_ids</span><span class="p">])</span>
     <span class="n">lin_vel_com</span> <span class="o">=</span> <span class="n">velocity</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
     <span class="n">ang_vel_w</span> <span class="o">=</span> <span class="n">velocity</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">:]</span>
@@ -628,6 +635,11 @@ document.write(`
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">env_ids</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
       <span class="k">return</span> <span class="n">env_ids</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">env_ids</span>
+
+  <span class="k">def</span><span class="w"> </span><span class="nf">_joint_dof_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a generalized-force field sliced to this entity&#39;s joint DoFs.&quot;&quot;&quot;</span>
+    <span class="n">field</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">field_name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">field</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">joint_v_adr</span><span class="p">]</span>
 
   <span class="c1"># Root properties</span>
 
@@ -782,24 +794,55 @@ document.write(`
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Tendon velocities. Shape (num_envs, num_tendons).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ten_velocity</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">tendon_ids</span><span class="p">]</span>
 
+  <span class="c1"># Generalized forces</span>
+
   <span class="nd">@property</span>
   <span class="k">def</span><span class="w"> </span><span class="nf">joint_torques</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Joint torques. Shape (num_envs, nv).&quot;&quot;&quot;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-      <span class="s2">&quot;Joint torques are not currently available. &quot;</span>
-      <span class="s2">&quot;Consider using &#39;actuator_force&#39; property for actuation forces, &quot;</span>
-      <span class="s2">&quot;or &#39;generalized_force&#39; property for generalized forces applied to the DoFs.&quot;</span>
+      <span class="s2">&quot;Joint torques are ambiguous. Use &#39;qfrc_actuator&#39; for actuator forces &quot;</span>
+      <span class="s2">&quot;in joint space, or &#39;qfrc_external&#39; for body wrench contributions.&quot;</span>
     <span class="p">)</span>
 
   <span class="nd">@property</span>
   <span class="k">def</span><span class="w"> </span><span class="nf">actuator_force</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scalar actuation force in actuation space. Shape (num_envs, nu).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scalar actuator output in actuation space. Shape (num_envs, nu).</span>
+
+<span class="sd">    This is not the same as joint-space generalized force. Use ``qfrc_actuator`` for</span>
+<span class="sd">    the actuator contribution projected into DoF space.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">actuator_force</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">ctrl_ids</span><span class="p">]</span>
 
   <span class="nd">@property</span>
-  <span class="k">def</span><span class="w"> </span><span class="nf">generalized_force</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generalized forces applied to the DoFs. Shape (num_envs, nv).&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">qfrc_applied</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">indexing</span><span class="o">.</span><span class="n">free_joint_v_adr</span><span class="p">]</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">qfrc_actuator</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Forces produced by all actuators, mapped into joint space.</span>
+
+<span class="sd">    For motors this is the commanded torque times the gear ratio. For position and</span>
+<span class="sd">    velocity actuators this is the force computed by the internal PD law. When</span>
+<span class="sd">    ``actuatorgravcomp`` is enabled on a joint, the gravity compensation force is</span>
+<span class="sd">    included here.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_joint_dof_field</span><span class="p">(</span><span class="s2">&quot;qfrc_actuator&quot;</span><span class="p">)</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">qfrc_external</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Forces on joints due to Cartesian wrenches applied to bodies.</span>
+
+<span class="sd">    When a force or torque is applied to a body via ``xfrc_applied``, this property</span>
+<span class="sd">    gives the equivalent joint forces (the Jacobian transpose mapping).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># MuJoCo folds J^T * xfrc_applied into qfrc_smooth without storing it.</span>
+    <span class="c1"># Recover via the qfrc_smooth identity:</span>
+    <span class="c1">#   qfrc_smooth = qfrc_actuator + qfrc_passive - qfrc_bias</span>
+    <span class="c1">#                 + qfrc_applied + J^T * xfrc_applied</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_joint_dof_field</span>
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="n">f</span><span class="p">(</span><span class="s2">&quot;qfrc_smooth&quot;</span><span class="p">)</span>
+      <span class="o">-</span> <span class="n">f</span><span class="p">(</span><span class="s2">&quot;qfrc_actuator&quot;</span><span class="p">)</span>
+      <span class="o">-</span> <span class="n">f</span><span class="p">(</span><span class="s2">&quot;qfrc_applied&quot;</span><span class="p">)</span>
+      <span class="o">-</span> <span class="n">f</span><span class="p">(</span><span class="s2">&quot;qfrc_passive&quot;</span><span class="p">)</span>
+      <span class="o">+</span> <span class="n">f</span><span class="p">(</span><span class="s2">&quot;qfrc_bias&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
   <span class="c1"># Pose and velocity component accessors.</span>
 
@@ -1017,7 +1060,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

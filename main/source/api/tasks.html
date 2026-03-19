@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.viewer" href="viewer.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -488,7 +495,7 @@ document.write(`
 </td></tr></table>
 <dl class="py function">
 <dt class="sig sig-object py" id="mjlab.tasks.registry.register_mjlab_task">
-<span class="sig-prename descclassname"><span class="pre">mjlab.tasks.registry.</span></span><span class="sig-name descname"><span class="pre">register_mjlab_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnvCfg" title="mjlab.envs.manager_based_rl_env.ManagerBasedRlEnvCfg"><span class="pre">ManagerBasedRlEnvCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">play_env_cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnvCfg" title="mjlab.envs.manager_based_rl_env.ManagerBasedRlEnvCfg"><span class="pre">ManagerBasedRlEnvCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">rl_cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="rl.html#mjlab.rl.RslRlOnPolicyRunnerCfg" title="mjlab.rl.config.RslRlOnPolicyRunnerCfg"><span class="pre">RslRlOnPolicyRunnerCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">runner_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/tasks/registry.html#register_mjlab_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.tasks.registry.register_mjlab_task" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">mjlab.tasks.registry.</span></span><span class="sig-name descname"><span class="pre">register_mjlab_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnvCfg" title="mjlab.envs.manager_based_rl_env.ManagerBasedRlEnvCfg"><span class="pre">ManagerBasedRlEnvCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">play_env_cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnvCfg" title="mjlab.envs.manager_based_rl_env.ManagerBasedRlEnvCfg"><span class="pre">ManagerBasedRlEnvCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">rl_cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="rl.html#mjlab.rl.RslRlBaseRunnerCfg" title="mjlab.rl.config.RslRlBaseRunnerCfg"><span class="pre">RslRlBaseRunnerCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">runner_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/tasks/registry.html#register_mjlab_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.tasks.registry.register_mjlab_task" title="Link to this definition">#</a></dt>
 <dd><p>Register an environment task.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -518,7 +525,7 @@ document.write(`
 
 <dl class="py function">
 <dt class="sig sig-object py" id="mjlab.tasks.registry.load_rl_cfg">
-<span class="sig-prename descclassname"><span class="pre">mjlab.tasks.registry.</span></span><span class="sig-name descname"><span class="pre">load_rl_cfg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="rl.html#mjlab.rl.RslRlOnPolicyRunnerCfg" title="mjlab.rl.config.RslRlOnPolicyRunnerCfg"><span class="pre">RslRlOnPolicyRunnerCfg</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/tasks/registry.html#load_rl_cfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.tasks.registry.load_rl_cfg" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">mjlab.tasks.registry.</span></span><span class="sig-name descname"><span class="pre">load_rl_cfg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="rl.html#mjlab.rl.RslRlBaseRunnerCfg" title="mjlab.rl.config.RslRlBaseRunnerCfg"><span class="pre">RslRlBaseRunnerCfg</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/tasks/registry.html#load_rl_cfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.tasks.registry.load_rl_cfg" title="Link to this definition">#</a></dt>
 <dd><p>Load RL configuration for a task.</p>
 <p>Returns a deep copy to prevent mutation of the registered config.</p>
 </dd></dl>
@@ -615,7 +622,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

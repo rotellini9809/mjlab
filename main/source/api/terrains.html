@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.managers" href="managers.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -737,9 +744,11 @@ origins are sampled from the sub-terrain origins.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Environment allocation for procedural terrain: Columns (terrain types) are
-evenly distributed across environments, but rows (difficulty levels) are
-randomly sampled. This means multiple environments can spawn on the same
-(row, col) patch, leaving others unoccupied, even when num_envs &gt; num_patches.</p>
+distributed across environments <strong>by proportion</strong> (matching each
+sub-terrain’s <code class="docutils literal notranslate"><span class="pre">proportion</span></code> field) when a <code class="docutils literal notranslate"><span class="pre">TerrainGeneratorCfg</span></code> is
+available, or evenly when it is not.  Rows (difficulty levels) are randomly
+sampled.  This means multiple environments can spawn on the same (row, col)
+patch, leaving others unoccupied, even when num_envs &gt; num_patches.</p>
 </div>
 <p>See FAQ: “How does env_origins determine robot layout?”</p>
 <dl class="py method">
@@ -749,7 +758,7 @@ randomly sampled. This means multiple environments can spawn on the same
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.terrains.TerrainEntity.configure_env_origins">
-<span class="sig-name descname"><span class="pre">configure_env_origins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">origins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/terrains/terrain_entity.html#TerrainEntity.configure_env_origins"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.terrains.TerrainEntity.configure_env_origins" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">configure_env_origins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">origins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proportions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/terrains/terrain_entity.html#TerrainEntity.configure_env_origins"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.terrains.TerrainEntity.configure_env_origins" title="Link to this definition">#</a></dt>
 <dd><p>Configure the origins of the environments based on the terrain.</p>
 </dd></dl>
 
@@ -845,10 +854,10 @@ terrain type. Supports two modes:</p>
 <li><p><strong>Random mode</strong> (curriculum=False): Every patch independently samples a
 terrain type weighted by proportions. Results in random variety across
 all patches.</p></li>
-<li><p><strong>Curriculum mode</strong> (curriculum=True): Columns are deterministically
-assigned to terrain types based on proportions. All patches in a column
-share the same terrain type, with difficulty increasing along rows.
-Use this to ensure each terrain type occupies specific column(s).</p></li>
+<li><p><strong>Curriculum mode</strong> (curriculum=True): Each terrain type gets exactly one column
+(the generator uses <code class="docutils literal notranslate"><span class="pre">len(sub_terrains)</span></code> columns regardless of <code class="docutils literal notranslate"><span class="pre">num_cols</span></code>).
+Difficulty increases along rows. The <code class="docutils literal notranslate"><span class="pre">proportion</span></code> field controls robot spawning
+distribution, not column count.</p></li>
 </ul>
 <p>Terrain types are weighted by proportion and their geometry is generated
 based on a difficulty value in the configured range. The grid is centered
@@ -875,14 +884,13 @@ optional overhead lighting.</p>
 <span class="sig-name descname"><span class="pre">curriculum</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#mjlab.terrains.TerrainGeneratorCfg.curriculum" title="Link to this definition">#</a></dt>
 <dd><p>Controls terrain allocation mode:</p>
 <ul class="simple">
-<li><p>curriculum=True: Each column gets ONE terrain type (deterministic allocation).
-Difficulty increases along rows. Use this to ensure each terrain type occupies
-its own column(s).</p></li>
+<li><p>curriculum=True: Each terrain type gets exactly ONE column. The generator uses
+<code class="docutils literal notranslate"><span class="pre">len(sub_terrains)</span></code> columns regardless of <code class="docutils literal notranslate"><span class="pre">num_cols</span></code>. Difficulty increases
+along rows. The <code class="docutils literal notranslate"><span class="pre">proportion</span></code> field controls how many robots are spawned per
+column, not column count.</p></li>
 <li><p>curriculum=False: Every patch is randomly sampled from all terrain types.
 Proportions control sampling probability. Use this for random variety.</p></li>
 </ul>
-<p>Example: With 2 terrain types and num_cols=2, curriculum=True gives one terrain
-per column. curriculum=False gives a random mix of both types in all patches.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -914,8 +922,9 @@ envs can share the same patch.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.terrains.TerrainGeneratorCfg.num_cols">
 <span class="sig-name descname"><span class="pre">num_cols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#mjlab.terrains.TerrainGeneratorCfg.num_cols" title="Link to this definition">#</a></dt>
-<dd><p>Number of sub-terrain columns in the grid. Represents terrain type variants.
-Note: Environments are evenly distributed across columns (not random).</p>
+<dd><p>Number of sub-terrain columns in the grid.</p>
+<p>In curriculum mode the generator ignores this value and uses one column per terrain
+type (<code class="docutils literal notranslate"><span class="pre">len(sub_terrains)</span></code>). In random mode it is used as-is.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -951,14 +960,11 @@ Note: Environments are evenly distributed across columns (not random).</p>
 <dd><dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.terrains.SubTerrainCfg.proportion">
 <span class="sig-name descname"><span class="pre">proportion</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.0</span></em><a class="headerlink" href="#mjlab.terrains.SubTerrainCfg.proportion" title="Link to this definition">#</a></dt>
-<dd><p>Terrain type allocation weight (behavior depends on curriculum mode):</p>
-<ul class="simple">
-<li><p>curriculum=True: Controls column allocation. Normalized proportions determine
-how many columns each terrain type occupies via cumulative distribution.
-Example: proportions [0.5, 0.5] with num_cols=2 gives one terrain per column.</p></li>
-<li><p>curriculum=False: Sampling probability for each patch. Each patch independently
-samples a terrain type weighted by normalized proportions.</p></li>
-</ul>
+<dd><p>Robot spawning weight for this terrain type.</p>
+<p>In curriculum mode, controls how many robots are spawned on this terrain’s
+column relative to other terrain types. Each terrain type always gets
+exactly one column; proportion only affects spawning distribution.</p>
+<p>In random mode, controls the sampling probability for each patch.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2181,7 +2187,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.sensor" href="sensor.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -178,7 +178,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -212,11 +215,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current nav bd-sidenav">
@@ -621,6 +628,7 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.__init__"><code class="docutils literal notranslate"><span class="pre">EventManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">EventManager.get_term_cfg()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.reset"><code class="docutils literal notranslate"><span class="pre">EventManager.reset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">EventManager.debug_vis()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventMode"><code class="docutils literal notranslate"><span class="pre">EventMode</span></code></a></li>
@@ -1023,8 +1031,9 @@ in the scene (e.g., setting joint positions, velocities, or efforts).</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.managers.ActionTermCfg.clip">
 <span class="sig-name descname"><span class="pre">clip</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mjlab.managers.ActionTermCfg.clip" title="Link to this definition">#</a></dt>
-<dd><p>Optional clipping bounds per transmission type. Maps transmission name
-(e.g., ‘position’, ‘velocity’) to (min, max) tuple.</p>
+<dd><p>Optional clipping bounds applied to processed actions (after scale
+and offset). Dict maps actuator name regex patterns to (min, max)
+tuples, resolved the same way as <code class="docutils literal notranslate"><span class="pre">scale</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1488,12 +1497,18 @@ during simulation). Common uses include domain randomization and state resets.</
 <dd><p>Resets the manager and returns logging info for the current step.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="mjlab.managers.EventManager.debug_vis">
+<span class="sig-name descname"><span class="pre">debug_vis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visualizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DebugVisualizer</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/event_manager.html#EventManager.debug_vis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.EventManager.debug_vis" title="Link to this definition">#</a></dt>
+<dd><p>Delegate debug visualization to class-based event terms.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.managers.EventMode">
 <span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">EventMode</span></span><a class="headerlink" href="#mjlab.managers.EventMode" title="Link to this definition">#</a></dt>
-<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘startup’, ‘reset’, ‘interval’]</p>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘startup’, ‘reset’, ‘interval’, ‘step’]</p>
 </dd></dl>
 
 <dl class="py class">
@@ -1502,22 +1517,25 @@ during simulation). Common uses include domain randomization and state resets.</
 <dd><p>Configuration for an event term.</p>
 <p>Event terms trigger operations at specific simulation events. They’re commonly
 used for domain randomization, state resets, and periodic perturbations.</p>
-<p>The three modes determine when the event fires:</p>
+<p>The four modes determine when the event fires:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;startup&quot;</span></code>: Once when the environment initializes. Use for parameters that
-should be randomized per-environment but stay constant within an episode (
-e.g., domain randomization).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;reset&quot;</span></code>: On every episode reset. Use for parameters that should vary
-between episodes (e.g., initial robot pose, domain randomization).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code>: Periodically during simulation, controlled by
-<code class="docutils literal notranslate"><span class="pre">interval_range_s</span></code>. Use for perturbations that should happen during
-episodes (e.g., pushing the robot, external disturbances).</p></li>
+should be randomized per-environment but stay constant within an episode (e.g.,
+domain randomization).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;reset&quot;</span></code>: On every episode reset. Use for parameters that should vary between
+episodes (e.g., initial robot pose, domain randomization).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code>: Periodically during simulation, controlled by <code class="docutils literal notranslate"><span class="pre">interval_range_s</span></code>.
+Use for perturbations that should happen during episodes (e.g., pushing the robot,
+external disturbances).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;step&quot;</span></code>: Every environment step, unconditionally on all envs. Use for terms that
+manage per-step state such as force lifetimes (e.g., <code class="docutils literal notranslate"><span class="pre">apply_body_impulse</span></code>).</p></li>
 </ul>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.managers.EventTermCfg.mode">
 <span class="sig-name descname"><span class="pre">mode</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">EventMode</span></em><a class="headerlink" href="#mjlab.managers.EventTermCfg.mode" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">&quot;startup&quot;</span></code> (once at init), <code class="docutils literal notranslate"><span class="pre">&quot;reset&quot;</span></code> (every
-episode), or <code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code> (periodically during simulation).</p>
+episode), <code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code> (periodically during simulation), or <code class="docutils literal notranslate"><span class="pre">&quot;step&quot;</span></code> (every
+environment step).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>When the event triggers</p>
@@ -1808,6 +1826,7 @@ in the logger.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.__init__"><code class="docutils literal notranslate"><span class="pre">EventManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.get_term_cfg"><code class="docutils literal notranslate"><span class="pre">EventManager.get_term_cfg()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.reset"><code class="docutils literal notranslate"><span class="pre">EventManager.reset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">EventManager.debug_vis()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.EventMode"><code class="docutils literal notranslate"><span class="pre">EventMode</span></code></a></li>
@@ -1866,7 +1885,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

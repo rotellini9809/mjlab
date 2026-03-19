@@ -61,7 +61,7 @@
     <link rel="prev" title="Entity" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -180,7 +180,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -214,11 +217,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -459,6 +466,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-root-state">Reference: root state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-body-state">Reference: body state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-joint-state">Reference: joint state</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-generalized-forces">Reference: generalized forces</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-geom-and-site-state">Reference: geom and site state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-tendon-state">Reference: tendon state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#frame-conventions">Frame conventions</a><ul class="visible nav section-nav flex-column">
@@ -802,12 +810,43 @@ encoder calibration errors via domain randomization.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">actuator_force</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[num_envs,</span> <span class="pre">num_actuators]</span></code></p></td>
-<td><p>Scalar actuation force in actuation space. Use this in reward and
-observation terms where joint torques are needed.</p></td>
+<td><p>Scalar actuator output in actuation space (per actuator). This is
+the force before projection through the transmission Jacobian. For
+actuator forces in joint space, use <code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code> instead.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">generalized_force</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[num_envs,</span> <span class="pre">nv]</span></code></p></td>
-<td><p>Generalized forces applied to the free-joint DOFs</p></td>
+</tbody>
+</table>
+</div>
+</section>
+<section id="reference-generalized-forces">
+<span id="generalized-forces"></span><h2>Reference: generalized forces<a class="headerlink" href="#reference-generalized-forces" title="Link to this heading">#</a></h2>
+<p>These properties expose selected components of MuJoCo’s generalized
+force decomposition, sliced to this entity’s articulated joint DOFs.
+Free joint DOFs are excluded. All shapes are <code class="docutils literal notranslate"><span class="pre">[num_envs,</span> <span class="pre">nv]</span></code> where
+<code class="docutils literal notranslate"><span class="pre">nv</span></code> is the number of articulated DOFs belonging to this entity.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">qfrc_actuator</span></code></p></td>
+<td><p>Forces produced by all actuators, mapped into joint space. For
+motors this is the commanded torque times the gear ratio. For
+position and velocity actuators this is the force computed by
+the internal PD law. When <code class="docutils literal notranslate"><span class="pre">actuatorgravcomp</span></code> is enabled on a
+joint, the gravity compensation force is included here.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">qfrc_external</span></code></p></td>
+<td><p>Forces on joints due to Cartesian wrenches applied to bodies
+via <code class="docutils literal notranslate"><span class="pre">xfrc_applied</span></code>. This is the <span class="math notranslate nohighlight">\(J^\top F\)</span> mapping.
+MuJoCo does not store this term separately; the property
+recovers it from other force components after <code class="docutils literal notranslate"><span class="pre">forward()</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1079,6 +1118,7 @@ configuration for locomotion tasks.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-root-state">Reference: root state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-body-state">Reference: body state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-joint-state">Reference: joint state</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-generalized-forces">Reference: generalized forces</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-geom-and-site-state">Reference: geom and site state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-tendon-state">Reference: tendon state</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#frame-conventions">Frame conventions</a><ul class="visible nav section-nav flex-column">
@@ -1121,7 +1161,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

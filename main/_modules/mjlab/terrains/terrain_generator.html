@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -177,7 +177,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../source/installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -211,11 +214,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -458,14 +465,13 @@ document.write(`
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">SubTerrainCfg</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
   <span class="n">proportion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Terrain type allocation weight (behavior depends on curriculum mode):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Robot spawning weight for this terrain type.</span>
 
-<span class="sd">  - curriculum=True: Controls column allocation. Normalized proportions determine</span>
-<span class="sd">    how many columns each terrain type occupies via cumulative distribution.</span>
-<span class="sd">    Example: proportions [0.5, 0.5] with num_cols=2 gives one terrain per column.</span>
+<span class="sd">  In curriculum mode, controls how many robots are spawned on this terrain&#39;s</span>
+<span class="sd">  column relative to other terrain types. Each terrain type always gets</span>
+<span class="sd">  exactly one column; proportion only affects spawning distribution.</span>
 
-<span class="sd">  - curriculum=False: Sampling probability for each patch. Each patch independently</span>
-<span class="sd">    samples a terrain type weighted by normalized proportions.</span>
+<span class="sd">  In random mode, controls the sampling probability for each patch.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
   <span class="n">size</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Width and length of the terrain patch, in meters.&quot;&quot;&quot;</span>
@@ -497,15 +503,13 @@ document.write(`
   <span class="n">curriculum</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Controls terrain allocation mode:</span>
 
-<span class="sd">  - curriculum=True: Each column gets ONE terrain type (deterministic allocation).</span>
-<span class="sd">    Difficulty increases along rows. Use this to ensure each terrain type occupies</span>
-<span class="sd">    its own column(s).</span>
+<span class="sd">  - curriculum=True: Each terrain type gets exactly ONE column. The generator uses</span>
+<span class="sd">    ``len(sub_terrains)`` columns regardless of ``num_cols``. Difficulty increases</span>
+<span class="sd">    along rows. The ``proportion`` field controls how many robots are spawned per</span>
+<span class="sd">    column, not column count.</span>
 
 <span class="sd">  - curriculum=False: Every patch is randomly sampled from all terrain types.</span>
 <span class="sd">    Proportions control sampling probability. Use this for random variety.</span>
-
-<span class="sd">  Example: With 2 terrain types and num_cols=2, curriculum=True gives one terrain</span>
-<span class="sd">  per column. curriculum=False gives a random mix of both types in all patches.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
   <span class="n">size</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Width and length of each sub-terrain patch, in meters.&quot;&quot;&quot;</span>
@@ -518,8 +522,10 @@ document.write(`
 <span class="sd">  curriculum mode. Note: Environments are randomly assigned to rows, so multiple</span>
 <span class="sd">  envs can share the same patch.&quot;&quot;&quot;</span>
   <span class="n">num_cols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Number of sub-terrain columns in the grid. Represents terrain type variants.</span>
-<span class="sd">  Note: Environments are evenly distributed across columns (not random).&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Number of sub-terrain columns in the grid.</span>
+
+<span class="sd">  In curriculum mode the generator ignores this value and uses one column per terrain</span>
+<span class="sd">  type (``len(sub_terrains)``). In random mode it is used as-is.&quot;&quot;&quot;</span>
   <span class="n">color_scheme</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;height&quot;</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Coloring strategy for terrain geometry. &quot;height&quot; colors by elevation,</span>
 <span class="sd">  &quot;random&quot; assigns random colors, &quot;none&quot; uses uniform gray.&quot;&quot;&quot;</span>
@@ -544,10 +550,10 @@ document.write(`
 <span class="sd">    terrain type weighted by proportions. Results in random variety across</span>
 <span class="sd">    all patches.</span>
 
-<span class="sd">  - **Curriculum mode** (curriculum=True): Columns are deterministically</span>
-<span class="sd">    assigned to terrain types based on proportions. All patches in a column</span>
-<span class="sd">    share the same terrain type, with difficulty increasing along rows.</span>
-<span class="sd">    Use this to ensure each terrain type occupies specific column(s).</span>
+<span class="sd">  - **Curriculum mode** (curriculum=True): Each terrain type gets exactly one column</span>
+<span class="sd">    (the generator uses ``len(sub_terrains)`` columns regardless of ``num_cols``).</span>
+<span class="sd">    Difficulty increases along rows. The ``proportion`` field controls robot spawning</span>
+<span class="sd">    distribution, not column count.</span>
 
 <span class="sd">  Terrain types are weighted by proportion and their geometry is generated</span>
 <span class="sd">  based on a difficulty value in the configured range. The grid is centered</span>
@@ -564,6 +570,12 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span> <span class="o">=</span> <span class="n">cfg</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
 
+    <span class="c1"># In curriculum mode, one column per terrain type.</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">curriculum</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">sub_terrains</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span>
+
     <span class="k">for</span> <span class="n">sub_cfg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">sub_terrains</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
       <span class="n">sub_cfg</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span>
 
@@ -573,7 +585,7 @@ document.write(`
       <span class="n">seed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">np_rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">terrain_origins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">terrain_origins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 
     <span class="c1"># Pre-allocate flat patch storage by scanning all sub-terrain configs.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">flat_patches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
@@ -591,7 +603,7 @@ document.write(`
           <span class="p">)</span>
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">max_num_patches</span> <span class="ow">in</span> <span class="n">patch_names</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">flat_patches</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
-        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span><span class="p">,</span> <span class="n">max_num_patches</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span><span class="p">,</span> <span class="n">max_num_patches</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
       <span class="p">)</span></div>
 
 
@@ -616,6 +628,11 @@ document.write(`
     <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="n">body</span><span class="o">.</span><span class="n">geoms</span><span class="p">:</span>
       <span class="n">geom</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;terrain_</span><span class="si">{</span><span class="n">counter</span><span class="si">}</span><span class="s2">&quot;</span>
+      <span class="c1"># Terrain is static (no joints), so body mass is physically meaningless.</span>
+      <span class="c1"># Without this, the thousands of dense geoms give the terrain body millions of kg</span>
+      <span class="c1"># of mass, which inflates stat.meanmass and makes MuJoCo&#39;s force arrow</span>
+      <span class="c1"># visualization invisible (arrows scale as force / meanmass).</span>
+      <span class="n">geom</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="mi">0</span>
       <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
 
   <span class="k">def</span><span class="w"> </span><span class="nf">_generate_random_terrains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -628,8 +645,8 @@ document.write(`
     <span class="n">sub_terrains_cfgs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">sub_terrains</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
     <span class="c1"># Randomly sample and place sub-terrains in the grid.</span>
-    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span><span class="p">):</span>
-      <span class="n">sub_row</span><span class="p">,</span> <span class="n">sub_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span><span class="p">):</span>
+      <span class="n">sub_row</span><span class="p">,</span> <span class="n">sub_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span><span class="p">))</span>
       <span class="n">sub_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sub_row</span><span class="p">)</span>
       <span class="n">sub_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sub_col</span><span class="p">)</span>
 
@@ -654,23 +671,10 @@ document.write(`
       <span class="bp">self</span><span class="o">.</span><span class="n">terrain_origins</span><span class="p">[</span><span class="n">sub_row</span><span class="p">,</span> <span class="n">sub_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">spawn_origin</span>
 
   <span class="k">def</span><span class="w"> </span><span class="nf">_generate_curriculum_terrains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="c1"># Normalize the proportions of the sub-terrains.</span>
-    <span class="n">proportions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-      <span class="p">[</span><span class="n">sub_cfg</span><span class="o">.</span><span class="n">proportion</span> <span class="k">for</span> <span class="n">sub_cfg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">sub_terrains</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-    <span class="p">)</span>
-    <span class="n">proportions</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">proportions</span><span class="p">)</span>
-
-    <span class="n">sub_indices</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span><span class="p">):</span>
-      <span class="n">sub_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">index</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span> <span class="o">+</span> <span class="mf">0.001</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">proportions</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-      <span class="p">)</span>
-      <span class="n">sub_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sub_index</span><span class="p">)</span>
-    <span class="n">sub_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sub_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
-
+    <span class="c1"># One column per terrain type — proportion is only for spawning.</span>
     <span class="n">sub_terrains_cfgs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">sub_terrains</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
-    <span class="k">for</span> <span class="n">sub_col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">sub_col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span><span class="p">):</span>
       <span class="k">for</span> <span class="n">sub_row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span><span class="p">):</span>
         <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">difficulty_range</span>
         <span class="n">difficulty</span> <span class="o">=</span> <span class="p">(</span><span class="n">sub_row</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">np_rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">())</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span>
@@ -680,7 +684,7 @@ document.write(`
           <span class="n">spec</span><span class="p">,</span>
           <span class="n">world_position</span><span class="p">,</span>
           <span class="n">difficulty</span><span class="p">,</span>
-          <span class="n">sub_terrains_cfgs</span><span class="p">[</span><span class="n">sub_indices</span><span class="p">[</span><span class="n">sub_col</span><span class="p">]],</span>
+          <span class="n">sub_terrains_cfgs</span><span class="p">[</span><span class="n">sub_col</span><span class="p">],</span>
           <span class="n">sub_row</span><span class="p">,</span>
           <span class="n">sub_col</span><span class="p">,</span>
         <span class="p">)</span>
@@ -698,7 +702,7 @@ document.write(`
 
     <span class="c1"># Offset to center the entire grid at world origin.</span>
     <span class="n">grid_offset_x</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span>
-    <span class="n">grid_offset_y</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span>
+    <span class="n">grid_offset_y</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span>
 
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">grid_offset_x</span> <span class="o">+</span> <span class="n">rel_x</span><span class="p">,</span> <span class="n">grid_offset_y</span> <span class="o">+</span> <span class="n">rel_y</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
 
@@ -757,11 +761,11 @@ document.write(`
     <span class="n">body</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">body</span><span class="p">(</span><span class="s2">&quot;terrain&quot;</span><span class="p">)</span>
     <span class="n">border_size</span> <span class="o">=</span> <span class="p">(</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">border_width</span><span class="p">,</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">border_width</span><span class="p">,</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">border_width</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">inner_size</span> <span class="o">=</span> <span class="p">(</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
     <span class="p">)</span>
     <span class="c1"># Border should be centered at origin since the terrain grid is centered.</span>
     <span class="n">border_center</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">border_height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
@@ -783,7 +787,7 @@ document.write(`
       <span class="k">return</span>
 
     <span class="n">total_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_rows</span>
-    <span class="n">total_height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_cols</span>
+    <span class="n">total_height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_cols</span>
     <span class="n">light_height</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">total_width</span><span class="p">,</span> <span class="n">total_height</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.6</span>
 
     <span class="n">spec</span><span class="o">.</span><span class="n">body</span><span class="p">(</span><span class="s2">&quot;terrain&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">add_light</span><span class="p">(</span>
@@ -839,7 +843,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>

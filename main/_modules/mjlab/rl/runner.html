@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Mar 10, 2026"/>
+    <meta name="docbuild:last-update" content="Mar 19, 2026"/>
   </head>
   
   
@@ -177,7 +177,10 @@
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../source/installation.html">Installation Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/tutorials.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/tutorials/cartpole.html">Cartpole: Building Your First Environment</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
@@ -211,11 +214,15 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/training/rsl_rl.html">Training with RSL-RL</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/training/motion_imitation.html">Motion Imitation</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/viewers.html">Viewers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/distributed_training.html">Distributed Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/training/cloud.html">Cloud Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/nan_guard.html">NaN Guard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/debugging/export_scene.html">Export Scene</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -391,8 +398,7 @@ document.write(`
                 <article class="bd-article">
                   
   <h1>Source code for mjlab.rl.runner</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">rsl_rl.env</span><span class="w"> </span><span class="kn">import</span> <span class="n">VecEnv</span>
@@ -417,10 +423,12 @@ document.write(`
     <span class="n">log_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="c1"># Strip None-valued cnn_cfg so MLPModel doesn&#39;t receive it.</span>
+    <span class="c1"># Strip None-valued optional configs so MLPModel doesn&#39;t receive them.</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;actor&quot;</span><span class="p">,</span> <span class="s2">&quot;critic&quot;</span><span class="p">):</span>
-      <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">train_cfg</span> <span class="ow">and</span> <span class="n">train_cfg</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cnn_cfg&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">train_cfg</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;cnn_cfg&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">train_cfg</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;cnn_cfg&quot;</span><span class="p">,</span> <span class="s2">&quot;distribution_cfg&quot;</span><span class="p">):</span>
+          <span class="k">if</span> <span class="n">train_cfg</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">opt</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">train_cfg</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">train_cfg</span><span class="p">,</span> <span class="n">log_dir</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span></div>
 
 
@@ -435,9 +443,7 @@ document.write(`
 <span class="sd">    dynamic_axes being deprecated with the new TorchDynamo export path</span>
 <span class="sd">    (torch&gt;=2.9 default).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Deep-copy because rsl_rl&#39;s _OnnxCNNModel shares CNN modules with the original</span>
-    <span class="c1"># policy; without this, .to(&quot;cpu&quot;) moves the live weights.</span>
-    <span class="n">onnx_model</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alg</span><span class="o">.</span><span class="n">get_policy</span><span class="p">()</span><span class="o">.</span><span class="n">as_onnx</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">))</span>
+    <span class="n">onnx_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alg</span><span class="o">.</span><span class="n">get_policy</span><span class="p">()</span><span class="o">.</span><span class="n">as_onnx</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
     <span class="n">onnx_model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
     <span class="n">onnx_model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
     <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -520,6 +526,13 @@ document.write(`
       <span class="n">loaded_dict</span><span class="p">[</span><span class="s2">&quot;actor_state_dict&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">actor_state_dict</span>
       <span class="n">loaded_dict</span><span class="p">[</span><span class="s2">&quot;critic_state_dict&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">critic_state_dict</span>
 
+    <span class="c1"># Migrate rsl-rl 4.x actor keys to 5.x distribution keys.</span>
+    <span class="n">actor_sd</span> <span class="o">=</span> <span class="n">loaded_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actor_state_dict&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">if</span> <span class="s2">&quot;std&quot;</span> <span class="ow">in</span> <span class="n">actor_sd</span><span class="p">:</span>
+      <span class="n">actor_sd</span><span class="p">[</span><span class="s2">&quot;distribution.std_param&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">actor_sd</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;log_std&quot;</span> <span class="ow">in</span> <span class="n">actor_sd</span><span class="p">:</span>
+      <span class="n">actor_sd</span><span class="p">[</span><span class="s2">&quot;distribution.log_std_param&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">actor_sd</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;log_std&quot;</span><span class="p">)</span>
+
     <span class="n">load_iteration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alg</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">loaded_dict</span><span class="p">,</span> <span class="n">load_cfg</span><span class="p">,</span> <span class="n">strict</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">load_iteration</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">current_learning_iteration</span> <span class="o">=</span> <span class="n">loaded_dict</span><span class="p">[</span><span class="s2">&quot;iter&quot;</span><span class="p">]</span>
@@ -577,7 +590,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Mar 10, 2026.
+  Last updated on Mar 19, 2026.
   <br/>
 </p>
   </div>
