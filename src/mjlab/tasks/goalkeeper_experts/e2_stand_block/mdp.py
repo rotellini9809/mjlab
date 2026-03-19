@@ -401,7 +401,7 @@ class StandBlockCommand(CommandTerm):
       ).view_as(joint_vel)
 
     self._robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
-    self._robot.clear_state(env_ids=env_ids)
+    self._robot.reset(env_ids=env_ids)
 
   def _goal_conceded_mask(self) -> torch.Tensor:
     ball_local = _world_to_env_local_xyz(self._env, self._ball.data.root_link_pos_w)

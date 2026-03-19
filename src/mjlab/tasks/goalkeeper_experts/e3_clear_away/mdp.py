@@ -441,7 +441,7 @@ class ClearAwayCommand(CommandTerm):
       joint_vel += (torch.rand_like(joint_vel) * 2.0 - 1.0) * vel_noise_mag
 
     self._robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
-    self._robot.clear_state(env_ids=env_ids)
+    self._robot.reset(env_ids=env_ids)
 
   def _reset_ball_pose(
     self,
@@ -648,7 +648,7 @@ class ClearAwayCommand(CommandTerm):
     root_state[:, 7:13] = 0.0
 
     self._ball.write_root_state_to_sim(root_state, env_ids=env_ids)
-    self._ball.clear_state(env_ids=env_ids)
+    self._ball.reset(env_ids=env_ids)
     self._set_ball_linear_velocity(env_ids, vel_w, clear_angular=True)
 
   def _set_ball_linear_velocity(

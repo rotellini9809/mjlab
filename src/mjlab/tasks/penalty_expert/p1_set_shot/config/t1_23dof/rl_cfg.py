@@ -1,4 +1,4 @@
-"""RL configuration for Booster T1 tracking task."""
+"""RL configuration for Booster T1 penalty task."""
 
 from mjlab.rl import (
     RslRlModelCfg,
@@ -7,22 +7,23 @@ from mjlab.rl import (
 )
 
 
-def booster_t1_23_tracking_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
-    """Create RL runner configuration for Booster T1 tracking task."""
+def booster_t1_23_penalty_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+    """Create RL runner configuration for Booster T1 penalty task."""
     return RslRlOnPolicyRunnerCfg(
         actor=RslRlModelCfg(
-            init_noise_std=1.0,
             obs_normalization=True,
             hidden_dims=(512, 256, 128),
             activation="elu",
-            stochastic=True,
+            distribution_cfg={
+                "class_name": "GaussianDistribution",
+                "init_std": 1.0,
+                "std_type": "scalar",
+            },
         ),
         critic=RslRlModelCfg(
-            init_noise_std=1.0,
             obs_normalization=True,
             hidden_dims=(512, 256, 128),
             activation="elu",
-            stochastic=False,
         ),
         algorithm=RslRlPpoAlgorithmCfg(
             value_loss_coef=1.0,
@@ -44,3 +45,8 @@ def booster_t1_23_tracking_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
         num_steps_per_env=24,
         max_iterations=30_000,
     )
+
+
+def booster_t1_23_tracking_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+    """Backward-compatible alias for older penalty task imports."""
+    return booster_t1_23_penalty_ppo_runner_cfg()

@@ -11,18 +11,19 @@ def booster_t1_23_push_getup_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
   """Create RL runner configuration for Booster T1 push-getup task."""
   return RslRlOnPolicyRunnerCfg(
     actor=RslRlModelCfg(
-      init_noise_std=1.5,
       obs_normalization=True,
       hidden_dims=(512, 256, 128),
       activation="elu",
-      stochastic=True,
+      distribution_cfg={
+        "class_name": "GaussianDistribution",
+        "init_std": 1.5,
+        "std_type": "scalar",
+      },
     ),
     critic=RslRlModelCfg(
-      init_noise_std=1.5,
       obs_normalization=True,
       hidden_dims=(512, 256, 128),
       activation="elu",
-      stochastic=False,
     ),
     algorithm=RslRlPpoAlgorithmCfg(
       value_loss_coef=1.0,

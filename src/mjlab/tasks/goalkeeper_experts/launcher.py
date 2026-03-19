@@ -643,7 +643,7 @@ class GoalkeeperBallLauncher:
     root_state[:, 3] = 1.0
     root_state[:, 7:13] = 0.0
     self._ball.write_root_state_to_sim(root_state, env_ids=env_ids)
-    self._ball.clear_state(env_ids=env_ids)
+    self._ball.reset(env_ids=env_ids)
 
   def step(self, time_s: torch.Tensor) -> None:
     """Apply scheduled launch / rare deflection events."""
