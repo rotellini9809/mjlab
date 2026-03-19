@@ -553,6 +553,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
             },
         ),
 
+
         # NON troppo alta perché è ancora densa post-strike
         "launch_angle": RewardTermCfg(
             func=mdp.ball_launch_angle_underbar_reward,
@@ -607,16 +608,16 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         # meno vincolo dopo il tiro
         "post_strike_upright": RewardTermCfg(
             func=mdp.post_strike_upright_reward_strong,
-            weight=0.8,
+            weight=0.7,
             params={"command_name": "set_shot"},
         ),
 
         "post_strike_speed": RewardTermCfg(
             func=mdp.post_strike_base_speed_penalty,
-            weight=-0.08,
+            weight=-0.35,
             params={
                 "command_name": "set_shot",
-                "max_speed": 1.2,
+                "max_speed": 0.45,
             },
         ),
 
@@ -649,12 +650,12 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
         "tilt_penalty": RewardTermCfg(
             func=mdp.trunk_tilt_l2_penalty,
-            weight=-0.8,
+            weight=-1.0,
         ),
 
         "fallen": RewardTermCfg(
             func=mdp.fallen_indicator,
-            weight=-20.0,
+            weight=-24.0,
             params={"min_height": 0.30, "max_tilt": 1.20},
         ),
 
@@ -693,6 +694,8 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
                 "min_x_progress": 0.35,
             },
         ),
+
+    
     }
 
     cfg.terminations.pop("ee_body_pos", None)
