@@ -430,6 +430,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     "goalpost_right": goal_right_cfg,
     "soccer_ball": soccer_ball_cfg,
   }
+  cfg.sim.mujoco.ccd_iterations = 100
   ball_curb_contact_cfg = ContactSensorCfg(
     name=BALL_CURB_CONTACT_SENSOR_NAME,
     primary=ContactMatch(mode="geom", pattern="e1_wall_.*", entity="soccer_field"),
