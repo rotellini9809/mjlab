@@ -88,8 +88,8 @@ SPAWN_YAW_RANGE = (-0.1, 0.1)
 # sagittal with a slight forward lean.
 UPRIGHT_ROLL_BAND = 0.1
 UPRIGHT_ROLL_SIGMA = 0.12
-UPRIGHT_PITCH_TARGET = 0.25
-UPRIGHT_PITCH_BAND = 0.20
+UPRIGHT_PITCH_TARGET = 0.10
+UPRIGHT_PITCH_BAND = 0.25
 UPRIGHT_PITCH_SIGMA = 0.30
 
 # Keep reset close to standing/default with light noise.
@@ -116,13 +116,20 @@ GOAL_PLANE_VIS_HALF_THICKNESS = 0.005
 GOAL_PLANE_VIS_RGBA = (0.15, 0.85, 0.95, 0.08)
 GOAL_PLANE_VIS_GROUP = 3
 
-# Visual-only "danger area" suggestion for E2, seeded from E3's keeper-area
-# footprint so it can be tuned later without affecting physics or reward logic.
-E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 1.8, GOAL_X_LINE + 0.3, -2.3, 2.3)
+# E2 ball danger area used by clearance-quality shaping.
+E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 1.8, GOAL_X_LINE + 0.3, -2.5, 2.5)
 E2_DANGER_AREA_OVERLAY_HALF_THICKNESS = 0.0015
 E2_DANGER_AREA_OVERLAY_Z = 0.003
 E2_DANGER_AREA_OVERLAY_RGBA = (0.95, 0.18, 0.18, 0.22)
-E2_DANGER_AREA_VIS_GROUP = 2
+E2_DANGER_AREA_VIS_GROUP = 3
+
+# E2 keeper area used by the outside-area penalty. Matches E3's keeper-area
+# bounds and local goal-line anchoring convention.
+E2_KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1.0, GOAL_X_LINE + 0.6, -2.0, 2.0)
+E2_KEEPER_AREA_OVERLAY_HALF_THICKNESS = 0.0015
+E2_KEEPER_AREA_OVERLAY_Z = 0.005
+E2_KEEPER_AREA_OVERLAY_RGBA = (0.95, 0.85, 0.10, 0.24)
+E2_KEEPER_AREA_VIS_GROUP = 3
 
 BALL_ROBOT_CONTACT_SENSOR_NAME = "ball_robot_contact"
 RESOLUTION_WINDOW_S = 1.5
@@ -313,6 +320,27 @@ def _add_field_overlays(spec: mujoco.MjSpec) -> None:
   danger_overlay.contype = 0
   danger_overlay.conaffinity = 0
 
+  keeper_x_min, keeper_x_max, keeper_y_min, keeper_y_max = E2_KEEPER_AREA_BOUNDS
+  keeper_center_x = 0.5 * (keeper_x_min + keeper_x_max)
+  keeper_center_y = 0.5 * (keeper_y_min + keeper_y_max)
+  keeper_half_x = max(0.5 * (keeper_x_max - keeper_x_min), 1.0e-3)
+  keeper_half_y = max(0.5 * (keeper_y_max - keeper_y_min), 1.0e-3)
+
+  keeper_overlay = overlay_body.add_geom(
+    type=mujoco.mjtGeom.mjGEOM_BOX,
+    pos=(keeper_center_x, keeper_center_y, E2_KEEPER_AREA_OVERLAY_Z),
+    size=(
+      keeper_half_x,
+      keeper_half_y,
+      E2_KEEPER_AREA_OVERLAY_HALF_THICKNESS,
+    ),
+  )
+  keeper_overlay.name = "e2_keeper_area_overlay"
+  keeper_overlay.rgba = E2_KEEPER_AREA_OVERLAY_RGBA
+  keeper_overlay.group = E2_KEEPER_AREA_VIS_GROUP
+  keeper_overlay.contype = 0
+  keeper_overlay.conaffinity = 0
+
 
 def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
   field_cfg = get_robocup_field_cfg()
@@ -445,6 +473,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       goal_plane_z_min=GOAL_PLANE_Z_MIN,
       goal_plane_z_max=GOAL_PLANE_Z_MAX,
       danger_area_bounds=E2_DANGER_AREA_BOUNDS,
+      keeper_area_bounds=E2_KEEPER_AREA_BOUNDS,
       resampling_time_range=(1.0e9, 1.0e9),
       debug_vis=True,
     )
@@ -589,6 +618,11 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         "pitch_band": UPRIGHT_PITCH_BAND,
         "pitch_sigma": UPRIGHT_PITCH_SIGMA,
       },
+    ),
+    "outside_area": RewardTermCfg(
+      func=mdp.outside_area_penalty,
+      weight=-4.0,
+      params={"command_name": "stand_block"},
     ),
     "fallen": RewardTermCfg(
       func=mdp.fallen_indicator,

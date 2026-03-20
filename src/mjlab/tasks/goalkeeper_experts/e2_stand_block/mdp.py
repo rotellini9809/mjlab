@@ -52,6 +52,30 @@ def _normalize_xy(vec_xy: torch.Tensor, eps: float = 1.0e-6) -> torch.Tensor:
   return vec_xy / norm
 
 
+def _pitch_from_quat_wxyz(quat_wxyz: torch.Tensor) -> torch.Tensor:
+  qw, qx, qy, qz = (
+    quat_wxyz[:, 0],
+    quat_wxyz[:, 1],
+    quat_wxyz[:, 2],
+    quat_wxyz[:, 3],
+  )
+  sin_pitch = 2.0 * (qw * qy - qz * qx)
+  return torch.asin(sin_pitch.clamp(-1.0, 1.0))
+
+
+def _roll_from_quat_wxyz(quat_wxyz: torch.Tensor) -> torch.Tensor:
+  qw, qx, qy, qz = (
+    quat_wxyz[:, 0],
+    quat_wxyz[:, 1],
+    quat_wxyz[:, 2],
+    quat_wxyz[:, 3],
+  )
+  return torch.atan2(
+    2.0 * (qw * qx + qy * qz),
+    1.0 - 2.0 * (qx * qx + qy * qy),
+  )
+
+
 def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
@@ -202,6 +226,7 @@ class StandBlockCommandCfg(CommandTermCfg):
   goal_plane_z_min: float = 0.0
   goal_plane_z_max: float = 1.90
   danger_area_bounds: tuple[float, float, float, float] = (6.0, 7.6, -2.0, 2.0)
+  keeper_area_bounds: tuple[float, float, float, float] = (6.0, 7.6, -2.0, 2.0)
 
   # Keep command fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
@@ -232,6 +257,9 @@ class StandBlockCommand(CommandTerm):
 
     self._command = torch.zeros(env.num_envs, cfg.command_dim, device=self.device)
 
+    self.metrics["torso_roll"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["torso_pitch"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["torso_height"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["ball_speed_xy"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["goal_detected"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["launch_family_id"] = torch.zeros(env.num_envs, device=self.device)
@@ -297,6 +325,9 @@ class StandBlockCommand(CommandTerm):
     launched = bool(self._launcher.has_launched[env_idx].item())
     has_deflection = bool(self._launcher.has_deflection[env_idx].item())
     has_deflected = bool(self._launcher.has_deflected[env_idx].item())
+    torso_roll_deg = torch.rad2deg(self.metrics["torso_roll"][env_idx]).item()
+    torso_pitch_deg = torch.rad2deg(self.metrics["torso_pitch"][env_idx]).item()
+    torso_height = float(self.metrics["torso_height"][env_idx].item())
     deflection_status = (
       "scheduled"
       if has_deflection and not has_deflected
@@ -311,12 +342,19 @@ class StandBlockCommand(CommandTerm):
       f"**Stage:** {stage_text}\n\n"
       f"**Preset:** {self.launcher_preset_name}\n\n"
       f"**Launch family:** {family_name}\n\n"
+      f"**Torso roll:** {torso_roll_deg:.1f} deg\n\n"
+      f"**Torso pitch:** {torso_pitch_deg:.1f} deg\n\n"
+      f"**Torso height:** {torso_height:.3f} m\n\n"
       f"**T goal est.:** {t_goal_est_s:.3f} s\n\n"
       f"**Launched:** {'yes' if launched else 'no'}\n\n"
       f"**Deflection:** {deflection_status}"
     )
 
   def _update_metrics(self) -> None:
+    root_quat = self._robot.data.root_link_quat_w
+    self.metrics["torso_roll"] = _roll_from_quat_wxyz(root_quat)
+    self.metrics["torso_pitch"] = _pitch_from_quat_wxyz(root_quat)
+    self.metrics["torso_height"] = self._robot.data.root_link_pos_w[:, 2]
     self.metrics["ball_speed_xy"] = torch.linalg.norm(
       self._ball.data.root_link_lin_vel_w[:, :2],
       dim=1,
@@ -847,6 +885,35 @@ def low_height_soft_penalty(
   log = _get_log_dict(env)
   if log is not None:
     log["Metrics/e2_low_height_soft_pen_mean"] = torch.mean(penalty)
+
+  return penalty
+
+
+def outside_area_penalty(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
+
+  x_min, x_max, y_min, y_max = cmd.cfg.keeper_area_bounds
+  base_x = pos_xy_local[:, 0]
+  base_y = pos_xy_local[:, 1]
+
+  dx_low = torch.relu(float(x_min) - base_x)
+  dx_high = torch.relu(base_x - float(x_max))
+  dy_low = torch.relu(float(y_min) - base_y)
+  dy_high = torch.relu(base_y - float(y_max))
+
+  x_out = dx_low + dx_high
+  y_out = dy_low + dy_high
+  penalty = torch.square(x_out) + torch.square(y_out)
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_outside_area_penalty_mean"] = torch.mean(penalty)
 
   return penalty
 
