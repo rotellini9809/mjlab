@@ -33,24 +33,15 @@ GOALPOST_X  = 7.3
 BALL_R = 0.11                 # robocup ball radius
 BALL_Z = BALL_R               # center height above ground
 
-# ---------------- Penalty spot (2 m from goal line) ----------------
+# ---------------- Penalty spot center ----------------
 PENALTY_DIST_FROM_GOAL = 2.5
 BALL_X = GOAL_X_LINE - PENALTY_DIST_FROM_GOAL
 BALL_Y = 0.0
-
-BALL_SPAWN_X_RANGE = (BALL_X, BALL_X)
-BALL_SPAWN_Y_RANGE = (BALL_Y, BALL_Y)
 
 # ---------------- Robot spawn: behind the ball ----------------
 ROBOT_BEHIND_BALL = 0.60     # meters (tune later if needed)
 ROBOT_X = BALL_X - ROBOT_BEHIND_BALL
 ROBOT_Y = 0.0
-
-STRIKER_SPAWN_X_RANGE = (ROBOT_X, ROBOT_X)
-STRIKER_SPAWN_Y_RANGE = (ROBOT_Y, ROBOT_Y)
-
-# Face the goal: +x direction -> yaw = 0 rad
-SPAWN_YAW_RANGE = (0.0, 0.0)
 
 # ---------------- Keep-out / safety bounds (optional but recommended) ----------------
 # Keep robot in a corridor around the penalty spot up to near the goal line.
@@ -236,19 +227,28 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
 
 
-    # distanza "dischetto" dalla porta (metti quello che ti torna bene)
-    PENALTY_DIST_FROM_GOAL = 2.5  # metri circa nel tuo mondo
-    ball_x = GOAL_X_LINE- PENALTY_DIST_FROM_GOAL
+    # distanza "dischetto" dalla porta
+    PENALTY_DIST_FROM_GOAL = 2.5
+    ball_x = GOAL_X_LINE - PENALTY_DIST_FROM_GOAL
 
     # robot dietro la palla
     ROBOT_BEHIND_BALL = 0.60
     robot_x = ball_x - ROBOT_BEHIND_BALL
 
-    ball_spawn_x_range = (ball_x, ball_x)
-    ball_spawn_y_range = (0.0, 0.0)
+    # ---------------- light reset randomization ----------------
+    BALL_JITTER_X = 0.03  # 3 cm
+    BALL_JITTER_Y = 0.03  # 3 cm
+    ROBOT_JITTER_X = 0.02  # 2 cm
+    ROBOT_JITTER_Y = 0.04  # 4 cm
+    ROBOT_YAW_JITTER = 0.10  # rad ~ 5.7 deg
 
-    striker_spawn_x_range = (robot_x, robot_x)
-    striker_spawn_y_range = (0.0, 0.0)
+    ball_spawn_x_range = (ball_x - BALL_JITTER_X, ball_x + BALL_JITTER_X)
+    ball_spawn_y_range = (-BALL_JITTER_Y, BALL_JITTER_Y)
+
+    striker_spawn_x_range = (robot_x - ROBOT_JITTER_X, robot_x + ROBOT_JITTER_X)
+    striker_spawn_y_range = (-ROBOT_JITTER_Y, ROBOT_JITTER_Y)
+
+    spawn_yaw_range = (-ROBOT_YAW_JITTER, ROBOT_YAW_JITTER)
 
     striker_area_bounds = (robot_x - 0.8, GOAL_X_LINE + 0.6, -1.5, 1.5)
     hard_area_margin = 0.5
@@ -386,7 +386,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
             striker_spawn_x_range=striker_spawn_x_range,
             striker_spawn_y_range=striker_spawn_y_range,
-            spawn_yaw_range=SPAWN_YAW_RANGE,
+            spawn_yaw_range=spawn_yaw_range,
 
             goal_line_x=GOAL_X_LINE,
             goal_y_half=1.55,
@@ -513,12 +513,15 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         ),
 
         "strike_event": RewardTermCfg(
-            func=mdp.strike_event_reward_contact_only,
-            weight=6.0,
+            func=mdp.strike_event_reward,
+            weight=2.0,
             params={
                 "command_name": "set_shot",
                 "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
                 "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "ball_depart_xy": 0.06,
+                "min_vx": 0.35,
+                "min_speed_xy": 0.55,
             },
         ),
 
@@ -552,7 +555,6 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
                 "max_speed": 8.0,
             },
         ),
-
 
         # NON troppo alta perché è ancora densa post-strike
         "launch_angle": RewardTermCfg(
@@ -608,28 +610,28 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         # meno vincolo dopo il tiro
         "post_strike_upright": RewardTermCfg(
             func=mdp.post_strike_upright_reward_strong,
-            weight=0.7,
+            weight=0.8,
             params={"command_name": "set_shot"},
         ),
 
         "post_strike_speed": RewardTermCfg(
             func=mdp.post_strike_base_speed_penalty,
-            weight=-0.35,
+            weight=-0.08,
             params={
                 "command_name": "set_shot",
-                "max_speed": 0.45,
+                "max_speed": 1.2,
             },
         ),
 
         "strike_from_above": RewardTermCfg(
             func=mdp.strike_from_above_penalty,
-            weight=-6.0,
+            weight=-12.0,
             params={
                 "command_name": "set_shot",
                 "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
                 "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
-                "xy_near": 0.18,
-                "z_margin": 0.02,
+                "xy_near": 0.16,
+                "z_margin": 0.015,
             },
         ),
 
@@ -644,18 +646,26 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
         "upright": RewardTermCfg(
             func=mdp.upright_stability_reward,
-            weight=1.0,
-            params={"height_target": None, "height_sigma": 0.14, "tilt_sigma": 0.55},
+            weight=1.2,
+            params={
+                "height_target": None,
+                "height_sigma": 0.14,
+                "roll_band": 0.07,
+                "roll_sigma": 0.12,
+                "pitch_target": 0.14,
+                "pitch_band": 0.12,
+                "pitch_sigma": 0.25,
+            },
         ),
 
         "tilt_penalty": RewardTermCfg(
             func=mdp.trunk_tilt_l2_penalty,
-            weight=-1.0,
+            weight=-0.8,
         ),
 
         "fallen": RewardTermCfg(
             func=mdp.fallen_indicator,
-            weight=-24.0,
+            weight=-20.0,
             params={"min_height": 0.30, "max_tilt": 1.20},
         ),
 
@@ -695,7 +705,46 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
             },
         ),
 
-    
+        "foot_over_ball": RewardTermCfg(
+            func=mdp.foot_over_ball_penalty,
+            weight=-8.0,
+            params={
+                "command_name": "set_shot",
+                "xy_near": 0.20,
+                "z_margin": 0.0,
+            },
+        ),
+
+        "pre_strike_stand": RewardTermCfg(
+            func=mdp.pre_strike_standing_reward,
+            weight=1.0,
+            params={"command_name": "set_shot"},
+        ),
+
+        "low_height_soft_penalty": RewardTermCfg(
+            func=mdp.striker_low_height_soft_penalty,
+            weight=-1.4,
+            params={"h_soft": None},
+        ),
+
+        "left_pre_touch": RewardTermCfg(
+            func=mdp.left_foot_prestrike_touch_penalty,
+            weight=-8.0,
+            params={
+                "command_name": "set_shot",
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
+        ),
+
+        "right_pre_touch_bonus": RewardTermCfg(
+            func=mdp.right_foot_prestrike_touch_bonus,
+            weight=2.0,
+            params={
+                "command_name": "set_shot",
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+            },
+        ),
+
     }
 
     cfg.terminations.pop("ee_body_pos", None)

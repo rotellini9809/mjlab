@@ -246,7 +246,7 @@ class SetShotCommand(CommandTerm):
       default_joint_vel[env_ids],
       env_ids=env_ids,
     )
-    self._robot.reset(env_ids=env_ids)
+    self._robot.clear_state(env_ids=env_ids)
 
 
   def _reset_ball_pose(self, env_ids: torch.Tensor) -> None:
@@ -278,7 +278,7 @@ class SetShotCommand(CommandTerm):
     root_state[:, 7:13] = 0.0
 
     self._ball.write_root_state_to_sim(root_state, env_ids=env_ids)
-    self._ball.reset(env_ids=env_ids)
+    self._ball.clear_state(env_ids=env_ids)
 
 
 # ---------------- Observations helpers ----------------
@@ -321,30 +321,70 @@ def yaw_alignment_reward(env, command_name: str = "set_shot", asset_cfg: SceneEn
   return torch.exp(-k * torch.square(yaw_error))
 
 
-def upright_stability_reward(
-  env,
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  height_target: float | None = None,
-  height_sigma: float = 0.12,
-  tilt_sigma: float = 0.5,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  height = robot.data.root_link_pos_w[:, 2]
-
-  # If height_target is not provided, use the robot's default root height (per-env).
-  if height_target is None:
+def _default_root_height(robot: Entity) -> torch.Tensor:
     default_root_state = getattr(robot.data, "default_root_state", None)
     if default_root_state is not None:
-      target = default_root_state[:, 2].to(height.dtype)
-    else:
-      target = torch.mean(height).expand_as(height)
-  else:
-    target = torch.full_like(height, float(height_target))
+        return default_root_state[:, 2].to(robot.data.root_link_pos_w.dtype)
+    return robot.data.root_link_pos_w[:, 2]
 
-  height_err_sq = torch.square((height - target) / float(height_sigma))
-  tilt = torch.linalg.norm(robot.data.projected_gravity_b[:, :2], dim=1)
-  tilt_err_sq = torch.square(tilt / float(tilt_sigma))
-  return torch.exp(-0.5 * (height_err_sq + tilt_err_sq))
+
+def striker_posture_score(
+    env,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    roll_band: float = 0.07,
+    roll_sigma: float = 0.12,
+    pitch_target: float = 0.14,
+    pitch_band: float = 0.12,
+    pitch_sigma: float = 0.25,
+) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    proj_g = robot.data.projected_gravity_b
+
+    sagittal = proj_g[:, 0]
+    lateral = proj_g[:, 1]
+
+    roll_error = (torch.abs(lateral) - float(roll_band)).clamp_min(0.0)
+    roll_score = torch.exp(-torch.square(roll_error) / max(float(roll_sigma) ** 2, 1.0e-6))
+
+    pitch_error = (torch.abs(sagittal - float(pitch_target)) - float(pitch_band)).clamp_min(0.0)
+    pitch_score = torch.exp(-torch.square(pitch_error) / max(float(pitch_sigma) ** 2, 1.0e-6))
+
+    return roll_score * pitch_score
+
+
+def upright_stability_reward(
+    env,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    height_target: float | None = None,
+    height_sigma: float = 0.14,
+    roll_band: float = 0.07,
+    roll_sigma: float = 0.12,
+    pitch_target: float = 0.14,
+    pitch_band: float = 0.12,
+    pitch_sigma: float = 0.25,
+) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    height = robot.data.root_link_pos_w[:, 2]
+
+    if height_target is None:
+        target = _default_root_height(robot)
+    else:
+        target = torch.full_like(height, float(height_target))
+
+    posture = striker_posture_score(
+        env,
+        asset_cfg=asset_cfg,
+        roll_band=roll_band,
+        roll_sigma=roll_sigma,
+        pitch_target=pitch_target,
+        pitch_band=pitch_band,
+        pitch_sigma=pitch_sigma,
+    )
+
+    height_err = (height - target) / max(float(height_sigma), 1.0e-6)
+    height_score = torch.exp(-torch.square(height_err))
+
+    return posture * height_score
 
 
 def _get_bool_state_buffer(
@@ -1682,3 +1722,88 @@ def hold_contact_after_strike_penalty(
 
     hold = post_strike_phase_mask(env, command_name).bool() & touching & (~new_touch)
     return hold.to(torch.float32)
+
+def striker_standing_gate(
+    env,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    h_low: float = 0.40,
+    s_min: float = 0.45,
+    roll_band: float = 0.07,
+    roll_sigma: float = 0.12,
+    pitch_target: float = 0.14,
+    pitch_band: float = 0.12,
+    pitch_sigma: float = 0.25,
+) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    base_height = robot.data.root_link_pos_w[:, 2]
+    h_good = _default_root_height(robot)
+
+    posture = striker_posture_score(
+        env,
+        asset_cfg=asset_cfg,
+        roll_band=roll_band,
+        roll_sigma=roll_sigma,
+        pitch_target=pitch_target,
+        pitch_band=pitch_band,
+        pitch_sigma=pitch_sigma,
+    )
+
+    denom = (h_good - float(h_low)).clamp_min(1.0e-6)
+    height_score = ((base_height - float(h_low)) / denom).clamp(0.0, 1.0)
+
+    stand_score = posture * height_score
+    gate_pre = ((stand_score - float(s_min)) / max(1.0 - float(s_min), 1.0e-6)).clamp(0.0, 1.0)
+    return gate_pre * gate_pre
+
+
+def pre_strike_standing_reward(
+    env,
+    command_name: str = "set_shot",
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+    return gate_pre * striker_standing_gate(env, asset_cfg=asset_cfg)
+
+
+def striker_low_height_soft_penalty(
+    env,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    h_soft: float | None = None,
+) -> torch.Tensor:
+    robot: Entity = env.scene[asset_cfg.name]
+    height = robot.data.root_link_pos_w[:, 2]
+
+    if h_soft is None:
+        h_soft_t = (_default_root_height(robot) - 0.08).clamp_min(0.45)
+    else:
+        h_soft_t = torch.full_like(height, float(h_soft))
+
+    return torch.square((h_soft_t - height).clamp_min(0.0))
+
+def left_foot_prestrike_touch_penalty(
+    env,
+    command_name: str = "set_shot",
+    left_sensor_name: str = "p1_left_foot_ball_contact",
+) -> torch.Tensor:
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+    touching_l = _sensor_any_found(env, left_sensor_name).to(torch.float32)
+    return gate_pre * touching_l
+
+
+def right_foot_prestrike_touch_bonus(
+    env,
+    command_name: str = "set_shot",
+    right_sensor_name: str = "p1_right_foot_ball_contact",
+) -> torch.Tensor:
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+
+    touching_r = _sensor_any_found(env, right_sensor_name)
+    prev_r = _get_bool_state_buffer(env, key=f"p1_right_pre_touch_prev::{command_name}")
+
+    is_first = env.episode_length_buf <= 1
+    prev_r[is_first] = False
+
+    new_touch_r = touching_r & (~prev_r)
+    prev_r.copy_(touching_r)
+
+    return gate_pre * new_touch_r.to(torch.float32)
