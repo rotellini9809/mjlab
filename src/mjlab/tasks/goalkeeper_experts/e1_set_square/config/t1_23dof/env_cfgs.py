@@ -124,7 +124,7 @@ E1_RESET_STAGE_CFGS = (
   ),
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.12, KEEPER_HOME_POINT_X + 0.12),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-0.40, -0.08), (0.08, 0.40))),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
     target_forward_range=(3.5, 7.5),
     target_lateral_range=mdp.IntervalUnionCfg(intervals=((-2.0, -0.30), (0.30, 2.0))),
@@ -132,19 +132,19 @@ E1_RESET_STAGE_CFGS = (
   ),
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.15, KEEPER_HOME_POINT_X + 0.15),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-0.55, -0.05), (0.05, 0.55))),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=(3.0, 9.0),
     target_lateral_range=mdp.IntervalUnionCfg(intervals=((-3.0, -0.15), (0.15, 3.0))),
     launcher_mode_probs=(0.6, 0.3, 0.1),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.08, KEEPER_HOME_POINT_X + 0.08),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-0.40, -0.18), (0.18, 0.40))),
-    spawn_yaw_offset_range=(-math.radians(45.0), math.radians(45.0)),
+    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.15, KEEPER_HOME_POINT_X + 0.15),
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
+    spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
     target_lateral_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_LATERAL_RANGE,)),
-    launcher_mode_probs=(1.0, 0.0, 0.0),
+    launcher_mode_probs=(0.2, 0.5, 0.3),
   ),
 )
 

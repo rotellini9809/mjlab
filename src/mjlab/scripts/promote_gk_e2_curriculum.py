@@ -127,7 +127,7 @@ def _resolve_run_prefix(cfg: PromoteConfig) -> str:
   if cfg.run_prefix is not None and cfg.run_prefix.strip() != "":
     return cfg.run_prefix.strip()
   timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-  return f"e2_curriculum_{timestamp}"
+  return f"e2_{timestamp}"
 
 
 def _resolve_checkpoint_for_run(task_id: str, run_name: str) -> Path:
