@@ -17,6 +17,10 @@ from mjlab.motor_controller_stage1.latent_action import (  # noqa: F401
   motor_last_decoded_action,
 )
 from mjlab.sensor import ContactSensor
+from mjlab.envs.mdp.rewards import (
+  action_rate_l2 as _base_action_rate_l2,
+  joint_pos_limits as _base_joint_pos_limits,
+)
 from mjlab.tasks.goalkeeper_experts.launcher import (
   LAUNCH_FAMILY_NAMES,
   GoalkeeperBallLauncher,
@@ -65,6 +69,22 @@ def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
     log = {}
     extras["log"] = log
   return log
+
+
+def _reward_active_mask(
+  env,
+  command_name: str = "stand_block",
+) -> torch.Tensor:
+  del command_name
+  return torch.ones(env.num_envs, device=env.device, dtype=torch.bool)
+
+
+def _apply_reward_active_mask(
+  reward: torch.Tensor,
+  env,
+  command_name: str = "stand_block",
+) -> torch.Tensor:
+  return reward * _reward_active_mask(env, command_name).to(reward.dtype)
 
 
 def _posture_score_components(
@@ -181,6 +201,7 @@ class StandBlockCommandCfg(CommandTermCfg):
   goal_plane_y_half: float = 1.35
   goal_plane_z_min: float = 0.0
   goal_plane_z_max: float = 1.90
+  danger_area_bounds: tuple[float, float, float, float] = (6.0, 7.6, -2.0, 2.0)
 
   # Keep command fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
@@ -498,6 +519,46 @@ def _goal_conceded_mask_from_command(
   return cmd._goal_conceded_mask()
 
 
+def _ball_in_danger_area_mask_from_command(
+  env,
+  command_name: str,
+) -> torch.Tensor:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+  ball_local = _world_to_env_local_xyz(env, ball.data.root_link_pos_w)
+  x = ball_local[:, 0]
+  y = ball_local[:, 1]
+
+  x_min, x_max, y_min, y_max = cmd.cfg.danger_area_bounds
+  return (
+    (x >= float(x_min))
+    & (x <= float(x_max))
+    & (y >= float(y_min))
+    & (y <= float(y_max))
+  )
+
+
+def _contact_time_buffer_from_termination(
+  env,
+  resolution_term_name: str,
+) -> torch.Tensor:
+  unset = torch.full(
+    (env.num_envs,),
+    fill_value=-1.0,
+    device=env.device,
+    dtype=torch.float,
+  )
+  try:
+    term_cfg = env.termination_manager.get_term_cfg(resolution_term_name)
+  except ValueError:
+    return unset
+
+  t_contact = getattr(term_cfg.func, "_t_contact", None)
+  if not isinstance(t_contact, torch.Tensor):
+    return unset
+  return t_contact
+
+
 def _ball_robot_contact_mask(
   env,
   sensor_name: str | None,
@@ -600,6 +661,97 @@ def goal_conceded_indicator(
   command_name: str = "stand_block",
 ) -> torch.Tensor:
   return _goal_conceded_mask_from_command(env, command_name).float()
+
+
+def action_rate_l2(
+  env,
+  command_name: str = "stand_block",
+) -> torch.Tensor:
+  return _apply_reward_active_mask(_base_action_rate_l2(env), env, command_name)
+
+
+def joint_pos_limits(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  command_name: str = "stand_block",
+) -> torch.Tensor:
+  return _apply_reward_active_mask(
+    _base_joint_pos_limits(env, asset_cfg=asset_cfg),
+    env,
+    command_name,
+  )
+
+
+class ClearanceQualityReward:
+  def __init__(self, cfg, env):
+    del cfg
+    self._prev_in_danger = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+    self._outside_counter = torch.zeros(env.num_envs, device=env.device, dtype=torch.long)
+    self._rewarded = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    self._prev_in_danger[env_ids] = False
+    self._outside_counter[env_ids] = 0
+    self._rewarded[env_ids] = False
+
+  def __call__(
+    self,
+    env,
+    command_name: str = "stand_block",
+    resolution_term_name: str = "contact_resolution_window",
+    t_ref: float = 1.5,
+    clip_away_speed: float = 4.0,
+    outside_steps_required: int = 2,
+  ) -> torch.Tensor:
+    in_danger_now = _ball_in_danger_area_mask_from_command(env, command_name)
+    t_contact = _contact_time_buffer_from_termination(env, resolution_term_name)
+    has_contact = t_contact >= 0.0
+
+    continue_outside = (~in_danger_now) & (self._prev_in_danger | (self._outside_counter > 0))
+    self._outside_counter = torch.where(
+      has_contact & continue_outside,
+      self._outside_counter + 1,
+      torch.zeros_like(self._outside_counter),
+    )
+
+    exit_event = (
+      has_contact
+      & (~self._rewarded)
+      & (self._outside_counter == int(outside_steps_required))
+    )
+
+    cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+    ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+    vx = ball.data.root_link_lin_vel_w[:, 0]
+    if cmd.cfg.goal_toward_positive_x:
+      v_away = torch.clamp(-vx, min=0.0, max=float(clip_away_speed))
+    else:
+      v_away = torch.clamp(vx, min=0.0, max=float(clip_away_speed))
+
+    time_s = env.episode_length_buf.to(torch.float) * env.step_dt
+    t_clear = torch.clamp(time_s - t_contact, min=0.0)
+    time_factor = torch.clamp(
+      1.0 - t_clear / max(float(t_ref), 1.0e-6),
+      min=0.0,
+      max=1.0,
+    )
+    vel_factor = torch.clamp(
+      v_away / max(float(clip_away_speed), 1.0e-6),
+      min=0.0,
+      max=1.0,
+    )
+
+    raw = exit_event.float() * time_factor * vel_factor
+    self._rewarded |= exit_event
+    self._prev_in_danger = in_danger_now & (~self._rewarded)
+
+    log = _get_log_dict(env)
+    if log is not None:
+      log["Metrics/e2_ball_in_danger_mean"] = torch.mean(in_danger_now.float())
+      log["Metrics/e2_clearance_exit_event_mean"] = torch.mean(exit_event.float())
+      log["Metrics/e2_clearance_quality_raw_mean"] = torch.mean(raw)
+
+    return raw
 
 
 def save_success_reward(

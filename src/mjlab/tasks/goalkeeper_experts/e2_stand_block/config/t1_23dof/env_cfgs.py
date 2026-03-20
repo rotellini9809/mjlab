@@ -16,6 +16,7 @@ from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
+from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.goalkeeper_experts.e2_stand_block import mdp
@@ -115,6 +116,14 @@ GOAL_PLANE_VIS_HALF_THICKNESS = 0.005
 GOAL_PLANE_VIS_RGBA = (0.15, 0.85, 0.95, 0.08)
 GOAL_PLANE_VIS_GROUP = 3
 
+# Visual-only "danger area" suggestion for E2, seeded from E3's keeper-area
+# footprint so it can be tuned later without affecting physics or reward logic.
+E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 1.8, GOAL_X_LINE + 0.3, -2.3, 2.3)
+E2_DANGER_AREA_OVERLAY_HALF_THICKNESS = 0.0015
+E2_DANGER_AREA_OVERLAY_Z = 0.003
+E2_DANGER_AREA_OVERLAY_RGBA = (0.95, 0.18, 0.18, 0.22)
+E2_DANGER_AREA_VIS_GROUP = 2
+
 BALL_ROBOT_CONTACT_SENSOR_NAME = "ball_robot_contact"
 RESOLUTION_WINDOW_S = 1.5
 
@@ -122,7 +131,7 @@ RESOLUTION_WINDOW_S = 1.5
 MOTOR_COMMAND_DIM = 46
 MOTOR_ACT_DIM = 23
 
-EPISODE_LENGTH_S = 2.0
+EPISODE_LENGTH_S = 5.0
 SIM_TIMESTEP_S = 0.005
 CONTROL_DECIMATION = 4
 E2_TASK_ID = "Mjlab-GK-Expert-StandBlock-Booster-T1_23"
@@ -182,6 +191,10 @@ def _extract_saved_e2_launcher_preset_name(env_yaml_path: Path) -> str | None:
   with env_yaml_path.open("r", encoding="utf-8") as handle:
     env_data = yaml.safe_load(handle) or {}
 
+  return _extract_e2_launcher_preset_name_from_env_data(env_data)
+
+
+def _extract_e2_launcher_preset_name_from_env_data(env_data: object) -> str | None:
   if not isinstance(env_data, dict):
     return None
   commands = env_data.get("commands")
@@ -198,6 +211,21 @@ def _extract_saved_e2_launcher_preset_name(env_yaml_path: Path) -> str | None:
     return None
   preset_name = preset_name.strip()
   return preset_name or None
+
+
+def _extract_saved_e2_launcher_preset_name_from_wandb_config(
+  config_yaml_path: Path,
+) -> str | None:
+  with config_yaml_path.open("r", encoding="utf-8") as handle:
+    config_data = yaml.safe_load(handle) or {}
+
+  if not isinstance(config_data, dict):
+    return None
+  env_cfg = config_data.get("env_cfg")
+  if not isinstance(env_cfg, dict):
+    return None
+  env_cfg_value = env_cfg.get("value")
+  return _extract_e2_launcher_preset_name_from_env_data(env_cfg_value)
 
 
 def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
@@ -220,19 +248,28 @@ def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
     return None
 
   log_root = (Path("logs") / "rsl_rl" / E2_EXPERIMENT_NAME).resolve()
-  env_yaml_path = _try_download_wandb_run_file(
-    log_root, wandb_run_path, "params/env.yaml"
+  config_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "config.yaml"
   )
-  if env_yaml_path is None:
+  if config_yaml_path is None:
     print(
-      "[WARN]: Saved E2 env config was not found in the W&B run; "
+      "[WARN]: Saved E2 W&B config was not found in the run; "
       "using the default play preset."
     )
     return None
-  return _extract_saved_e2_launcher_preset_name(env_yaml_path)
+  preset_name = _extract_saved_e2_launcher_preset_name_from_wandb_config(
+    config_yaml_path
+  )
+  if preset_name is None:
+    print(
+      "[WARN]: E2 launcher preset was not found in the W&B config; "
+      "using the default play preset."
+    )
+    return None
+  return preset_name
 
 
-def _add_goal_plane_overlay(spec: mujoco.MjSpec) -> None:
+def _add_field_overlays(spec: mujoco.MjSpec) -> None:
   overlay_body = next(
     (body for body in spec.bodies if body.name == "e2_field_overlays"), None
   )
@@ -255,6 +292,27 @@ def _add_goal_plane_overlay(spec: mujoco.MjSpec) -> None:
   overlay.contype = 0
   overlay.conaffinity = 0
 
+  danger_x_min, danger_x_max, danger_y_min, danger_y_max = E2_DANGER_AREA_BOUNDS
+  danger_center_x = 0.5 * (danger_x_min + danger_x_max)
+  danger_center_y = 0.5 * (danger_y_min + danger_y_max)
+  danger_half_x = max(0.5 * (danger_x_max - danger_x_min), 1.0e-3)
+  danger_half_y = max(0.5 * (danger_y_max - danger_y_min), 1.0e-3)
+
+  danger_overlay = overlay_body.add_geom(
+    type=mujoco.mjtGeom.mjGEOM_BOX,
+    pos=(danger_center_x, danger_center_y, E2_DANGER_AREA_OVERLAY_Z),
+    size=(
+      danger_half_x,
+      danger_half_y,
+      E2_DANGER_AREA_OVERLAY_HALF_THICKNESS,
+    ),
+  )
+  danger_overlay.name = "e2_danger_area_overlay"
+  danger_overlay.rgba = E2_DANGER_AREA_OVERLAY_RGBA
+  danger_overlay.group = E2_DANGER_AREA_VIS_GROUP
+  danger_overlay.contype = 0
+  danger_overlay.conaffinity = 0
+
 
 def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
   field_cfg = get_robocup_field_cfg()
@@ -262,7 +320,7 @@ def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
 
   def _spec_fn() -> mujoco.MjSpec:
     spec = base_spec_fn()
-    _add_goal_plane_overlay(spec)
+    _add_field_overlays(spec)
     return spec
 
   field_cfg.spec_fn = _spec_fn
@@ -302,6 +360,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     "goalpost_right": goal_right_cfg,
     "soccer_ball": soccer_ball_cfg,
   }
+  cfg.sim.mujoco.ccd_iterations = 100
 
   ball_robot_contact_cfg = ContactSensorCfg(
     name=BALL_ROBOT_CONTACT_SENSOR_NAME,
@@ -385,6 +444,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       goal_plane_y_half=GOAL_PLANE_Y_HALF,
       goal_plane_z_min=GOAL_PLANE_Z_MIN,
       goal_plane_z_max=GOAL_PLANE_Z_MAX,
+      danger_area_bounds=E2_DANGER_AREA_BOUNDS,
       resampling_time_range=(1.0e9, 1.0e9),
       debug_vis=True,
     )
@@ -479,6 +539,11 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       weight=-300.0,
       params={"command_name": "stand_block"},
     ),
+    "action_rate_l2": RewardTermCfg(
+      func=mdp.action_rate_l2,
+      weight=-0.008,
+      params={"command_name": "stand_block"},
+    ),
     "save_success": RewardTermCfg(
       func=mdp.save_success_reward,
       weight=120.0,
@@ -496,10 +561,23 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         "only_on_first_contact": True,
       },
     ),
+    "clearance_quality": RewardTermCfg(
+      func=mdp.ClearanceQualityReward,
+      weight=20.0,
+      params={"command_name": "stand_block"},
+    ),
     "low_height_soft_penalty": RewardTermCfg(
       func=mdp.low_height_soft_penalty,
       weight=-1.6,
       params={"h_soft": 0.48},
+    ),
+    "joint_pos_limits": RewardTermCfg(
+      func=mdp.joint_pos_limits,
+      weight=-0.5,
+      params={
+        "asset_cfg": SceneEntityCfg("robot", joint_names=(".*",)),
+        "command_name": "stand_block",
+      },
     ),
     "upright": RewardTermCfg(
       func=mdp.upright_stability_reward,

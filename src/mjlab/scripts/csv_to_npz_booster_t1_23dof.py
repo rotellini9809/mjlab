@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import time
 from typing import Any
@@ -25,30 +26,58 @@ from mjlab.utils.lab_api.math import (
 from mjlab.viewer.offscreen_renderer import OffscreenRenderer
 from mjlab.viewer.viewer_config import ViewerConfig
 
+FOOT_BOTTOM_LOCAL_Z = -0.0432508
+MOTION_NPZ_PATH = Path("/tmp/motion.npz")
+TRACKING_JOINT_NAMES = [
+  "Left_Hip_Pitch",
+  "Left_Hip_Roll",
+  "Left_Hip_Yaw",
+  "Left_Knee_Pitch",
+  "Left_Ankle_Pitch",
+  "Left_Ankle_Roll",
+  "Right_Hip_Pitch",
+  "Right_Hip_Roll",
+  "Right_Hip_Yaw",
+  "Right_Knee_Pitch",
+  "Right_Ankle_Pitch",
+  "Right_Ankle_Roll",
+  "Waist",
+  "Left_Shoulder_Pitch",
+  "Left_Shoulder_Roll",
+  "Left_Elbow_Pitch",
+  "Left_Elbow_Yaw",
+  "Right_Shoulder_Pitch",
+  "Right_Shoulder_Roll",
+  "Right_Elbow_Pitch",
+  "Right_Elbow_Yaw",
+  "AAHead_yaw",
+  "Head_pitch",
+]
+
+def _iter_exception_chain(exc: BaseException):
+  current: BaseException | None = exc
+  seen: set[int] = set()
+  while current is not None and id(current) not in seen:
+    seen.add(id(current))
+    yield current
+    current = getattr(current, "__cause__", None) or getattr(current, "__context__", None)
+
 
 def _is_timeout_error(exc: BaseException) -> bool:
   """Return True for timeout-like exceptions (including wrapped causes)."""
-  if isinstance(exc, TimeoutError):
-    return True
-
   try:
     import requests
-
-    if isinstance(exc, requests.exceptions.Timeout):
-      return True
   except Exception:
-    pass
+    requests = None
 
-  msg = str(exc).lower()
-  if "timed out" in msg or "read timeout" in msg or "timeout=" in msg:
-    return True
-
-  cause = getattr(exc, "__cause__", None)
-  if cause is not None and cause is not exc and _is_timeout_error(cause):
-    return True
-  context = getattr(exc, "__context__", None)
-  if context is not None and context is not exc and _is_timeout_error(context):
-    return True
+  for current in _iter_exception_chain(exc):
+    if isinstance(current, TimeoutError):
+      return True
+    if requests is not None and isinstance(current, requests.exceptions.Timeout):
+      return True
+    msg = str(current).lower()
+    if "timed out" in msg or "read timeout" in msg or "timeout=" in msg:
+      return True
   return False
 
 
@@ -59,17 +88,9 @@ def _is_retryable_link_error(exc: BaseException) -> bool:
 
   try:
     import requests
-
-    if isinstance(exc, requests.exceptions.HTTPError):
-      status_code = (
-        exc.response.status_code if getattr(exc, "response", None) is not None else None
-      )
-      if status_code in {429, 500, 502, 503, 504}:
-        return True
   except Exception:
-    pass
+    requests = None
 
-  msg = str(exc).lower()
   transient_markers = (
     "http 429",
     "http 500",
@@ -84,15 +105,18 @@ def _is_retryable_link_error(exc: BaseException) -> bool:
     "temporarily unavailable",
     "internal server error",
   )
-  if any(marker in msg for marker in transient_markers):
-    return True
 
-  cause = getattr(exc, "__cause__", None)
-  if cause is not None and cause is not exc and _is_retryable_link_error(cause):
-    return True
-  context = getattr(exc, "__context__", None)
-  if context is not None and context is not exc and _is_retryable_link_error(context):
-    return True
+  for current in _iter_exception_chain(exc):
+    if requests is not None and isinstance(current, requests.exceptions.HTTPError):
+      status_code = (
+        current.response.status_code
+        if getattr(current, "response", None) is not None
+        else None
+      )
+      if status_code in {429, 500, 502, 503, 504}:
+        return True
+    if any(marker in str(current).lower() for marker in transient_markers):
+      return True
   return False
 
 
@@ -128,6 +152,97 @@ def _link_artifact_with_retry(
   return False
 
 
+def _resolve_wandb_run_entity(wandb_run_entity: str | None) -> str | None:
+  """Return the W&B entity used to create runs.
+
+  Defaults to WANDB_RUN_ENTITY when set. Otherwise, leave it unset so wandb can use
+  its configured default/team entity.
+  """
+  return wandb_run_entity or os.environ.get("WANDB_RUN_ENTITY")
+
+
+def _resolve_wandb_registry_entity(
+  wandb_registry_entity: str | None,
+  run_entity: str | None,
+) -> str | None:
+  """Return the W&B entity used for registry linking.
+
+  Preference order:
+  1. Explicit CLI flag
+  2. WANDB_REGISTRY_ENTITY
+  3. WANDB_ENTITY (kept as the default registry-scoped env var)
+  4. Resolved run entity
+  """
+  return (
+    wandb_registry_entity
+    or os.environ.get("WANDB_REGISTRY_ENTITY")
+    or os.environ.get("WANDB_ENTITY")
+    or run_entity
+  )
+
+
+def _get_registry_target_path(
+  registry_entity: str | None,
+  registry_name: str,
+  collection_name: str,
+) -> str:
+  base_path = f"wandb-registry-{registry_name}/{collection_name}"
+  if registry_entity is None:
+    return base_path
+  return f"{registry_entity}/{base_path}"
+
+
+def _upload_motion_artifact(
+  motion_npz_path: Path,
+  output_name: str,
+  wandb_project: str,
+  wandb_run_entity: str | None,
+  wandb_registry_entity: str | None,
+  motion_video_path: Path | None = None,
+) -> None:
+  import wandb
+
+  registry_name = "motions"
+  run_entity = _resolve_wandb_run_entity(wandb_run_entity)
+  run = wandb.init(project=wandb_project, entity=run_entity, name=output_name)
+  registry_entity = _resolve_wandb_registry_entity(
+    wandb_registry_entity,
+    getattr(run, "entity", None),
+  )
+  target_path = _get_registry_target_path(
+    registry_entity=registry_entity,
+    registry_name=registry_name,
+    collection_name=output_name,
+  )
+
+  print(f"[INFO]: Logging motion to wandb: {output_name}")
+  logged_artifact = run.log_artifact(
+    artifact_or_path=str(motion_npz_path),
+    name=output_name,
+    type=registry_name,
+  )
+  try:
+    linked = _link_artifact_with_retry(
+      run=run,
+      artifact=logged_artifact,
+      target_path=target_path,
+    )
+  except Exception as exc:
+    linked = False
+    print(f"[WARN]: Artifact logged but registry linking failed: {target_path}. Error: {exc}")
+
+  if linked:
+    print(f"[INFO]: Motion saved to wandb registry: {target_path}")
+  else:
+    print(f"[WARN]: Artifact logged but not linked to registry: {target_path}")
+
+  if motion_video_path is not None:
+    print("Logging video to wandb...")
+    wandb.log({"motion_video": wandb.Video(str(motion_video_path), format="mp4")})
+
+  wandb.finish()
+
+
 class MotionLoader:
   def __init__(
     self,
@@ -142,7 +257,6 @@ class MotionLoader:
     self.output_fps = output_fps
     self.input_dt = 1.0 / self.input_fps
     self.output_dt = 1.0 / self.output_fps
-    self.current_idx = 0
     self.device = device
     self.line_range = line_range
     self._load_motion()
@@ -257,50 +371,21 @@ class MotionLoader:
     )  # repeat first and last sample
     return omega
 
-  def get_next_state(
-    self,
-  ) -> tuple[
-    tuple[
-      torch.Tensor,
-      torch.Tensor,
-      torch.Tensor,
-      torch.Tensor,
-      torch.Tensor,
-      torch.Tensor,
-    ],
-    bool,
-  ]:
-    """Gets the next state of the motion."""
-    state = (
-      self.motion_base_poss[self.current_idx : self.current_idx + 1],
-      self.motion_base_rots[self.current_idx : self.current_idx + 1],
-      self.motion_base_lin_vels[self.current_idx : self.current_idx + 1],
-      self.motion_base_ang_vels[self.current_idx : self.current_idx + 1],
-      self.motion_dof_poss[self.current_idx : self.current_idx + 1],
-      self.motion_dof_vels[self.current_idx : self.current_idx + 1],
-    )
-    self.current_idx += 1
-    reset_flag = False
-    if self.current_idx >= self.output_frames:
-      self.current_idx = 0
-      reset_flag = True
-    return state, reset_flag
-
-
 def run_sim(
   sim: Simulation,
   scene: Scene,
-  joint_names,
-  input_file,
-  input_fps,
-  output_fps,
-  output_name,
-  render,
-  line_range,
+  joint_names: list[str],
+  input_file: str,
+  input_fps: float,
+  output_fps: float,
+  output_name: str,
+  render: bool,
+  line_range: tuple[int, int] | None,
   renderer: OffscreenRenderer | None = None,
   wandb_project: str = "csv_to_npz",
-  wandb_entity: str | None = None,
-):
+  wandb_run_entity: str | None = None,
+  wandb_registry_entity: str | None = None,
+) -> None:
   motion = MotionLoader(
     motion_file=input_file,
     input_fps=input_fps,
@@ -312,14 +397,12 @@ def run_sim(
   robot: Entity = scene["robot"]
   robot_joint_indexes = robot.find_joints(joint_names, preserve_order=True)[0]
 
-  
   # --------------------------------------------------------------
   # AUTO GROUND ALIGN: usa il primo frame per mettere le suole a z = 0
   # --------------------------------------------------------------
-  # Primo frame della motion interpolata
-  base_pos0 = motion.motion_base_poss[0:1].clone()   # (1, 3)
-  base_rot0 = motion.motion_base_rots[0:1].clone()   # (1, 4)
-  dof_pos0  = motion.motion_dof_poss[0:1].clone()    # (1, n_dof)
+  base_pos0 = motion.motion_base_poss[0:1].clone()
+  base_rot0 = motion.motion_base_rots[0:1].clone()
+  dof_pos0 = motion.motion_dof_poss[0:1].clone()
 
   # Scrivi stato root nel simulatore
   root_states = robot.data.default_root_state.clone()
@@ -356,9 +439,8 @@ def run_sim(
   print(f"[auto-ground-align] applying z offset {z_offset:.4f}")
 
   # Applica l'offset a tutta la traiettoria base
-  motion.motion_base_poss[:, 2]       += z_offset
+  motion.motion_base_poss[:, 2] += z_offset
   motion.motion_base_poss_input[:, 2] += z_offset
-  
 
   log: dict[str, Any] = {
     "fps": [output_fps],
@@ -369,9 +451,7 @@ def run_sim(
     "body_lin_vel_w": [],
     "body_ang_vel_w": [],
   }
-  file_saved = False
-
-  frames = []
+  frames: list[np.ndarray] = []
   scene.reset()
 
   print(f"\nStarting simulation with {motion.output_frames} frames...")
@@ -387,19 +467,14 @@ def run_sim(
     bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
   )
 
-  frame_count = 0
-  while not file_saved:
-    (
-      (
-        motion_base_pos,
-        motion_base_rot,
-        motion_base_lin_vel,
-        motion_base_ang_vel,
-        motion_dof_pos,
-        motion_dof_vel,
-      ),
-      reset_flag,
-    ) = motion.get_next_state()
+  for frame_count in range(1, motion.output_frames + 1):
+    frame_idx = frame_count - 1
+    motion_base_pos = motion.motion_base_poss[frame_idx : frame_idx + 1]
+    motion_base_rot = motion.motion_base_rots[frame_idx : frame_idx + 1]
+    motion_base_lin_vel = motion.motion_base_lin_vels[frame_idx : frame_idx + 1]
+    motion_base_ang_vel = motion.motion_base_ang_vels[frame_idx : frame_idx + 1]
+    motion_dof_pos = motion.motion_dof_poss[frame_idx : frame_idx + 1]
+    motion_dof_vel = motion.motion_dof_vels[frame_idx : frame_idx + 1]
 
     root_states = robot.data.default_root_state.clone()
     root_states[:, 0:3] = motion_base_pos
@@ -421,95 +496,63 @@ def run_sim(
       renderer.update(sim.data)
       frames.append(renderer.render())
 
-    if not file_saved:
-      log["joint_pos"].append(robot.data.joint_pos[0, :].cpu().numpy().copy())
-      log["joint_vel"].append(robot.data.joint_vel[0, :].cpu().numpy().copy())
-      log["body_pos_w"].append(robot.data.body_link_pos_w[0, :].cpu().numpy().copy())
-      log["body_quat_w"].append(robot.data.body_link_quat_w[0, :].cpu().numpy().copy())
-      log["body_lin_vel_w"].append(
-        robot.data.body_link_lin_vel_w[0, :].cpu().numpy().copy()
-      )
-      log["body_ang_vel_w"].append(
-        robot.data.body_link_ang_vel_w[0, :].cpu().numpy().copy()
-      )
+    log["joint_pos"].append(robot.data.joint_pos[0, :].cpu().numpy().copy())
+    log["joint_vel"].append(robot.data.joint_vel[0, :].cpu().numpy().copy())
+    log["body_pos_w"].append(robot.data.body_link_pos_w[0, :].cpu().numpy().copy())
+    log["body_quat_w"].append(robot.data.body_link_quat_w[0, :].cpu().numpy().copy())
+    log["body_lin_vel_w"].append(
+      robot.data.body_link_lin_vel_w[0, :].cpu().numpy().copy()
+    )
+    log["body_ang_vel_w"].append(
+      robot.data.body_link_ang_vel_w[0, :].cpu().numpy().copy()
+    )
 
-      torch.testing.assert_close(
-        robot.data.body_link_lin_vel_w[0, 0], motion_base_lin_vel[0]
-      )
-      torch.testing.assert_close(
-        robot.data.body_link_ang_vel_w[0, 0], motion_base_ang_vel[0]
-      )
+    torch.testing.assert_close(
+      robot.data.body_link_lin_vel_w[0, 0], motion_base_lin_vel[0]
+    )
+    torch.testing.assert_close(
+      robot.data.body_link_ang_vel_w[0, 0], motion_base_ang_vel[0]
+    )
 
-      frame_count += 1
-      pbar.update(1)
+    pbar.update(1)
+    if frame_count % 100 == 0:
+      elapsed_time = frame_count / output_fps
+      pbar.set_description(f"Processing frames (t={elapsed_time:.1f}s)")
 
-      if frame_count % 100 == 0:  # Update every 100 frames to avoid spam
-        elapsed_time = frame_count / output_fps
-        pbar.set_description(f"Processing frames (t={elapsed_time:.1f}s)")
+  pbar.close()
 
-      if reset_flag and not file_saved:
-        file_saved = True
-        pbar.close()
+  print("\nStacking arrays and saving data...")
+  for k in (
+    "joint_pos",
+    "joint_vel",
+    "body_pos_w",
+    "body_quat_w",
+    "body_lin_vel_w",
+    "body_ang_vel_w",
+  ):
+    log[k] = np.stack(log[k], axis=0)
 
-        print("\nStacking arrays and saving data...")
-        for k in (
-          "joint_pos",
-          "joint_vel",
-          "body_pos_w",
-          "body_quat_w",
-          "body_lin_vel_w",
-          "body_ang_vel_w",
-        ):
-          log[k] = np.stack(log[k], axis=0)
+  print(f"Saving to {MOTION_NPZ_PATH}...")
+  np.savez(MOTION_NPZ_PATH, **log)  # type: ignore[arg-type]
 
-        # Keep artifact name unique (output_name), but store a standard filename
-        # inside artifacts for consistency with csv_to_npz.py.
-        motion_npz_path = Path("/tmp") / "motion.npz"
-        print(f"Saving to {motion_npz_path}...")
-        np.savez(motion_npz_path, **log)  # type: ignore[arg-type]
+  motion_video_path: Path | None = None
+  if render:
+    from moviepy import ImageSequenceClip
 
-        print("Uploading to Weights & Biases...")
-        import wandb
+    print("Creating video...")
+    motion_video_path = Path("/tmp") / f"{output_name}.mp4"
+    clip = ImageSequenceClip(frames, fps=output_fps)
+    clip.write_videofile(str(motion_video_path))
 
-        COLLECTION = output_name
-        run = wandb.init(project=wandb_project, entity=wandb_entity, name=COLLECTION)
-        print(f"[INFO]: Logging motion to wandb: {COLLECTION}")
-        REGISTRY = "motions"
-        logged_artifact = run.log_artifact(
-          artifact_or_path=str(motion_npz_path), name=COLLECTION, type=REGISTRY
-        )
-        try:
-          linked = _link_artifact_with_retry(
-            run=run,
-            artifact=logged_artifact,
-            target_path=f"wandb-registry-{REGISTRY}/{COLLECTION}",
-          )
-        except Exception as exc:
-          linked = False
-          print(
-            "[WARN]: Artifact logged but registry linking failed: "
-            f"{REGISTRY}/{COLLECTION}. Error: {exc}"
-          )
-
-        if linked:
-          print(f"[INFO]: Motion saved to wandb registry: {REGISTRY}/{COLLECTION}")
-        else:
-          print(
-            f"[WARN]: Artifact logged but not linked to registry: {REGISTRY}/{COLLECTION}"
-          )
-
-        if render:
-          from moviepy import ImageSequenceClip
-
-          print("Creating video...")
-          clip = ImageSequenceClip(frames, fps=output_fps)
-          motion_video_path = Path("/tmp") / f"{output_name}.mp4"
-          clip.write_videofile(str(motion_video_path))
-
-          print("Logging video to wandb...")
-          wandb.log({"motion_video": wandb.Video(str(motion_video_path), format="mp4")})
-
-        wandb.finish()
+  print("Uploading to Weights & Biases...")
+  _upload_motion_artifact(
+    motion_npz_path=MOTION_NPZ_PATH,
+    output_name=output_name,
+    wandb_project=wandb_project,
+    wandb_run_entity=wandb_run_entity,
+    wandb_registry_entity=wandb_registry_entity,
+    motion_video_path=motion_video_path,
+  )
 
 
 def _run_single_csv(
@@ -521,7 +564,8 @@ def _run_single_csv(
   render: bool,
   line_range: tuple[int, int] | None,
   wandb_project: str,
-  wandb_entity: str | None,
+  wandb_run_entity: str | None,
+  wandb_registry_entity: str | None,
 ) -> None:
   sim_cfg = SimulationCfg()
   sim_cfg.mujoco.timestep = 1.0 / output_fps
@@ -552,37 +596,7 @@ def _run_single_csv(
   run_sim(
     sim=sim,
     scene=scene,
-    joint_names=[
-      # 1–6: gamba sinistra
-      "Left_Hip_Pitch",
-      "Left_Hip_Roll",
-      "Left_Hip_Yaw",
-      "Left_Knee_Pitch",
-      "Left_Ankle_Pitch",
-      "Left_Ankle_Roll",
-      # 7–12: gamba destra
-      "Right_Hip_Pitch",
-      "Right_Hip_Roll",
-      "Right_Hip_Yaw",
-      "Right_Knee_Pitch",
-      "Right_Ankle_Pitch",
-      "Right_Ankle_Roll",
-      # 13: bacino
-      "Waist",
-      # 14–17: braccio sinistro
-      "Left_Shoulder_Pitch",
-      "Left_Shoulder_Roll",
-      "Left_Elbow_Pitch",
-      "Left_Elbow_Yaw",
-      # 18–21: braccio destro
-      "Right_Shoulder_Pitch",
-      "Right_Shoulder_Roll",
-      "Right_Elbow_Pitch",
-      "Right_Elbow_Yaw",
-      # 22–23: testa
-      "AAHead_yaw",
-      "Head_pitch",
-    ],
+    joint_names=TRACKING_JOINT_NAMES,
     input_fps=input_fps,
     input_file=input_file,
     output_fps=output_fps,
@@ -591,7 +605,8 @@ def _run_single_csv(
     line_range=line_range,
     renderer=renderer,
     wandb_project=wandb_project,
-    wandb_entity=wandb_entity,
+    wandb_run_entity=wandb_run_entity,
+    wandb_registry_entity=wandb_registry_entity,
   )
 
 
@@ -605,7 +620,8 @@ def main(
   render: bool = True,
   line_range: tuple[int, int] | None = None,
   wandb_project: str = "csv_to_npz",
-  wandb_entity: str | None = None,
+  wandb_run_entity: str | None = None,
+  wandb_registry_entity: str | None = None,
 ):
   """Replay motion from CSV file and output to npz file.
 
@@ -620,7 +636,12 @@ def main(
       Default is True; disable with `--no-render`.
     line_range: Range of lines to process from the CSV file.
     wandb_project: W&B project name used for upload.
-    wandb_entity: Optional W&B entity. If unset, WANDB_ENTITY env var is used.
+    wandb_run_entity: Optional W&B entity used to create runs.
+      Defaults to WANDB_RUN_ENTITY; if unset, wandb uses its configured default/team
+      entity.
+    wandb_registry_entity: Optional W&B entity used to link registry artifacts.
+      Defaults to WANDB_REGISTRY_ENTITY, then WANDB_ENTITY, then the resolved run
+      entity.
   """
   if (input_file is None) == (root_dir is None):
     raise ValueError("Provide exactly one of `input_file` or `root_dir`.")
@@ -652,7 +673,8 @@ def main(
         render=render,
         line_range=None,
         wandb_project=wandb_project,
-        wandb_entity=wandb_entity,
+        wandb_run_entity=wandb_run_entity,
+        wandb_registry_entity=wandb_registry_entity,
       )
       uploaded += 1
 
@@ -676,7 +698,8 @@ def main(
     render=render,
     line_range=line_range,
     wandb_project=wandb_project,
-    wandb_entity=wandb_entity,
+    wandb_run_entity=wandb_run_entity,
+    wandb_registry_entity=wandb_registry_entity,
   )
 
 

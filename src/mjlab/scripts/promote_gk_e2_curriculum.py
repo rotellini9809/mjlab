@@ -70,18 +70,21 @@ class PromoteConfig:
 class E2EvalMetrics:
   total_episodes: int
   saves: int
+  no_goals: int
   falls: int
   goals: int
   timeouts: int
   other: int
-  save_rate: float
+  resolved_save_rate: float
+  no_goal_rate: float
   fall_rate: float
 
 
 def _gpu_args(gpu_ids: tuple[int, ...]) -> list[str]:
   if len(gpu_ids) == 0:
     return ["--gpu-ids", "None"]
-  return ["--gpu-ids", *(str(gpu_id) for gpu_id in gpu_ids)]
+  gpu_ids_arg = ", ".join(str(gpu_id) for gpu_id in gpu_ids)
+  return ["--gpu-ids", f"[{gpu_ids_arg}]"]
 
 
 def _build_train_command(
@@ -174,6 +177,7 @@ def _evaluate_checkpoint(
     obs = vec_env.get_observations()
     completed = 0
     saves = 0
+    no_goals = 0
     falls = 0
     goals = 0
     timeouts = 0
@@ -204,6 +208,8 @@ def _evaluate_checkpoint(
         resolved = bool(resolved_term[env_idx].item())
         timed_out = bool(time_outs[env_idx].item())
 
+        if not goal:
+          no_goals += 1
         if fall:
           falls += 1
         if goal:
@@ -221,11 +227,13 @@ def _evaluate_checkpoint(
     return E2EvalMetrics(
       total_episodes=completed,
       saves=saves,
+      no_goals=no_goals,
       falls=falls,
       goals=goals,
       timeouts=timeouts,
       other=other,
-      save_rate=float(saves) / float(denom),
+      resolved_save_rate=float(saves) / float(denom),
+      no_goal_rate=float(no_goals) / float(denom),
       fall_rate=float(falls) / float(denom),
     )
   finally:
@@ -344,11 +352,13 @@ def _run_full_curriculum(cfg: PromoteConfig) -> None:
     print("\nValidation:")
     print(f"  episodes : {metrics.total_episodes}")
     print(f"  saves    : {metrics.saves}")
+    print(f"  no_goals : {metrics.no_goals}")
     print(f"  falls    : {metrics.falls}")
     print(f"  goals    : {metrics.goals}")
     print(f"  timeouts : {metrics.timeouts}")
     print(f"  other    : {metrics.other}")
-    print(f"  save_rate: {metrics.save_rate:.3f}")
+    print(f"  resolved_save_rate: {metrics.resolved_save_rate:.3f}")
+    print(f"  no_goal_rate     : {metrics.no_goal_rate:.3f}")
     print(f"  fall_rate: {metrics.fall_rate:.3f}")
 
     if current_stage >= final_stage:
@@ -360,7 +370,7 @@ def _run_full_curriculum(cfg: PromoteConfig) -> None:
       max_fall_rate=cfg.max_fall_rate,
     )
     decision = manager.maybe_promote(
-      save_rate=metrics.save_rate,
+      save_rate=metrics.no_goal_rate,
       fall_rate=metrics.fall_rate,
     )
 
