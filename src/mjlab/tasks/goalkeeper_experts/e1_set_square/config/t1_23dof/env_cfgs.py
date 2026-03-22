@@ -251,6 +251,10 @@ def _extract_saved_e1_curriculum_stage(env_yaml_path: Path) -> int | None:
   with env_yaml_path.open("r", encoding="utf-8") as handle:
     env_data = yaml.safe_load(handle) or {}
 
+  return _extract_e1_curriculum_stage_from_env_data(env_data)
+
+
+def _extract_e1_curriculum_stage_from_env_data(env_data: object) -> int | None:
   if not isinstance(env_data, dict):
     return None
   commands = env_data.get("commands")
@@ -269,6 +273,21 @@ def _extract_saved_e1_curriculum_stage(env_yaml_path: Path) -> int | None:
   if not (1 <= stage_index <= len(E1_RESET_STAGE_CFGS)):
     return None
   return stage_index
+
+
+def _extract_saved_e1_curriculum_stage_from_wandb_config(
+  config_yaml_path: Path,
+) -> int | None:
+  with config_yaml_path.open("r", encoding="utf-8") as handle:
+    config_data = yaml.safe_load(handle) or {}
+
+  if not isinstance(config_data, dict):
+    return None
+  env_cfg = config_data.get("env_cfg")
+  if not isinstance(env_cfg, dict):
+    return None
+  env_cfg_value = env_cfg.get("value")
+  return _extract_e1_curriculum_stage_from_env_data(env_cfg_value)
 
 
 def _resolve_saved_e1_play_curriculum_stage() -> int | None:
@@ -293,6 +312,20 @@ def _resolve_saved_e1_play_curriculum_stage() -> int | None:
     return None
 
   log_root = (Path("logs") / "rsl_rl" / E1_EXPERIMENT_NAME).resolve()
+  config_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "config.yaml"
+  )
+  if config_yaml_path is not None:
+    stage_index = _extract_saved_e1_curriculum_stage_from_wandb_config(
+      config_yaml_path
+    )
+    if stage_index is not None:
+      return stage_index
+    print(
+      "[WARN]: E1 curriculum stage was not found in the W&B config; "
+      "falling back to the saved env config if available."
+    )
+
   env_yaml_path = _try_download_wandb_run_file(
     log_root, wandb_run_path, "params/env.yaml"
   )
@@ -604,11 +637,13 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       terms=actor_terms,
       concatenate_terms=True,
       enable_corruption=False,
+      nan_policy="warn",
     ),
     "critic": ObservationGroupCfg(
       terms=critic_terms,
       concatenate_terms=True,
       enable_corruption=False,
+      nan_policy="warn",
     ),
   }
 
@@ -777,6 +812,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
 
   cfg.terminations = {
     "time_out": TerminationTermCfg(func=mdp.time_out, time_out=True),
+    "nan_detection": TerminationTermCfg(func=mdp.nan_detection),
     "fallen": TerminationTermCfg(
       func=mdp.FallTermination,
       params={

@@ -565,17 +565,17 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
   cfg.rewards = {
     "goal_conceded": RewardTermCfg(
       func=mdp.goal_conceded_indicator,
-      weight=-300.0,
+      weight=-500.0,
       params={"command_name": "stand_block"},
     ),
     "action_rate_l2": RewardTermCfg(
       func=mdp.action_rate_l2,
-      weight=-0.008,
+      weight=-0.005,
       params={"command_name": "stand_block"},
     ),
     "save_success": RewardTermCfg(
       func=mdp.save_success_reward,
-      weight=120.0,
+      weight=180.0,
       params={
         "command_name": "stand_block",
         "resolution_term_name": "contact_resolution_window",
@@ -584,7 +584,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "deflect_away": RewardTermCfg(
       func=mdp.deflect_away_from_goal_reward,
-      weight=40.0,
+      weight=12.0,
       params={
         "command_name": "stand_block",
         "only_on_first_contact": True,
@@ -592,17 +592,17 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "clearance_quality": RewardTermCfg(
       func=mdp.ClearanceQualityReward,
-      weight=20.0,
+      weight=8.0,
       params={"command_name": "stand_block"},
     ),
     "low_height_soft_penalty": RewardTermCfg(
       func=mdp.low_height_soft_penalty,
-      weight=-1.6,
+      weight=-3.0,
       params={"h_soft": 0.48},
     ),
     "joint_pos_limits": RewardTermCfg(
       func=mdp.joint_pos_limits,
-      weight=-0.5,
+      weight=-0.35,
       params={
         "asset_cfg": SceneEntityCfg("robot", joint_names=(".*",)),
         "command_name": "stand_block",
@@ -610,7 +610,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "upright": RewardTermCfg(
       func=mdp.upright_stability_reward,
-      weight=1.0,
+      weight=2.0,
       params={
         "roll_band": UPRIGHT_ROLL_BAND,
         "roll_sigma": UPRIGHT_ROLL_SIGMA,
@@ -621,12 +621,12 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "outside_area": RewardTermCfg(
       func=mdp.outside_area_penalty,
-      weight=-4.0,
+      weight=-10.0,
       params={"command_name": "stand_block"},
     ),
     "fallen": RewardTermCfg(
       func=mdp.fallen_indicator,
-      weight=-60.0,
+      weight=-90.0,
       params={
         "min_height": 0.32,
         "max_tilt": 1.25,
@@ -636,6 +636,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
 
   cfg.terminations = {
     "time_out": TerminationTermCfg(func=mdp.time_out, time_out=True),
+    "nan_detection": TerminationTermCfg(func=mdp.nan_detection),
     "goal_conceded": TerminationTermCfg(
       func=mdp.goal_conceded_termination,
       params={"command_name": "stand_block"},
