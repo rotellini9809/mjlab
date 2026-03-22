@@ -725,7 +725,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_center_move_toward_home": RewardTermCfg(
       func=mdp.stance_center_move_toward_home_reward,
-      weight=0.15,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "r_deadband": HOME_POINT_BAND_RADIUS,

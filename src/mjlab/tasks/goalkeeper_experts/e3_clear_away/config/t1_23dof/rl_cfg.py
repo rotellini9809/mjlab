@@ -39,7 +39,7 @@ def booster_t1_23_gk_expert_clear_away_ppo_runner_cfg() -> RslRlOnPolicyRunnerCf
       max_grad_norm=1.0,
     ),
     experiment_name="gk_expert_clear_away_booster_t1_23",
-    wandb_project="goalkeeper_experts",
+    wandb_project="e3_goalkeeper_expert",
     save_interval=50,
     num_steps_per_env=32,
     max_iterations=30_000,
