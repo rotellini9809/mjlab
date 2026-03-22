@@ -785,8 +785,12 @@ class ClearanceQualityReward:
 
     log = _get_log_dict(env)
     if log is not None:
+      exit_time_mean = torch.zeros((), device=env.device, dtype=torch.float)
+      if torch.any(exit_event):
+        exit_time_mean = torch.mean(t_clear[exit_event])
       log["Metrics/e2_ball_in_danger_mean"] = torch.mean(in_danger_now.float())
       log["Metrics/e2_clearance_exit_event_mean"] = torch.mean(exit_event.float())
+      log["Metrics/e2_clearance_exit_time_mean"] = exit_time_mean
       log["Metrics/e2_clearance_quality_raw_mean"] = torch.mean(raw)
 
     return raw

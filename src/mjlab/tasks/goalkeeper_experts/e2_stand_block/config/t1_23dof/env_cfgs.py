@@ -584,7 +584,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "deflect_away": RewardTermCfg(
       func=mdp.deflect_away_from_goal_reward,
-      weight=12.0,
+      weight=0.0,
       params={
         "command_name": "stand_block",
         "only_on_first_contact": True,
@@ -593,7 +593,10 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     "clearance_quality": RewardTermCfg(
       func=mdp.ClearanceQualityReward,
       weight=8.0,
-      params={"command_name": "stand_block"},
+      params={
+        "command_name": "stand_block",
+        "clip_away_speed": 2.5,
+      },
     ),
     "low_height_soft_penalty": RewardTermCfg(
       func=mdp.low_height_soft_penalty,

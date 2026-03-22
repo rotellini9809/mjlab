@@ -729,7 +729,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       params={
         "command_name": "set_square",
         "r_deadband": HOME_POINT_BAND_RADIUS,
-        "v_cap": 0.6,
+        "v_cap": 0.3,
         "apply_standing_gate": True,
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
@@ -779,7 +779,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "yaw_align_waist": RewardTermCfg(
       func=mdp.yaw_alignment_waist_reward,
-      weight=0.1,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "k": 2.5,
