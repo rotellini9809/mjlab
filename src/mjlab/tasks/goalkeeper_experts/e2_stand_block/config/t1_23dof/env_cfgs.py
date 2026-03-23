@@ -424,10 +424,6 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     resolved_preset_name = get_e2_launcher_curriculum_preset_name(
       launcher_curriculum_stage
     )
-  if resolved_preset_name is None and E2_RESET_CURRICULUM_STAGE:
-    resolved_preset_name = get_e2_launcher_curriculum_preset_name(
-      int(E2_RESET_CURRICULUM_STAGE)
-    )
   if resolved_preset_name is None and play:
     resolved_preset_name = _resolve_saved_e2_play_launcher_preset_name()
     if resolved_preset_name is not None:
@@ -435,6 +431,10 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         f"[INFO]: Auto-selected E2 play launcher preset from saved run: "
         f"{resolved_preset_name}"
       )
+  if resolved_preset_name is None and E2_RESET_CURRICULUM_STAGE:
+    resolved_preset_name = get_e2_launcher_curriculum_preset_name(
+      int(E2_RESET_CURRICULUM_STAGE)
+    )
   if resolved_preset_name is None:
     resolved_preset_name = E2_DEFAULT_LAUNCHER_PRESET_NAME
 

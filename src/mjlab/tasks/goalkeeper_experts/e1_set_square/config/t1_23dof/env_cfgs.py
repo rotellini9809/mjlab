@@ -421,14 +421,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
 ) -> ManagerBasedRlEnvCfg:
   cfg = make_tracking_env_cfg()
   curriculum_stage = E1_DEFAULT_RESET_CURRICULUM_STAGE
-  if E1_RESET_CURRICULUM_STAGE_ENV:
-    env_stage = _normalize_e1_curriculum_stage(int(E1_RESET_CURRICULUM_STAGE_ENV))
-    if env_stage is None:
-      raise ValueError(
-        f"MJLAB_E1_RESET_CURRICULUM_STAGE must be within [1, {len(E1_RESET_STAGE_CFGS)}]."
-      )
-    curriculum_stage = env_stage
-  elif play:
+  if play:
     saved_stage = _resolve_saved_e1_play_curriculum_stage()
     if saved_stage is not None:
       curriculum_stage = saved_stage
@@ -436,6 +429,20 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
         f"[INFO]: Auto-selected E1 play curriculum stage from saved run: "
         f"{curriculum_stage}"
       )
+    elif E1_RESET_CURRICULUM_STAGE_ENV:
+      env_stage = _normalize_e1_curriculum_stage(int(E1_RESET_CURRICULUM_STAGE_ENV))
+      if env_stage is None:
+        raise ValueError(
+          f"MJLAB_E1_RESET_CURRICULUM_STAGE must be within [1, {len(E1_RESET_STAGE_CFGS)}]."
+        )
+      curriculum_stage = env_stage
+  elif E1_RESET_CURRICULUM_STAGE_ENV:
+    env_stage = _normalize_e1_curriculum_stage(int(E1_RESET_CURRICULUM_STAGE_ENV))
+    if env_stage is None:
+      raise ValueError(
+        f"MJLAB_E1_RESET_CURRICULUM_STAGE must be within [1, {len(E1_RESET_STAGE_CFGS)}]."
+      )
+    curriculum_stage = env_stage
 
   robot_cfg = get_t1_23_robot_cfg()
   # Keep default keyframe pose but place initial robot near goal.
@@ -758,13 +765,24 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_width_band_pen": RewardTermCfg(
       func=mdp.stance_width_band_penalty,
-      weight=-0.25,
+      weight=-0.3,
       params={
         "command_name": "set_square",
-        "w_min": 0.16,
-        "w_max": 0.4,
+        "w_min": 0.23,
+        "w_max": 0.45,
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
+    "pelvis_between_feet_ready": RewardTermCfg(
+      func=mdp.pelvis_between_feet_ready_reward,
+      weight=0.15,
+      params={
+        "command_name": "set_square",
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+        "waist_body_name": WAIST_BODY_NAME_REGEX,
+        "apply_standing_gate": True,
       },
     ),
     "upright": RewardTermCfg(

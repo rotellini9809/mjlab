@@ -1928,6 +1928,76 @@ def stance_width_band_penalty(
   return _apply_reward_active_mask(penalty, env, command_name)
 
 
+def pelvis_between_feet_ready_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  waist_body_name: str = r"(?i)^waist$",
+  lateral_sigma: float = 0.09,
+  longitudinal_sigma: float = 0.16,
+  lateral_weight: float = 1.0,
+  longitudinal_weight: float = 0.35,
+  apply_standing_gate: bool = False,
+  eps: float = 1.0e-6,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  center_xy, left_xy, right_xy = _stance_center_xy(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+  waist_idx = _resolve_single_body_index_cached(env, robot, waist_body_name)
+  pelvis_xy = robot.data.body_link_pos_w[:, waist_idx, :2]
+
+  support_vec_xy = right_xy - left_xy
+  support_width = torch.linalg.norm(support_vec_xy, dim=1, keepdim=True)
+  support_dir_xy = support_vec_xy / support_width.clamp_min(float(eps))
+  support_normal_xy = torch.stack(
+    (-support_dir_xy[:, 1], support_dir_xy[:, 0]),
+    dim=1,
+  )
+
+  pelvis_offset_xy = pelvis_xy - center_xy
+  longitudinal_offset = torch.sum(pelvis_offset_xy * support_dir_xy, dim=1)
+  lateral_offset = torch.sum(pelvis_offset_xy * support_normal_xy, dim=1)
+
+  lat_term = torch.square(lateral_offset / max(float(lateral_sigma), float(eps)))
+  long_term = torch.square(
+    longitudinal_offset / max(float(longitudinal_sigma), float(eps))
+  )
+  err = float(lateral_weight) * lat_term + float(longitudinal_weight) * long_term
+  raw = torch.exp(-err)
+
+  reward = _apply_standing_gate_if_enabled(
+    raw,
+    env,
+    asset_cfg,
+    apply_standing_gate,
+  )
+  reward = reward * _alignment_home_ramp(
+    env,
+    command_name,
+    asset_cfg,
+    left_foot_body_name=left_foot_body_name,
+    right_foot_body_name=right_foot_body_name,
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_pelvis_between_feet_ready_mean"] = torch.mean(reward)
+    log["Metrics/e1_pelvis_between_feet_lateral_offset_mean"] = torch.mean(
+      torch.abs(lateral_offset)
+    )
+    log["Metrics/e1_pelvis_between_feet_longitudinal_offset_mean"] = torch.mean(
+      torch.abs(longitudinal_offset)
+    )
+
+  return _apply_reward_active_mask(reward, env, command_name)
+
+
 def body_ang_vel_penalty(
   env,
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
