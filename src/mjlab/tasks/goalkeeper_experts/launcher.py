@@ -328,7 +328,7 @@ class GoalkeeperLauncherCurriculumManager:
 
   current_stage_index: int = 1
   stage_preset_names: tuple[str, ...] = E2_LAUNCHER_CURRICULUM_PRESET_NAMES
-  promotion_save_rate_thresholds: tuple[float, ...] = (0.85, 0.80, 0.75, 0.70)
+  promotion_save_rate_thresholds: tuple[float, ...] = (0.85, 0.80, 0.70, 0.65)
   max_fall_rate: float = 0.10
 
   def __post_init__(self) -> None:

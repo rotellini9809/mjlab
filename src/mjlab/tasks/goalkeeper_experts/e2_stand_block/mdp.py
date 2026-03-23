@@ -723,14 +723,10 @@ def joint_pos_limits(
 class ClearanceQualityReward:
   def __init__(self, cfg, env):
     del cfg
-    self._prev_in_danger = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
-    self._outside_counter = torch.zeros(env.num_envs, device=env.device, dtype=torch.long)
-    self._rewarded = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+    self._exit_latch = _ConfirmedDangerExitLatchState(env)
 
   def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
-    self._prev_in_danger[env_ids] = False
-    self._outside_counter[env_ids] = 0
-    self._rewarded[env_ids] = False
+    self._exit_latch.reset(env_ids)
 
   def __call__(
     self,
@@ -741,23 +737,12 @@ class ClearanceQualityReward:
     clip_away_speed: float = 4.0,
     outside_steps_required: int = 2,
   ) -> torch.Tensor:
-    in_danger_now = _ball_in_danger_area_mask_from_command(env, command_name)
-    t_contact = _contact_time_buffer_from_termination(env, resolution_term_name)
-    has_contact = t_contact >= 0.0
-
-    continue_outside = (~in_danger_now) & (self._prev_in_danger | (self._outside_counter > 0))
-    self._outside_counter = torch.where(
-      has_contact & continue_outside,
-      self._outside_counter + 1,
-      torch.zeros_like(self._outside_counter),
+    in_danger_now, t_contact, exit_event, _post_exit_active = self._exit_latch.update(
+      env,
+      command_name=command_name,
+      resolution_term_name=resolution_term_name,
+      outside_steps_required=outside_steps_required,
     )
-
-    exit_event = (
-      has_contact
-      & (~self._rewarded)
-      & (self._outside_counter == int(outside_steps_required))
-    )
-
     cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
     ball: Entity = env.scene[cmd.cfg.ball_entity_name]
     vx = ball.data.root_link_lin_vel_w[:, 0]
@@ -780,8 +765,6 @@ class ClearanceQualityReward:
     )
 
     raw = exit_event.float() * time_factor * vel_factor
-    self._rewarded |= exit_event
-    self._prev_in_danger = in_danger_now & (~self._rewarded)
 
     log = _get_log_dict(env)
     if log is not None:
@@ -794,6 +777,107 @@ class ClearanceQualityReward:
       log["Metrics/e2_clearance_quality_raw_mean"] = torch.mean(raw)
 
     return raw
+
+
+class _ConfirmedDangerExitLatchState:
+  def __init__(self, env):
+    self._prev_in_danger = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+    self._outside_counter = torch.zeros(env.num_envs, device=env.device, dtype=torch.long)
+    self._post_exit_active = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    self._prev_in_danger[env_ids] = False
+    self._outside_counter[env_ids] = 0
+    self._post_exit_active[env_ids] = False
+
+  def update(
+    self,
+    env,
+    *,
+    command_name: str,
+    resolution_term_name: str,
+    outside_steps_required: int,
+  ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    in_danger_now = _ball_in_danger_area_mask_from_command(env, command_name)
+    t_contact = _contact_time_buffer_from_termination(env, resolution_term_name)
+    has_contact = t_contact >= 0.0
+
+    continue_outside = (~in_danger_now) & (
+      self._prev_in_danger | (self._outside_counter > 0)
+    )
+    self._outside_counter = torch.where(
+      has_contact & continue_outside,
+      self._outside_counter + 1,
+      torch.zeros_like(self._outside_counter),
+    )
+
+    exit_event = (
+      has_contact
+      & (~self._post_exit_active)
+      & (self._outside_counter == int(outside_steps_required))
+    )
+    self._post_exit_active |= exit_event
+    self._prev_in_danger = in_danger_now & (~self._post_exit_active)
+    return in_danger_now, t_contact, exit_event, self._post_exit_active
+
+
+class StabilizeAfterExitReward:
+  def __init__(self, cfg, env):
+    del cfg
+    self._exit_latch = _ConfirmedDangerExitLatchState(env)
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    self._exit_latch.reset(env_ids)
+
+  def __call__(
+    self,
+    env,
+    command_name: str = "stand_block",
+    resolution_term_name: str = "contact_resolution_window",
+    outside_steps_required: int = 2,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    roll_band: float = 0.1,
+    roll_sigma: float = 0.12,
+    pitch_target: float = 0.25,
+    pitch_band: float = 0.20,
+    pitch_sigma: float = 0.30,
+  ) -> torch.Tensor:
+    _in_danger_now, _t_contact, _exit_event, post_exit_active = self._exit_latch.update(
+      env,
+      command_name=command_name,
+      resolution_term_name=resolution_term_name,
+      outside_steps_required=outside_steps_required,
+    )
+    robot: Entity = env.scene[asset_cfg.name]
+    upright_score, _, _, _, _ = _posture_score_components(
+      robot.data.projected_gravity_b,
+      roll_band=roll_band,
+      roll_sigma=roll_sigma,
+      pitch_target=pitch_target,
+      pitch_band=pitch_band,
+      pitch_sigma=pitch_sigma,
+    )
+    base_height = robot.data.root_link_pos_w[:, 2]
+    height_score = torch.clamp(
+      (base_height - 0.40) / (0.58 - 0.40),
+      min=0.0,
+      max=1.0,
+    )
+    lin_vel_xy = robot.data.root_link_lin_vel_w[:, :2]
+    lin_speed_pen = torch.sum(torch.square(lin_vel_xy), dim=1)
+    ang_vel = robot.data.root_link_ang_vel_w
+    ang_speed_pen = (
+      torch.square(ang_vel[:, 0])
+      + torch.square(ang_vel[:, 1])
+      + 1.5 * torch.square(ang_vel[:, 2])
+    )
+    stabilize_raw = (
+      0.6 * upright_score
+      + 0.4 * height_score
+      - 0.15 * lin_speed_pen
+      - 0.10 * ang_speed_pen
+    )
+    return post_exit_active.to(stabilize_raw.dtype) * stabilize_raw
 
 
 def save_success_reward(

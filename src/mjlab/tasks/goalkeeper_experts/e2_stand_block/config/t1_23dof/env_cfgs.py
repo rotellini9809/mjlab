@@ -598,6 +598,11 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         "clip_away_speed": 2.5,
       },
     ),
+    "stabilize_after_exit": RewardTermCfg(
+      func=mdp.StabilizeAfterExitReward,
+      weight=2.5,
+      params={"command_name": "stand_block"},
+    ),
     "low_height_soft_penalty": RewardTermCfg(
       func=mdp.low_height_soft_penalty,
       weight=-3.0,

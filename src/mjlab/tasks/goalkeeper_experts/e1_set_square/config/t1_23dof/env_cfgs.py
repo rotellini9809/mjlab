@@ -107,7 +107,7 @@ P_READY = 0.5
 E1_RESET_CURRICULUM_STAGE_ENV = os.environ.get(
   "MJLAB_E1_RESET_CURRICULUM_STAGE", ""
 ).strip()
-E1_DEFAULT_RESET_CURRICULUM_STAGE = 4
+E1_DEFAULT_RESET_CURRICULUM_STAGE = 3
 # Goalkeeper nominal facing in field coordinates: look out into the field, not at the sampled ball.
 KEEPER_NOMINAL_FACING_YAW = math.pi
 
@@ -129,14 +129,6 @@ E1_RESET_STAGE_CFGS = (
     target_forward_range=(3.5, 7.5),
     target_lateral_range=mdp.IntervalUnionCfg(intervals=((-2.0, -0.30), (0.30, 2.0))),
     launcher_mode_probs=(0.8, 0.2, 0.0),
-  ),
-  mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.15, KEEPER_HOME_POINT_X + 0.15),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
-    spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
-    target_forward_range=(3.0, 9.0),
-    target_lateral_range=mdp.IntervalUnionCfg(intervals=((-3.0, -0.15), (0.15, 3.0))),
-    launcher_mode_probs=(0.6, 0.3, 0.1),
   ),
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.15, KEEPER_HOME_POINT_X + 0.15),
@@ -254,6 +246,12 @@ def _extract_saved_e1_curriculum_stage(env_yaml_path: Path) -> int | None:
   return _extract_e1_curriculum_stage_from_env_data(env_data)
 
 
+def _normalize_e1_curriculum_stage(stage_index: int) -> int | None:
+  if 1 <= stage_index <= len(E1_RESET_STAGE_CFGS):
+    return stage_index
+  return None
+
+
 def _extract_e1_curriculum_stage_from_env_data(env_data: object) -> int | None:
   if not isinstance(env_data, dict):
     return None
@@ -270,9 +268,7 @@ def _extract_e1_curriculum_stage_from_env_data(env_data: object) -> int | None:
   except (TypeError, ValueError):
     return None
 
-  if not (1 <= stage_index <= len(E1_RESET_STAGE_CFGS)):
-    return None
-  return stage_index
+  return _normalize_e1_curriculum_stage(stage_index)
 
 
 def _extract_saved_e1_curriculum_stage_from_wandb_config(
@@ -426,7 +422,12 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   cfg = make_tracking_env_cfg()
   curriculum_stage = E1_DEFAULT_RESET_CURRICULUM_STAGE
   if E1_RESET_CURRICULUM_STAGE_ENV:
-    curriculum_stage = int(E1_RESET_CURRICULUM_STAGE_ENV)
+    env_stage = _normalize_e1_curriculum_stage(int(E1_RESET_CURRICULUM_STAGE_ENV))
+    if env_stage is None:
+      raise ValueError(
+        f"MJLAB_E1_RESET_CURRICULUM_STAGE must be within [1, {len(E1_RESET_STAGE_CFGS)}]."
+      )
+    curriculum_stage = env_stage
   elif play:
     saved_stage = _resolve_saved_e1_play_curriculum_stage()
     if saved_stage is not None:
