@@ -734,6 +734,7 @@ class ClearanceQualityReward:
     command_name: str = "stand_block",
     resolution_term_name: str = "contact_resolution_window",
     t_ref: float = 1.5,
+    t_clear_clip: float = 0.5,
     clip_away_speed: float = 4.0,
     outside_steps_required: int = 2,
   ) -> torch.Tensor:
@@ -753,8 +754,9 @@ class ClearanceQualityReward:
 
     time_s = env.episode_length_buf.to(torch.float) * env.step_dt
     t_clear = torch.clamp(time_s - t_contact, min=0.0)
+    t_clear_reward = torch.clamp(t_clear, max=float(t_clear_clip))
     time_factor = torch.clamp(
-      1.0 - t_clear / max(float(t_ref), 1.0e-6),
+      1.0 - t_clear_reward / max(float(t_ref), 1.0e-6),
       min=0.0,
       max=1.0,
     )
@@ -958,6 +960,17 @@ def upright_stability_reward(
     log["Metrics/e2_sagittal_posture_component_mean"] = torch.mean(sagittal)
 
   return posture_score
+
+
+def body_ang_vel_penalty(
+  env,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  command_name: str = "stand_block",
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  ang_vel_xy = robot.data.root_link_ang_vel_w[:, :2]
+  penalty = torch.sum(torch.square(ang_vel_xy), dim=1)
+  return _apply_reward_active_mask(penalty, env, command_name)
 
 
 def low_height_soft_penalty(

@@ -141,6 +141,10 @@ def _compute_waist_yaw_error(
   return _yaw_error_from_heading(waist_pos_w_xy, waist_yaw, target_pos_w)
 
 
+def _wrap_angle_pi(angle: torch.Tensor) -> torch.Tensor:
+  return torch.atan2(torch.sin(angle), torch.cos(angle))
+
+
 def _outside_area_violation(
   pos_xy: torch.Tensor,
   bounds: tuple[float, float, float, float],
@@ -1495,6 +1499,73 @@ def yaw_alignment_waist_reward(
   return _apply_reward_active_mask(reward, env, command_name)
 
 
+def waist_ready_twist_abs_penalty(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  waist_body_name: str = r"(?i)^waist$",
+  k: float = 2.5,
+  apply_standing_gate: bool = False,
+  eps: float = 1.0e-6,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+
+  center_xy, left_xy, right_xy = _stance_center_xy(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+  support_vec_xy = right_xy - left_xy
+  support_dir_xy = support_vec_xy / torch.linalg.norm(
+    support_vec_xy, dim=1, keepdim=True
+  ).clamp_min(float(eps))
+  support_normal_xy = torch.stack(
+    (-support_dir_xy[:, 1], support_dir_xy[:, 0]),
+    dim=1,
+  )
+
+  ball_dir_xy = _normalize_xy(ball.data.root_link_pos_w[:, :2] - center_xy, eps=float(eps))
+  normal_sign = torch.sign(torch.sum(support_normal_xy * ball_dir_xy, dim=1))
+  normal_sign = torch.where(
+    normal_sign == 0.0,
+    torch.ones_like(normal_sign),
+    normal_sign,
+  )
+  desired_normal_xy = support_normal_xy * normal_sign.unsqueeze(1)
+  desired_ready_yaw = torch.atan2(desired_normal_xy[:, 1], desired_normal_xy[:, 0])
+
+  waist_idx = _resolve_single_body_index_cached(env, robot, waist_body_name)
+  waist_yaw = _yaw_from_quat_wxyz(robot.data.body_link_quat_w[:, waist_idx, :])
+  twist_err = _wrap_angle_pi(waist_yaw - desired_ready_yaw)
+  raw = 1.0 - torch.exp(-float(k) * torch.square(twist_err))
+
+  penalty = _apply_standing_gate_if_enabled(
+    raw,
+    env,
+    asset_cfg,
+    apply_standing_gate,
+  )
+  penalty = penalty * _alignment_home_ramp(
+    env,
+    command_name,
+    asset_cfg,
+    left_foot_body_name=left_foot_body_name,
+    right_foot_body_name=right_foot_body_name,
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_waist_ready_twist_abs_err_mean"] = torch.mean(torch.abs(twist_err))
+    log["Metrics/e1_waist_ready_twist_abs_pen_mean"] = torch.mean(penalty)
+
+  return _apply_reward_active_mask(penalty, env, command_name)
+
+
 def waist_yaw_progress_reward(
   env,
   command_name: str = "set_square",
@@ -1928,7 +1999,7 @@ def stance_width_band_penalty(
   return _apply_reward_active_mask(penalty, env, command_name)
 
 
-def pelvis_between_feet_ready_reward(
+def pelvis_between_feet_reward(
   env,
   command_name: str = "set_square",
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
@@ -1987,7 +2058,7 @@ def pelvis_between_feet_ready_reward(
 
   log = _get_log_dict(env)
   if log is not None:
-    log["Metrics/e1_pelvis_between_feet_ready_mean"] = torch.mean(reward)
+    log["Metrics/e1_pelvis_between_feet_mean"] = torch.mean(reward)
     log["Metrics/e1_pelvis_between_feet_lateral_offset_mean"] = torch.mean(
       torch.abs(lateral_offset)
     )

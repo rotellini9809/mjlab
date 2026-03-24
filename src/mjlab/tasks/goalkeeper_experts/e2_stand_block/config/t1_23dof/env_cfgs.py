@@ -595,6 +595,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       weight=8.0,
       params={
         "command_name": "stand_block",
+        "t_clear_clip": 0.5,
         "clip_away_speed": 2.5,
       },
     ),
@@ -626,6 +627,11 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         "pitch_band": UPRIGHT_PITCH_BAND,
         "pitch_sigma": UPRIGHT_PITCH_SIGMA,
       },
+    ),
+    "body_ang_vel": RewardTermCfg(
+      func=mdp.body_ang_vel_penalty,
+      weight=-0.01,
+      params={"command_name": "stand_block"},
     ),
     "outside_area": RewardTermCfg(
       func=mdp.outside_area_penalty,

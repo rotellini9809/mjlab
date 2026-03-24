@@ -92,7 +92,7 @@ KICK_LATERAL_ROLL_PROB = 0.40
 KICK_DRIBBLE_PROB = 0.20
 KICK_DEAD_BALL_TINY_DRIFT_PROB = 0.20
 KICK_DEAD_BALL_DRIFT_SPEED_RANGE = (0.02, 0.10)
-KICK_SPEED_RANGE = (0.4, 1.6)
+KICK_SPEED_RANGE = (0.4, 3.0)
 KICK_ANGLE_NOISE_DEG = 75.0
 DRIBBLE_NUM_TAPS_RANGE = (2, 4)
 DRIBBLE_TAP_TIME_RANGE = (0.5, 1.4)
@@ -123,7 +123,7 @@ E1_RESET_STAGE_CFGS = (
     launcher_mode_probs=(1.0, 0.0, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.12, KEEPER_HOME_POINT_X + 0.12),
+    keeper_spawn_x_range=(6.55, 6.87),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
     target_forward_range=(3.5, 7.5),
@@ -131,7 +131,7 @@ E1_RESET_STAGE_CFGS = (
     launcher_mode_probs=(0.8, 0.2, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.15, KEEPER_HOME_POINT_X + 0.15),
+    keeper_spawn_x_range=(6.4, 6.9),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
@@ -774,8 +774,8 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },
     ),
-    "pelvis_between_feet_ready": RewardTermCfg(
-      func=mdp.pelvis_between_feet_ready_reward,
+    "pelvis_between_feet": RewardTermCfg(
+      func=mdp.pelvis_between_feet_reward,
       weight=0.15,
       params={
         "command_name": "set_square",
@@ -796,19 +796,21 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
         "pitch_sigma": UPRIGHT_PITCH_SIGMA,
       },
     ),
-    "yaw_align_waist": RewardTermCfg(
-      func=mdp.yaw_alignment_waist_reward,
-      weight=0.0,
+    "waist_ready_twist_abs_pen": RewardTermCfg(
+      func=mdp.waist_ready_twist_abs_penalty,
+      weight=-0.05,
       params={
         "command_name": "set_square",
         "k": 2.5,
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
         "waist_body_name": WAIST_BODY_NAME_REGEX,
         "apply_standing_gate": True,
       },
     ),
     "yaw_err_abs_pen": RewardTermCfg(
       func=mdp.waist_yaw_abs_penalty,
-      weight=-0.1,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
