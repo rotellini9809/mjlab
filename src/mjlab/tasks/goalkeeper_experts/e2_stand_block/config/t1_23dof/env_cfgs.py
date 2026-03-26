@@ -19,6 +19,7 @@ from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
+from mjlab.motor_controller_stage1.latent_action import get_wandb_run_name
 from mjlab.tasks.goalkeeper_experts.e2_stand_block import mdp
 from mjlab.tasks.goalkeeper_experts.launcher import (
   E2_STAGE5_FINAL_HARDER,
@@ -404,6 +405,12 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
   motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
     act_dim=MOTOR_ACT_DIM,
   )
+  stage1_goalkeeper_run_path = os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER")
+  stage1_goalkeeper_run_name = (
+    get_wandb_run_name(stage1_goalkeeper_run_path)
+    if stage1_goalkeeper_run_path
+    else None
+  )
 
   cfg.actions = {
     "motor_latent": mdp.MotorLatentActionCfg(
@@ -412,7 +419,8 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       scale=T1_23_ACTION_SCALE,
       use_default_offset=True,
       command_name="stand_block",
-      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER"),
+      stage1_wandb_run_path=stage1_goalkeeper_run_path,
+      stage1_wandb_run_name=stage1_goalkeeper_run_name,
       motor_obs_terms=motor_obs_terms,
       motor_obs_term_dims=motor_obs_term_dims,
       strict_obs_layout=True,

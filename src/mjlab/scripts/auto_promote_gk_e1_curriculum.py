@@ -4,8 +4,7 @@ Two usage modes are supported:
 
 1. Promotion-only:
    - pass `timeout_rate` and `fall_rate`
-   - the script prints the next-stage resume command
-   - add `--execute` to launch that command
+   - the script prints the next-stage resume command and launches it
 
 2. Full curriculum loop:
    - pass `--train-iterations-per-stage`
@@ -19,10 +18,11 @@ from __future__ import annotations
 
 import os
 import subprocess
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+import mjlab
 import torch
 import tyro
 
@@ -38,6 +38,13 @@ from mjlab.utils.torch import configure_torch_backends
 
 
 @dataclass(frozen=True)
+class AgentResumeCompatConfig:
+  resume: bool = False
+  load_run: str | None = None
+  load_checkpoint: str | None = None
+
+
+@dataclass(frozen=True)
 class PromoteConfig:
   task_id: str = "Mjlab-GK-Expert-SetSquare-Booster-T1_23"
   current_stage: int = 1
@@ -46,7 +53,6 @@ class PromoteConfig:
   max_fall_rate: float = 0.10
   promotion_timeout_rate_thresholds: tuple[float, ...] = (0.90, 0.85)
 
-  execute: bool = False
   gpu_ids: tuple[int, ...] = (0,)
   num_envs: int = 512
   train_iterations_per_stage: int | None = None
@@ -55,6 +61,7 @@ class PromoteConfig:
   eval_num_episodes: int = 2048
   eval_device: str | None = None
 
+  agent: AgentResumeCompatConfig = field(default_factory=AgentResumeCompatConfig)
   load_run: str | None = None
   wandb_run_path: str | None = None
   wandb_checkpoint_name: str | None = None
@@ -84,6 +91,14 @@ class E1PromotionDecision:
   required_timeout_rate: float | None
   max_fall_rate: float
   reason: str
+
+
+@dataclass(frozen=True)
+class ResumeInputs:
+  local_run: str | None
+  local_checkpoint: str | None
+  wandb_run_path: str | None
+  wandb_checkpoint_name: str | None
 
 
 @dataclass(kw_only=True)
@@ -181,13 +196,66 @@ def _gpu_args(gpu_ids: tuple[int, ...]) -> list[str]:
   return ["--gpu-ids", f"[{gpu_ids_arg}]"]
 
 
+def _strip_optional(value: str | None) -> str | None:
+  if value is None:
+    return None
+  stripped = value.strip()
+  return stripped if stripped else None
+
+
+def _pick_resume_value(
+  primary: str | None,
+  compat: str | None,
+  *,
+  primary_flag: str,
+  compat_flag: str,
+) -> str | None:
+  if primary is not None and compat is not None and primary != compat:
+    raise ValueError(
+      f"Conflicting resume inputs: {primary_flag}={primary!r} and "
+      f"{compat_flag}={compat!r}."
+    )
+  return primary or compat
+
+
+def _resolve_resume_inputs(cfg: PromoteConfig) -> ResumeInputs:
+  local_run = _pick_resume_value(
+    _strip_optional(cfg.load_run),
+    _strip_optional(cfg.agent.load_run),
+    primary_flag="--load-run",
+    compat_flag="--agent.load-run",
+  )
+  local_checkpoint = _strip_optional(cfg.agent.load_checkpoint)
+  wandb_run_path = _strip_optional(cfg.wandb_run_path)
+  wandb_checkpoint_name = _strip_optional(cfg.wandb_checkpoint_name)
+
+  if local_run is not None and wandb_run_path is not None:
+    raise ValueError(
+      "Use either --load-run/--agent.load-run or --wandb-run-path, not both."
+    )
+  if wandb_run_path is not None and local_checkpoint is not None:
+    raise ValueError(
+      "--agent.load-checkpoint only applies to local resume. "
+      "Use --wandb-checkpoint-name for W&B resume."
+    )
+
+  return ResumeInputs(
+    local_run=local_run,
+    local_checkpoint=local_checkpoint,
+    wandb_run_path=wandb_run_path,
+    wandb_checkpoint_name=wandb_checkpoint_name,
+  )
+
+
 def _build_train_command(
   cfg: PromoteConfig,
   *,
   stage: int,
   run_name: str,
   resume_local_run: str | None,
+  resume_local_checkpoint: str | None,
   resume_wandb_run_path: str | None,
+  resume_wandb_checkpoint_name: str | None,
 ) -> tuple[list[str], dict[str, str]]:
   cmd = ["uv", "run", "train", cfg.task_id]
   cmd.extend(_gpu_args(cfg.gpu_ids))
@@ -201,14 +269,13 @@ def _build_train_command(
     cmd.extend(["--agent.resume", "True"])
     if resume_wandb_run_path is not None:
       cmd.extend(["--wandb-run-path", resume_wandb_run_path])
-      if (
-        cfg.wandb_checkpoint_name is not None
-        and cfg.wandb_checkpoint_name.strip() != ""
-      ):
-        cmd.extend(["--wandb-checkpoint-name", cfg.wandb_checkpoint_name.strip()])
+      if resume_wandb_checkpoint_name is not None:
+        cmd.extend(["--wandb-checkpoint-name", resume_wandb_checkpoint_name])
     else:
       assert resume_local_run is not None
       cmd.extend(["--agent.load-run", resume_local_run])
+      if resume_local_checkpoint is not None:
+        cmd.extend(["--agent.load-checkpoint", resume_local_checkpoint])
 
   cmd.extend(cfg.extra_train_args)
 
@@ -343,8 +410,7 @@ def _print_promotion_header(
 
 
 def _run_single_promotion(cfg: PromoteConfig) -> None:
-  if cfg.load_run and cfg.wandb_run_path:
-    raise ValueError("Use either --load-run or --wandb-run-path, not both.")
+  resume_inputs = _resolve_resume_inputs(cfg)
 
   decision = _print_promotion_header(
     current_stage=cfg.current_stage,
@@ -361,15 +427,14 @@ def _run_single_promotion(cfg: PromoteConfig) -> None:
     cfg,
     stage=decision.to_stage_index,
     run_name=next_run_name,
-    resume_local_run=cfg.load_run or f"e1_stage{cfg.current_stage}",
-    resume_wandb_run_path=cfg.wandb_run_path,
+    resume_local_run=resume_inputs.local_run or f"e1_stage{cfg.current_stage}",
+    resume_local_checkpoint=resume_inputs.local_checkpoint,
+    resume_wandb_run_path=resume_inputs.wandb_run_path,
+    resume_wandb_checkpoint_name=resume_inputs.wandb_checkpoint_name,
   )
 
   print("\nTrain command:")
   print(f"MJLAB_E1_RESET_CURRICULUM_STAGE={decision.to_stage_index} {' '.join(cmd)}")
-
-  if not cfg.execute:
-    return
 
   print("\nLaunching resumed training...")
   subprocess.run(
@@ -383,15 +448,14 @@ def _run_single_promotion(cfg: PromoteConfig) -> None:
 def _run_full_curriculum(cfg: PromoteConfig) -> None:
   if cfg.train_iterations_per_stage is None or cfg.train_iterations_per_stage <= 0:
     raise ValueError("--train-iterations-per-stage must be a positive integer.")
-  if not cfg.execute:
-    raise ValueError("Full curriculum mode requires --execute.")
-  if cfg.load_run and cfg.wandb_run_path:
-    raise ValueError("Use either --load-run or --wandb-run-path, not both.")
+  resume_inputs = _resolve_resume_inputs(cfg)
 
   run_prefix = _resolve_run_prefix(cfg)
   current_stage = int(cfg.current_stage)
-  resume_local_run = cfg.load_run.strip() if cfg.load_run else None
-  resume_wandb_run_path = cfg.wandb_run_path.strip() if cfg.wandb_run_path else None
+  resume_local_run = resume_inputs.local_run
+  resume_local_checkpoint = resume_inputs.local_checkpoint
+  resume_wandb_run_path = resume_inputs.wandb_run_path
+  resume_wandb_checkpoint_name = resume_inputs.wandb_checkpoint_name
 
   print("=== E1 Curriculum Auto-Run ===")
   print(f"start stage              : {current_stage}")
@@ -410,7 +474,9 @@ def _run_full_curriculum(cfg: PromoteConfig) -> None:
       stage=current_stage,
       run_name=run_name,
       resume_local_run=resume_local_run,
+      resume_local_checkpoint=resume_local_checkpoint,
       resume_wandb_run_path=resume_wandb_run_path,
+      resume_wandb_checkpoint_name=resume_wandb_checkpoint_name,
     )
 
     print(f"\n=== Training Stage {current_stage} ===")
@@ -460,12 +526,14 @@ def _run_full_curriculum(cfg: PromoteConfig) -> None:
       return
 
     resume_local_run = run_name
+    resume_local_checkpoint = None
     resume_wandb_run_path = None
+    resume_wandb_checkpoint_name = None
     current_stage = decision.to_stage_index
 
 
 def main() -> None:
-  cfg = tyro.cli(PromoteConfig)
+  cfg = tyro.cli(PromoteConfig, config=mjlab.TYRO_FLAGS)
   if cfg.train_iterations_per_stage is None:
     _run_single_promotion(cfg)
   else:

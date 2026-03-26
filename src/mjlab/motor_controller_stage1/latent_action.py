@@ -17,8 +17,7 @@ from mjlab.utils.lab_api.string import resolve_matching_names_values
 CheckpointSelector = Literal["best", "last", "latest"]
 
 # Global Stage-1 defaults for all expert tasks.
-# Set DEFAULT_STAGE1_WANDB_RUN_PATH once to avoid repeating run wiring in each expert env cfg.
-DEFAULT_STAGE1_WANDB_RUN_PATH: str | None = "fratelligpt-sapienza-universit-di-roma/motor_controller_stage1/6e30hj7w"
+DEFAULT_STAGE1_WANDB_RUN_PATH: str | None = None
 DEFAULT_STAGE1_CHECKPOINT: CheckpointSelector = "best"
 DEFAULT_MOTOR_OBS_TERMS: tuple[str, ...] = (
   "base_lin_vel",
@@ -57,6 +56,7 @@ class MotorLatentActionCfg(ActionTermCfg):
 
   # Stage-1 W&B run path (entity/project/run_id).
   stage1_wandb_run_path: str | None = None
+  stage1_wandb_run_name: str | None = None
   stage1_checkpoint: CheckpointSelector = DEFAULT_STAGE1_CHECKPOINT
 
   # Optional explicit motor-observation layout override.
@@ -114,6 +114,16 @@ def _resolve_stage1_wandb_run_path(stage1_wandb_run_path: str | None) -> str:
       "MJLAB_STAGE1_WANDB_RUN_PATH, or DEFAULT_STAGE1_WANDB_RUN_PATH."
     )
   return chosen
+
+
+def get_wandb_run_name(run_path: str) -> str | None:
+  import wandb
+
+  try:
+    run = wandb.Api().run(run_path)
+  except Exception:
+    return None
+  return getattr(run, "name", None) or None
 
 
 def _download_run_file(cache_root: Path, run_path: str, filename: str) -> Path:
@@ -354,6 +364,14 @@ def _load_stage1_decoder_bundle(
     CheckpointSelector,
     os.environ.get("MJLAB_STAGE1_CHECKPOINT", cfg.stage1_checkpoint),
   )
+  run_name = cfg.stage1_wandb_run_name or get_wandb_run_name(run_path)
+  if run_name is not None:
+    print(
+      "[INFO] Stage-1 controller run | "
+      f"name={run_name}, path={run_path}"
+    )
+  else:
+    print(f"[INFO] Stage-1 controller run | path={run_path}")
   print(
     "[DEBUG] Stage-1 bundle selection | "
     f"run_path={run_path}, checkpoint_selector={checkpoint_name}, device={device}"

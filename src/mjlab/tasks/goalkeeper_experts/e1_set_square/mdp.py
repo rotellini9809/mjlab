@@ -2036,10 +2036,11 @@ def pelvis_between_feet_reward(
   lateral_offset = torch.sum(pelvis_offset_xy * support_normal_xy, dim=1)
 
   lat_term = torch.square(lateral_offset / max(float(lateral_sigma), float(eps)))
-  long_term = torch.square(
-    longitudinal_offset / max(float(longitudinal_sigma), float(eps))
-  )
-  err = float(lateral_weight) * lat_term + float(longitudinal_weight) * long_term
+  # Keep this term strictly lateral: frontal/sagittal pelvis placement no longer
+  # contributes to the reward, but we still log it for inspection.
+  _ = longitudinal_sigma
+  _ = longitudinal_weight
+  err = float(lateral_weight) * lat_term
   raw = torch.exp(-err)
 
   reward = _apply_standing_gate_if_enabled(

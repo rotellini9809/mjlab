@@ -20,6 +20,7 @@ from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
+from mjlab.motor_controller_stage1.latent_action import get_wandb_run_name
 from mjlab.tasks.goalkeeper_experts.e1_set_square import mdp
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
 from mjlab.terrains import TerrainEntityCfg
@@ -506,6 +507,12 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
     act_dim=MOTOR_ACT_DIM,
   )
+  stage1_goalkeeper_run_path = os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER")
+  stage1_goalkeeper_run_name = (
+    get_wandb_run_name(stage1_goalkeeper_run_path)
+    if stage1_goalkeeper_run_path
+    else None
+  )
 
   cfg.actions = {
     "motor_latent": mdp.MotorLatentActionCfg(
@@ -514,7 +521,8 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       scale=T1_23_ACTION_SCALE,
       use_default_offset=True,
       command_name="set_square",
-      stage1_wandb_run_path=os.environ.get("MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER"),
+      stage1_wandb_run_path=stage1_goalkeeper_run_path,
+      stage1_wandb_run_name=stage1_goalkeeper_run_name,
       motor_obs_terms=motor_obs_terms,
       motor_obs_term_dims=motor_obs_term_dims,
       strict_obs_layout=True,
@@ -745,7 +753,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_ortho_abs_pen": RewardTermCfg(
       func=mdp.stance_ortho_abs_penalty,
-      weight=-0.8,
+      weight=-0.9,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -754,7 +762,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_ortho_progress": RewardTermCfg(
       func=mdp.stance_ortho_progress_reward,
-      weight=1.0,
+      weight=1.15,
       params={
         "command_name": "set_square",
         "max_delta": 0.2,

@@ -4,8 +4,7 @@ Two usage modes are supported:
 
 1. Promotion-only:
    - pass `save_rate` and `fall_rate`
-   - the script prints the next-stage resume command
-   - add `--execute` to launch that command
+   - the script prints the next-stage resume command and launches it
 
 2. Full curriculum loop:
    - pass `--train-iterations-per-stage`
@@ -48,7 +47,6 @@ class PromoteConfig:
   fall_rate: float = 1.0
   max_fall_rate: float = 0.10
 
-  execute: bool = False
   gpu_ids: tuple[int, ...] = (0,)
   num_envs: int = 4096
   train_iterations_per_stage: int | None = None
@@ -291,9 +289,6 @@ def _run_single_promotion(cfg: PromoteConfig) -> None:
   print("\nTrain command:")
   print(f"MJLAB_E2_RESET_CURRICULUM_STAGE={decision.to_stage_index} {' '.join(cmd)}")
 
-  if not cfg.execute:
-    return
-
   print("\nLaunching resumed training...")
   subprocess.run(
     cmd,
@@ -306,8 +301,6 @@ def _run_single_promotion(cfg: PromoteConfig) -> None:
 def _run_full_curriculum(cfg: PromoteConfig) -> None:
   if cfg.train_iterations_per_stage is None or cfg.train_iterations_per_stage <= 0:
     raise ValueError("--train-iterations-per-stage must be a positive integer.")
-  if not cfg.execute:
-    raise ValueError("Full curriculum mode requires --execute.")
   if cfg.load_run and cfg.wandb_run_path:
     raise ValueError("Use either --load-run or --wandb-run-path, not both.")
 
