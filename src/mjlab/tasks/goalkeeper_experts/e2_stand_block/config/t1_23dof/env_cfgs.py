@@ -139,7 +139,7 @@ RESOLUTION_WINDOW_S = 1.5
 MOTOR_COMMAND_DIM = 46
 MOTOR_ACT_DIM = 23
 
-EPISODE_LENGTH_S = 5.0
+EPISODE_LENGTH_S = 6.0
 SIM_TIMESTEP_S = 0.005
 CONTROL_DECIMATION = 4
 E2_TASK_ID = "Mjlab-GK-Expert-StandBlock-Booster-T1_23"
@@ -202,6 +202,25 @@ def _extract_saved_e2_launcher_preset_name(env_yaml_path: Path) -> str | None:
   return _extract_e2_launcher_preset_name_from_env_data(env_data)
 
 
+def _extract_saved_e2_stage1_run_from_env_data(
+  env_data: object,
+) -> tuple[str | None, str | None]:
+  if not isinstance(env_data, dict):
+    return None, None
+  actions = env_data.get("actions")
+  if not isinstance(actions, dict):
+    return None, None
+  motor_latent_cfg = actions.get("motor_latent")
+  if not isinstance(motor_latent_cfg, dict):
+    return None, None
+
+  run_path = motor_latent_cfg.get("stage1_wandb_run_path")
+  run_name = motor_latent_cfg.get("stage1_wandb_run_name")
+  resolved_run_path = run_path.strip() if isinstance(run_path, str) else None
+  resolved_run_name = run_name.strip() if isinstance(run_name, str) else None
+  return resolved_run_path or None, resolved_run_name or None
+
+
 def _extract_e2_launcher_preset_name_from_env_data(env_data: object) -> str | None:
   if not isinstance(env_data, dict):
     return None
@@ -234,6 +253,21 @@ def _extract_saved_e2_launcher_preset_name_from_wandb_config(
     return None
   env_cfg_value = env_cfg.get("value")
   return _extract_e2_launcher_preset_name_from_env_data(env_cfg_value)
+
+
+def _extract_saved_e2_stage1_run_from_wandb_config(
+  config_yaml_path: Path,
+) -> tuple[str | None, str | None]:
+  with config_yaml_path.open("r", encoding="utf-8") as handle:
+    config_data = yaml.safe_load(handle) or {}
+
+  if not isinstance(config_data, dict):
+    return None, None
+  env_cfg = config_data.get("env_cfg")
+  if not isinstance(env_cfg, dict):
+    return None, None
+  env_cfg_value = env_cfg.get("value")
+  return _extract_saved_e2_stage1_run_from_env_data(env_cfg_value)
 
 
 def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
@@ -275,6 +309,44 @@ def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
     )
     return None
   return preset_name
+
+
+def _resolve_saved_e2_play_stage1_run() -> tuple[str | None, str | None]:
+  if not _is_e2_play_cli_invocation():
+    return None, None
+
+  checkpoint_file = _get_cli_flag_value("--checkpoint-file")
+  if checkpoint_file:
+    env_yaml_path = Path(checkpoint_file).expanduser().resolve().parent / "params" / "env.yaml"
+    if not env_yaml_path.exists():
+      return None, None
+    with env_yaml_path.open("r", encoding="utf-8") as handle:
+      env_data = yaml.safe_load(handle) or {}
+    return _extract_saved_e2_stage1_run_from_env_data(env_data)
+
+  wandb_run_path = _get_cli_flag_value("--wandb-run-path")
+  if not wandb_run_path:
+    return None, None
+
+  log_root = (Path("logs") / "rsl_rl" / E2_EXPERIMENT_NAME).resolve()
+  config_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "config.yaml"
+  )
+  if config_yaml_path is not None:
+    run_path, run_name = _extract_saved_e2_stage1_run_from_wandb_config(
+      config_yaml_path
+    )
+    if run_path is not None:
+      return run_path, run_name
+
+  env_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "params/env.yaml"
+  )
+  if env_yaml_path is None:
+    return None, None
+  with env_yaml_path.open("r", encoding="utf-8") as handle:
+    env_data = yaml.safe_load(handle) or {}
+  return _extract_saved_e2_stage1_run_from_env_data(env_data)
 
 
 def _add_field_overlays(spec: mujoco.MjSpec) -> None:
@@ -411,6 +483,32 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     if stage1_goalkeeper_run_path
     else None
   )
+  if play:
+    saved_stage1_run_path, saved_stage1_run_name = _resolve_saved_e2_play_stage1_run()
+    if saved_stage1_run_path is not None:
+      env_stage1_run_name = stage1_goalkeeper_run_name
+      resolved_saved_stage1_run_name = (
+        saved_stage1_run_name or get_wandb_run_name(saved_stage1_run_path)
+      )
+      print(
+        "[INFO]: Auto-selected E2 play Stage-1 controller from saved run: "
+        f"{resolved_saved_stage1_run_name or '<unknown>'} "
+        f"({saved_stage1_run_path})"
+      )
+      if (
+        stage1_goalkeeper_run_path is not None
+        and stage1_goalkeeper_run_path != saved_stage1_run_path
+      ):
+        print(
+          "[WARN]: E2 play saved Stage-1 controller run differs from "
+          "MJLAB_STAGE1_WANDB_RUN_PATH_GOALKEEPER "
+          f"(saved={resolved_saved_stage1_run_name or '<unknown>'} "
+          f"[{saved_stage1_run_path}], env={env_stage1_run_name or '<unknown>'} "
+          f"[{stage1_goalkeeper_run_path}]). "
+          "Using the saved run."
+        )
+      stage1_goalkeeper_run_path = saved_stage1_run_path
+      stage1_goalkeeper_run_name = resolved_saved_stage1_run_name
 
   cfg.actions = {
     "motor_latent": mdp.MotorLatentActionCfg(

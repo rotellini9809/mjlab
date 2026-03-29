@@ -84,6 +84,32 @@ def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
   return pos_w_xyz - env.scene.env_origins
 
 
+def _resolve_body_index_pair_cached(
+  env,
+  robot: Entity,
+  body_name_a: str,
+  body_name_b: str,
+) -> tuple[int, int]:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e2_body_index_pair_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  key = (id(robot), body_name_a, body_name_b)
+  if key not in cache:
+    ids, names = robot.find_bodies((body_name_a, body_name_b), preserve_order=True)
+    if len(ids) != 2:
+      raise ValueError(
+        "Could not resolve exactly two bodies. "
+        f"Got names={names} for patterns=({body_name_a}, {body_name_b})."
+      )
+    cache[key] = (int(ids[0]), int(ids[1]))
+
+  return cache[key]
+
+
 def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
   extras = getattr(env, "extras", None)
   if extras is None:
@@ -838,6 +864,10 @@ class StabilizeAfterExitReward:
     resolution_term_name: str = "contact_resolution_window",
     outside_steps_required: int = 2,
     asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    left_foot_body_name: str = r"^left_foot_link$",
+    right_foot_body_name: str = r"^right_foot_link$",
+    stance_w_min: float = 0.23,
+    stance_w_max: float = 0.45,
     roll_band: float = 0.1,
     roll_sigma: float = 0.12,
     pitch_target: float = 0.25,
@@ -865,6 +895,19 @@ class StabilizeAfterExitReward:
       min=0.0,
       max=1.0,
     )
+    left_idx, right_idx = _resolve_body_index_pair_cached(
+      env,
+      robot,
+      left_foot_body_name,
+      right_foot_body_name,
+    )
+    foot_pos_w = robot.data.body_link_pos_w
+    stance_width = torch.linalg.norm(
+      foot_pos_w[:, right_idx, :2] - foot_pos_w[:, left_idx, :2],
+      dim=1,
+    )
+    stance_width_pen = torch.square(torch.relu(float(stance_w_min) - stance_width))
+    stance_width_pen += torch.square(torch.relu(stance_width - float(stance_w_max)))
     lin_vel_xy = robot.data.root_link_lin_vel_w[:, :2]
     lin_speed_pen = torch.sum(torch.square(lin_vel_xy), dim=1)
     ang_vel = robot.data.root_link_ang_vel_w
@@ -876,9 +919,17 @@ class StabilizeAfterExitReward:
     stabilize_raw = (
       0.6 * upright_score
       + 0.4 * height_score
+      - 0.20 * stance_width_pen
       - 0.15 * lin_speed_pen
       - 0.10 * ang_speed_pen
     )
+    log = _get_log_dict(env)
+    if log is not None:
+      log["Metrics/e2_stabilize_after_exit_height_score_mean"] = torch.mean(height_score)
+      log["Metrics/e2_stabilize_after_exit_stance_width_mean"] = torch.mean(stance_width)
+      log["Metrics/e2_stabilize_after_exit_stance_width_pen_mean"] = torch.mean(
+        stance_width_pen
+      )
     return post_exit_active.to(stabilize_raw.dtype) * stabilize_raw
 
 

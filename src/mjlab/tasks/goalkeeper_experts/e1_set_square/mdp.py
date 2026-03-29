@@ -448,6 +448,7 @@ def _alignment_home_ramp(
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   left_foot_body_name: str | None = None,
   right_foot_body_name: str | None = None,
+  x_scale: float = 0.30,
   y_scale: float = 0.25,
   align_floor: float = 0.2,
 ) -> torch.Tensor:
@@ -465,15 +466,20 @@ def _alignment_home_ramp(
     right_foot_body_name,
   )
   home_xy = _home_point_world_xy(env, command_name)
+  home_x_err = torch.abs(home_xy[:, 0] - center_xy[:, 0])
   home_y_err = torch.abs(home_xy[:, 1] - center_xy[:, 1])
+  x_scale_safe = max(float(x_scale), 1.0e-6)
   y_scale_safe = max(float(y_scale), 1.0e-6)
+  alpha_home_x = torch.clamp(1.0 - home_x_err / x_scale_safe, min=0.0, max=1.0)
   alpha_home = torch.clamp(1.0 - home_y_err / y_scale_safe, min=0.0, max=1.0)
+  alpha_home = alpha_home_x * alpha_home
   align_floor = float(align_floor)
   align_mult = align_floor + (1.0 - align_floor) * alpha_home
 
   log = _get_log_dict(env)
   if log is not None:
     log["Metrics/e1_align_home_ramp_mean"] = torch.mean(align_mult)
+    log["Metrics/e1_home_x_err_for_align_mean"] = torch.mean(home_x_err)
     log["Metrics/e1_home_y_err_for_align_mean"] = torch.mean(home_y_err)
 
   return align_mult
