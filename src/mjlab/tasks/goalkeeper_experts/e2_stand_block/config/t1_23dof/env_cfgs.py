@@ -685,7 +685,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       params={
         "command_name": "stand_block",
         "resolution_term_name": "contact_resolution_window",
-        "apply_standing_gate": True,
+        "apply_standing_gate": False,
       },
     ),
     "deflect_away": RewardTermCfg(

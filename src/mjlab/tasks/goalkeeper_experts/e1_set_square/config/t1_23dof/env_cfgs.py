@@ -118,7 +118,7 @@ E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.08, KEEPER_HOME_POINT_X + 0.08),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
-    spawn_yaw_offset_range=(-math.radians(20.0), math.radians(20.0)),
+    spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
     target_forward_range=(4.0, 6.0),
     target_lateral_range=mdp.IntervalUnionCfg(intervals=((-1.2, -0.5), (0.5, 1.2))),
     launcher_mode_probs=(1.0, 0.0, 0.0),
@@ -126,7 +126,7 @@ E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=(6.55, 6.87),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
-    spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
+    spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=(3.5, 7.5),
     target_lateral_range=mdp.IntervalUnionCfg(intervals=((-2.0, -0.30), (0.30, 2.0))),
     launcher_mode_probs=(0.8, 0.2, 0.0),
@@ -137,7 +137,7 @@ E1_RESET_STAGE_CFGS = (
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
     target_lateral_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_LATERAL_RANGE,)),
-    launcher_mode_probs=(0.2, 0.5, 0.3),
+    launcher_mode_probs=(0.3, 0.4, 0.3),
   ),
 )
 
@@ -774,7 +774,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_ang_vel_penalty,
-      weight=-0.01,
+      weight=0.0,
       params={},
     ),
     "fallen": RewardTermCfg(
@@ -807,7 +807,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_center_home_x_progress": RewardTermCfg(
       func=mdp.stance_center_home_axis_progress_reward,
-      weight=0.3,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "axis": "x",
@@ -829,7 +829,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_center_home_y_progress": RewardTermCfg(
       func=mdp.stance_center_home_axis_progress_reward,
-      weight=1.0,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "axis": "y",
@@ -862,7 +862,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_ortho_progress": RewardTermCfg(
       func=mdp.stance_ortho_progress_reward,
-      weight=1.15,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "max_delta": 0.2,
@@ -927,7 +927,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "yaw_progress": RewardTermCfg(
       func=mdp.waist_yaw_progress_reward,
-      weight=0.2,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "waist_body_name": WAIST_BODY_NAME_REGEX,
