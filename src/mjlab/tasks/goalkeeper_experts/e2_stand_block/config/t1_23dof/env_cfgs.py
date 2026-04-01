@@ -32,7 +32,7 @@ from mjlab.viewer import ViewerConfig
 
 GOAL_X_LINE = 7.0
 GOALPOST_X = 7.3
-E1_HOME_POINT_X = 6.75
+E1_HOME_POINT_X = 6.70
 E1_HOME_POINT_Y = 0.0
 E1_HOME_POINT_BAND_RADIUS = 0.10
 
@@ -133,6 +133,8 @@ E2_KEEPER_AREA_OVERLAY_RGBA = (0.95, 0.85, 0.10, 0.24)
 E2_KEEPER_AREA_VIS_GROUP = 3
 
 BALL_ROBOT_CONTACT_SENSOR_NAME = "ball_robot_contact"
+HEAD_BALL_CONTACT_SENSOR_NAME = "head_ball_contact"
+HEAD_BODIES = ("H1", "H2")
 RESOLUTION_WINDOW_S = 1.5
 
 # Stage-1 command dimension used in motor-observation layout.
@@ -472,7 +474,16 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     num_slots=1,
     track_air_time=True,
   )
-  cfg.scene.sensors = (*cfg.scene.sensors, ball_robot_contact_cfg)
+  head_ball_contact_cfg = ContactSensorCfg(
+    name=HEAD_BALL_CONTACT_SENSOR_NAME,
+    primary=ContactMatch(mode="body", pattern=HEAD_BODIES, entity="robot"),
+    secondary=ContactMatch(mode="geom", pattern="ball_collision", entity="soccer_ball"),
+    fields=("found",),
+    reduce="none",
+    num_slots=1,
+    track_air_time=True,
+  )
+  cfg.scene.sensors = (*cfg.scene.sensors, ball_robot_contact_cfg, head_ball_contact_cfg)
 
   motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
     act_dim=MOTOR_ACT_DIM,
@@ -712,8 +723,8 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "low_height_soft_penalty": RewardTermCfg(
       func=mdp.low_height_soft_penalty,
-      weight=-3.0,
-      params={"h_soft": 0.48},
+      weight=-3.5,
+      params={"h_soft": 0.55},
     ),
     "joint_pos_limits": RewardTermCfg(
       func=mdp.joint_pos_limits,
@@ -738,6 +749,11 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       func=mdp.body_ang_vel_penalty,
       weight=-0.01,
       params={"command_name": "stand_block"},
+    ),
+    "head_contact_penalty": RewardTermCfg(
+      func=mdp.head_contact_penalty,
+      weight=-6.0,
+      params={"head_sensor_name": HEAD_BALL_CONTACT_SENSOR_NAME},
     ),
     "outside_area": RewardTermCfg(
       func=mdp.outside_area_penalty,

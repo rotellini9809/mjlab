@@ -580,6 +580,14 @@ class SetSquareCommandCfg(CommandTermCfg):
   dribble_tap_time_range: tuple[float, float] = (0.6, 1.8)
   dribble_tap_interval_range: tuple[float, float] = (0.2, 0.8)
   dribble_tap_speed_range: tuple[float, float] = (0.2, 0.6)
+  rebound_relaunch_enabled: bool = True
+  rebound_only_side_walls: bool = True
+  rebound_delay_range_s: tuple[float, float] = (0.5, 1.0)
+  rebound_speed_range: tuple[float, float] = (0.8, 1.8)
+  rebound_angle_noise_deg: float = 60.0
+  rebound_inset_m: float = 0.15
+  rebound_max_events: int = 1
+  field_half_width_y: float = 4.5
 
   # Anti-shot clamp: limit component toward defended goal.
   # If goal is at +x, keep vx <= max_toward_goal_speed.
@@ -655,6 +663,10 @@ class SetSquareCommand(CommandTerm):
     self._remaining_taps = torch.zeros(env.num_envs, device=self.device, dtype=torch.long)
     self._last_push_dir_xy = torch.zeros(env.num_envs, 2, device=self.device)
     self._launcher_mode = torch.zeros(env.num_envs, device=self.device, dtype=torch.long)
+    self._rebound_pending = torch.zeros(env.num_envs, device=self.device, dtype=torch.bool)
+    self._rebound_time_s = torch.zeros(env.num_envs, device=self.device)
+    self._rebound_used_count = torch.zeros(env.num_envs, device=self.device, dtype=torch.long)
+    self._rebound_wall_side_sign = torch.zeros(env.num_envs, device=self.device)
 
     if len(self.cfg.curriculum_stages) == 0:
       raise ValueError("SetSquareCommandCfg.curriculum_stages must contain at least one stage.")
@@ -805,10 +817,20 @@ class SetSquareCommand(CommandTerm):
     if curb_contact.any():
       env_ids = curb_contact.nonzero(as_tuple=False).flatten()
       self._set_ball_velocity_zero(env_ids)
-      # Stop future dribble taps once curb contact happens.
-      self._tap_enabled[env_ids] = False
-      self._remaining_taps[env_ids] = 0
-      self._next_tap_time_s[env_ids] = 1.0e9
+      self._cancel_future_dribble_taps(env_ids)
+      if self.cfg.rebound_relaunch_enabled:
+        self._schedule_rebound_relaunch(env_ids, time_s)
+
+    if self.cfg.rebound_relaunch_enabled:
+      pending_ids = self._rebound_pending.nonzero(as_tuple=False).flatten()
+      if pending_ids.numel() > 0:
+        # Keep the ball frozen until the delayed throw-in style relaunch fires.
+        self._set_ball_velocity_zero(pending_ids)
+
+      to_relaunch = self._rebound_pending & (time_s >= self._rebound_time_s)
+      if to_relaunch.any():
+        env_ids = to_relaunch.nonzero(as_tuple=False).flatten()
+        self._execute_rebound_relaunch(env_ids)
 
     to_kick = (~self._kick_applied) & (time_s >= self._kick_time_s)
     if to_kick.any():
@@ -1092,6 +1114,10 @@ class SetSquareCommand(CommandTerm):
     self._tap_enabled[env_ids] = False
     self._remaining_taps[env_ids] = 0
     self._last_push_dir_xy[env_ids] = 0.0
+    self._rebound_pending[env_ids] = False
+    self._rebound_time_s[env_ids] = 1.0e9
+    self._rebound_used_count[env_ids] = 0
+    self._rebound_wall_side_sign[env_ids] = 0.0
 
     # Dead/dribble modes must start grounded (no exponential-z spawn).
     grounded_ids = env_ids[dead_mask | dribble_mask]
@@ -1193,6 +1219,7 @@ class SetSquareCommand(CommandTerm):
     num: int,
     speed_range: tuple[float, float],
     mean_dir_xy: torch.Tensor,
+    angle_noise_deg: float | None = None,
   ) -> torch.Tensor:
     speed = _sample_uniform_range(
       speed_range[0],
@@ -1202,9 +1229,11 @@ class SetSquareCommand(CommandTerm):
     )
     mean_dir = self._unit_xy(mean_dir_xy)
     mean_angle = torch.atan2(mean_dir[:, 1], mean_dir[:, 0])
+    if angle_noise_deg is None:
+      angle_noise_deg = float(self.cfg.kick_angle_noise_deg)
     noise_deg = _sample_uniform_range(
-      -float(self.cfg.kick_angle_noise_deg),
-      float(self.cfg.kick_angle_noise_deg),
+      -float(angle_noise_deg),
+      float(angle_noise_deg),
       num,
       self.device,
     )
@@ -1276,6 +1305,96 @@ class SetSquareCommand(CommandTerm):
     ball_vel[:, :3] += delta_v_w_xyz
     ball_vel[:, :3] = self._clamp_toward_goal_speed(ball_vel[:, :3])
     self._ball.write_root_link_velocity_to_sim(ball_vel, env_ids=env_ids)
+
+  def _cancel_future_dribble_taps(self, env_ids: torch.Tensor) -> None:
+    self._tap_enabled[env_ids] = False
+    self._remaining_taps[env_ids] = 0
+    self._next_tap_time_s[env_ids] = 1.0e9
+
+  def _infer_rebound_side_wall_contact(
+    self,
+    env_ids: torch.Tensor,
+  ) -> tuple[torch.Tensor, torch.Tensor]:
+    ball_pos_local = self._ball.data.root_link_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
+    y_local = ball_pos_local[:, 1]
+    wall_band = max(float(self.cfg.rebound_inset_m) + 0.10, 0.25)
+    side_contact = torch.abs(y_local) >= (float(self.cfg.field_half_width_y) - wall_band)
+    wall_side_sign = torch.where(
+      y_local >= 0.0,
+      torch.ones_like(y_local),
+      -torch.ones_like(y_local),
+    )
+    return side_contact, wall_side_sign
+
+  def _schedule_rebound_relaunch(
+    self,
+    env_ids: torch.Tensor,
+    time_s: torch.Tensor,
+  ) -> None:
+    if env_ids.numel() == 0:
+      return
+    if int(self.cfg.rebound_max_events) <= 0:
+      return
+
+    eligible = (~self._rebound_pending[env_ids]) & (
+      self._rebound_used_count[env_ids] < int(self.cfg.rebound_max_events)
+    )
+    if not eligible.any():
+      return
+
+    eligible_ids = env_ids[eligible]
+    side_contact, wall_side_sign = self._infer_rebound_side_wall_contact(eligible_ids)
+    qualifying = side_contact
+    if not qualifying.any():
+      return
+
+    qualifying_ids = eligible_ids[qualifying]
+    qualifying_sign = wall_side_sign[qualifying]
+    delay_s = _sample_uniform_range(
+      self.cfg.rebound_delay_range_s[0],
+      self.cfg.rebound_delay_range_s[1],
+      len(qualifying_ids),
+      self.device,
+    )
+
+    self._rebound_pending[qualifying_ids] = True
+    self._rebound_time_s[qualifying_ids] = time_s[qualifying_ids] + delay_s
+    self._rebound_used_count[qualifying_ids] += 1
+    self._rebound_wall_side_sign[qualifying_ids] = qualifying_sign
+
+  def _execute_rebound_relaunch(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    side_sign = self._rebound_wall_side_sign[env_ids]
+    pose_w = self._ball.data.root_link_pose_w[env_ids].clone()
+    origins = self._env.scene.env_origins[env_ids]
+
+    inset_local_y = side_sign * (
+      float(self.cfg.field_half_width_y) - float(self.cfg.rebound_inset_m)
+    )
+    current_local_y = pose_w[:, 1] - origins[:, 1]
+    new_local_y = torch.where(
+      side_sign > 0.0,
+      torch.minimum(current_local_y, inset_local_y),
+      torch.maximum(current_local_y, inset_local_y),
+    )
+    pose_w[:, 1] = origins[:, 1] + new_local_y
+    self._ball.write_root_link_pose_to_sim(pose_w, env_ids=env_ids)
+
+    mean_dir_xy = torch.zeros((len(env_ids), 2), device=self.device)
+    mean_dir_xy[:, 1] = -side_sign
+    relaunch_vel = self._sample_velocity_around_mean_direction(
+      len(env_ids),
+      self.cfg.rebound_speed_range,
+      mean_dir_xy,
+      angle_noise_deg=float(self.cfg.rebound_angle_noise_deg),
+    )
+    self._set_ball_linear_velocity(env_ids, relaunch_vel)
+
+    self._rebound_pending[env_ids] = False
+    self._rebound_time_s[env_ids] = 1.0e9
+    self._rebound_wall_side_sign[env_ids] = 0.0
 
   def _debug_vis_impl(self, visualizer) -> None:
     batch = visualizer.env_idx

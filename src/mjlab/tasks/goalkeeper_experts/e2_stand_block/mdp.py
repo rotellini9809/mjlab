@@ -121,6 +121,24 @@ def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
   return log
 
 
+def _get_bool_state_buffer(
+  env,
+  key: str,
+) -> torch.Tensor:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e2_bool_state_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  buf = cache.get(key)
+  if buf is None or buf.shape != (env.num_envs,) or buf.device != env.device:
+    buf = torch.zeros((env.num_envs,), device=env.device, dtype=torch.bool)
+    cache[key] = buf
+  return buf
+
+
 def _reward_active_mask(
   env,
   command_name: str = "stand_block",
@@ -637,6 +655,23 @@ def _ball_robot_contact_mask(
   return torch.any(found > 0.0, dim=1)
 
 
+def _contact_rising_edge_event(
+  env,
+  sensor_name: str,
+  *,
+  state_key: str,
+) -> tuple[torch.Tensor, torch.Tensor]:
+  contact_now = _ball_robot_contact_mask(env, sensor_name)
+  prev_contact = _get_bool_state_buffer(env, key=state_key)
+
+  is_first = env.episode_length_buf <= 1
+  prev_contact[is_first] = False
+
+  new_contact = contact_now & (~prev_contact)
+  prev_contact.copy_(contact_now)
+  return contact_now, new_contact
+
+
 def _first_ball_robot_contact_mask(
   env,
   sensor_name: str | None,
@@ -919,7 +954,7 @@ class StabilizeAfterExitReward:
     stabilize_raw = (
       0.6 * upright_score
       + 0.4 * height_score
-      - 0.20 * stance_width_pen
+      - 0.30 * stance_width_pen
       - 0.15 * lin_speed_pen
       - 0.10 * ang_speed_pen
     )
@@ -1022,6 +1057,25 @@ def body_ang_vel_penalty(
   ang_vel_xy = robot.data.root_link_ang_vel_w[:, :2]
   penalty = torch.sum(torch.square(ang_vel_xy), dim=1)
   return _apply_reward_active_mask(penalty, env, command_name)
+
+
+def head_contact_penalty(
+  env,
+  head_sensor_name: str,
+) -> torch.Tensor:
+  contact_now, new_contact = _contact_rising_edge_event(
+    env,
+    head_sensor_name,
+    state_key=f"e2_prev_head_contact::{head_sensor_name}",
+  )
+  raw = new_contact.to(torch.float32)
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_head_contact_active_mean"] = torch.mean(contact_now.to(torch.float32))
+    log["Metrics/e2_head_contact_event_mean"] = torch.mean(raw)
+
+  return raw
 
 
 def low_height_soft_penalty(

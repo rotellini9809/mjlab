@@ -32,9 +32,9 @@ GOALPOST_X = 7.3
 # - home point sits slightly more forward into the field
 # - spawn band is centered around that home point, not around the goal line
 # This keeps the home-point shaping meaningful at episode start.
-KEEPER_HOME_POINT_X = 6.75
+KEEPER_HOME_POINT_X = 6.70
 KEEPER_HOME_POINT_Y = 0.0
-KEEPER_SPAWN_X_RANGE = (6.55, 6.95)
+KEEPER_SPAWN_X_RANGE = (6.50, 6.90)
 KEEPER_SPAWN_Y_RANGE = (-0.6, 0.6)
 # Raw spawn height from crouch_stance_1 tracking policy run k0zgfxdw near the
 # start (frame 11/66, ~= 1/6 of the clip), extracted in the MJLab controller.
@@ -99,6 +99,13 @@ DRIBBLE_NUM_TAPS_RANGE = (2, 4)
 DRIBBLE_TAP_TIME_RANGE = (0.5, 1.4)
 DRIBBLE_TAP_INTERVAL_RANGE = (0.16, 0.64)
 DRIBBLE_TAP_SPEED_RANGE = (0.2, 0.6)
+REBOUND_RELAUNCH_ENABLED = True
+REBOUND_ONLY_SIDE_WALLS = True
+REBOUND_DELAY_RANGE_S = (0.5, 1.0)
+REBOUND_SPEED_RANGE = (0.8, 1.8)
+REBOUND_ANGLE_NOISE_DEG = 60.0
+REBOUND_INSET_M = 0.15
+REBOUND_MAX_EVENTS = 1
 MAX_TOWARD_GOAL_VX = 0.2
 
 # Spawn from the ready pose on half of resets; otherwise use default pose.
@@ -124,7 +131,7 @@ E1_RESET_STAGE_CFGS = (
     launcher_mode_probs=(1.0, 0.0, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(6.55, 6.87),
+    keeper_spawn_x_range=(6.50, 6.82),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=(3.5, 7.5),
@@ -132,7 +139,7 @@ E1_RESET_STAGE_CFGS = (
     launcher_mode_probs=(0.8, 0.2, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(6.4, 6.9),
+    keeper_spawn_x_range=(6.35, 6.85),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
@@ -188,7 +195,7 @@ STANCE_ORTHO_W_MIN = 0.10
 STANCE_ORTHO_D_MIN = 0.20
 WAIST_BODY_NAME_REGEX = r"(?i)^waist$"
 # Shared home-point band used by reward shaping.
-HOME_POINT_BAND_RADIUS = 0.10
+HOME_POINT_BAND_RADIUS = 0.20
 
 
 def _get_cli_flag_value(flag: str) -> str | None:
@@ -656,6 +663,14 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       dribble_tap_time_range=DRIBBLE_TAP_TIME_RANGE,
       dribble_tap_interval_range=DRIBBLE_TAP_INTERVAL_RANGE,
       dribble_tap_speed_range=DRIBBLE_TAP_SPEED_RANGE,
+      rebound_relaunch_enabled=REBOUND_RELAUNCH_ENABLED,
+      rebound_only_side_walls=REBOUND_ONLY_SIDE_WALLS,
+      rebound_delay_range_s=REBOUND_DELAY_RANGE_S,
+      rebound_speed_range=REBOUND_SPEED_RANGE,
+      rebound_angle_noise_deg=REBOUND_ANGLE_NOISE_DEG,
+      rebound_inset_m=REBOUND_INSET_M,
+      rebound_max_events=REBOUND_MAX_EVENTS,
+      field_half_width_y=FIELD_HALF_WIDTH_Y,
       goal_toward_positive_x=True,
       max_toward_goal_speed=MAX_TOWARD_GOAL_VX,
       p_ready=P_READY,
@@ -766,7 +781,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   fallen_weight = -6.0
 
   cfg.rewards = {
-    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.008),
+    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
     "angular_momentum": RewardTermCfg(
       func=mdp.angular_momentum_penalty,
       weight=-0.005,
@@ -797,7 +812,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_center_home_x_abs_pen": RewardTermCfg(
       func=mdp.stance_center_home_axis_abs_penalty,
-      weight=-0.2,
+      weight=-0.35,
       params={
         "command_name": "set_square",
         "axis": "x",
@@ -819,7 +834,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_center_home_y_abs_pen": RewardTermCfg(
       func=mdp.stance_center_home_axis_abs_penalty,
-      weight=-0.7,
+      weight=-1.10,
       params={
         "command_name": "set_square",
         "axis": "y",
@@ -841,7 +856,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_center_move_toward_home": RewardTermCfg(
       func=mdp.stance_center_move_toward_home_reward,
-      weight=0.0,
+      weight=0.3,
       params={
         "command_name": "set_square",
         "r_deadband": HOME_POINT_BAND_RADIUS,
@@ -853,7 +868,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "stance_ortho_abs_pen": RewardTermCfg(
       func=mdp.stance_ortho_abs_penalty,
-      weight=-0.9,
+      weight=-0.65,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -895,7 +910,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "upright": RewardTermCfg(
       func=mdp.upright_stability_reward,
-      weight=1.0,
+      weight=0.45,
       params={
         "roll_band": UPRIGHT_ROLL_BAND,
         "roll_sigma": UPRIGHT_ROLL_SIGMA,
@@ -906,7 +921,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "waist_ready_twist_abs_pen": RewardTermCfg(
       func=mdp.waist_ready_twist_abs_penalty,
-      weight=-0.05,
+      weight=-0.10,
       params={
         "command_name": "set_square",
         "k": 2.5,
