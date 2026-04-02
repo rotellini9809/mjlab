@@ -1,4 +1,4 @@
-"""RL configuration for Goalkeeper E2 Stand-Block (Booster T1 23-DoF)."""
+"""RL configuration for Goalkeeper E1V2 Mezzaluna (Booster T1 23-DoF)."""
 
 from mjlab.rl import (
   RslRlModelCfg,
@@ -7,7 +7,7 @@ from mjlab.rl import (
 )
 
 
-def booster_t1_23_gk_expert_stand_block_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
+def booster_t1_23_gk_expert_e1V2_mezzaluna_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
   return RslRlOnPolicyRunnerCfg(
     actor=RslRlModelCfg(
       obs_normalization=True,
@@ -29,17 +29,17 @@ def booster_t1_23_gk_expert_stand_block_ppo_runner_cfg() -> RslRlOnPolicyRunnerC
       use_clipped_value_loss=True,
       clip_param=0.2,
       entropy_coef=0.01,
-      num_learning_epochs=5,
-      num_mini_batches=4,
+      num_learning_epochs=3,
+      num_mini_batches=8,
       learning_rate=1.0e-3,
       schedule="adaptive",
       gamma=0.99,
       lam=0.95,
-      desired_kl=0.01,
+      desired_kl=0.02,
       max_grad_norm=1.0,
     ),
-    experiment_name="gk_expert_stand_block_booster_t1_23",
-    wandb_project="e2_goalkeeper_expert",
+    experiment_name="gk_expert_e1V2_mezzaluna_booster_t1_23",
+    wandb_project="e1_goalkeeper_expert",
     save_interval=100,
     num_steps_per_env=32,
     max_iterations=30_000,

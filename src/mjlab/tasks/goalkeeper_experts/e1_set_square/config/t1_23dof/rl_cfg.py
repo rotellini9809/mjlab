@@ -40,7 +40,7 @@ def booster_t1_23_gk_expert_set_square_ppo_runner_cfg() -> RslRlOnPolicyRunnerCf
     ),
     experiment_name="gk_expert_set_square_booster_t1_23",
     wandb_project="e1_goalkeeper_expert",
-    save_interval=50,
+    save_interval=100,
     num_steps_per_env=32,
     max_iterations=30_000,
   )
