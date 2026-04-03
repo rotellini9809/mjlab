@@ -72,9 +72,9 @@ READY_JOINT_POS = [
 KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1, GOAL_X_LINE + 0.5, -2, 2)
 KEEPER_AREA_HARD_MARGIN = 0.3
 
-# Target ball spawn relative to the sampled keeper spawn around the E1 home point.
-TARGET_SPAWN_FORWARD_RANGE = (3.0, 11.0)
-TARGET_SPAWN_LATERAL_RANGE = (-3.8, 3.8)
+# Target ball spawn in absolute world XY.
+TARGET_SPAWN_X_RANGE = (-1.0, 5.0)
+TARGET_SPAWN_Y_RANGE = (-3.8, 3.8)
 # Ball geometry in robocup asset: radius=0.11 -> height=0.22.
 TARGET_BALL_HEIGHT = 0.22
 # Enforce lower bound: z cannot go below ball_height / 2.
@@ -96,6 +96,10 @@ KICK_DEAD_BALL_TINY_DRIFT_PROB = 0.20
 KICK_DEAD_BALL_DRIFT_SPEED_RANGE = (0.02, 0.10)
 KICK_SPEED_RANGE = (0.4, 3.0)
 KICK_ANGLE_NOISE_DEG = 75.0
+SIDELINE_THROW_SPAWN_X_RANGE = (1.0, 2.0)
+SIDELINE_THROW_SPAWN_Y_INTERVALS = ((-4.2, -2.5), (2.5, 4.2))
+SIDELINE_THROW_SPEED_RANGE = (3.0, KICK_SPEED_RANGE[1])
+SIDELINE_THROW_ANGLE_NOISE_DEG = 3.0
 DRIBBLE_NUM_TAPS_RANGE = (2, 4)
 DRIBBLE_TAP_TIME_RANGE = (0.5, 1.4)
 DRIBBLE_TAP_INTERVAL_RANGE = (0.16, 0.64)
@@ -107,10 +111,14 @@ REBOUND_SPEED_RANGE = (0.8, 1.8)
 REBOUND_ANGLE_NOISE_DEG = 60.0
 REBOUND_INSET_M = 0.15
 REBOUND_MAX_EVENTS = 1
-MAX_TOWARD_GOAL_VX = 0.2
+MAX_TOWARD_GOAL_VX = 0.5
 
 # Spawn from the ready pose on half of resets; otherwise use default pose.
 P_READY = 0.5
+E1_STAGE3_KEEPER_SPAWN_X_RANGE = (5.3, 6.8)
+E1_STAGE3_KEEPER_SPAWN_Y_RANGE = (-1.4, 1.4)
+E1_STAGE3_KEEPER_SPAWN_VIS_GROUP = 5
+E1_STAGE3_KEEPER_SPAWN_RGBA = (0.10, 0.95, 0.35, 0.16)
 
 # Manual reset curriculum.
 E1_RESET_CURRICULUM_STAGE_ENV = os.environ.get(
@@ -127,25 +135,25 @@ E1_RESET_STAGE_CFGS = (
     keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.08, KEEPER_HOME_POINT_X + 0.08),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
-    target_forward_range=(4.0, 6.0),
-    target_lateral_range=mdp.IntervalUnionCfg(intervals=((-1.2, -0.5), (0.5, 1.2))),
-    launcher_mode_probs=(1.0, 0.0, 0.0),
+    target_spawn_x_range=TARGET_SPAWN_X_RANGE,
+    target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
+    launcher_mode_probs=(1.0, 0.0, 0.0, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=(6.50, 6.82),
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
-    target_forward_range=(3.5, 7.5),
-    target_lateral_range=mdp.IntervalUnionCfg(intervals=((-2.0, -0.30), (0.30, 2.0))),
-    launcher_mode_probs=(0.8, 0.2, 0.0),
+    target_spawn_x_range=TARGET_SPAWN_X_RANGE,
+    target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
+    launcher_mode_probs=(0.8, 0.2, 0.0, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(5.0, 7.3),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
+    keeper_spawn_x_range=E1_STAGE3_KEEPER_SPAWN_X_RANGE,
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE3_KEEPER_SPAWN_Y_RANGE,)),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
-    target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
-    target_lateral_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_LATERAL_RANGE,)),
-    launcher_mode_probs=(0.4, 0.4, 0.2),
+    target_spawn_x_range=TARGET_SPAWN_X_RANGE,
+    target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
+    launcher_mode_probs=(0.3, 0.3, 0.2, 0.2),
   ),
 )
 
@@ -194,10 +202,10 @@ E1_MEZZALUNA_HALF_THICKNESS = 0.003
 E1_MEZZALUNA_Z = 0.006
 E1_MEZZALUNA_SEGMENTS = 40
 E1_MEZZALUNA_APEX_GOAL_OFFSET_M = 0.15
-E1_MEZZALUNA_CENTER_X = GOAL_X_LINE
+E1_MEZZALUNA_CENTER_X = GOAL_X_LINE - 0.20
 E1_MEZZALUNA_CENTER_Y = 0.0
-E1_MEZZALUNA_APEX_X = KEEPER_AREA_BOUNDS[0] + E1_MEZZALUNA_APEX_GOAL_OFFSET_M
-E1_MEZZALUNA_HALF_WIDTH_Y = E1_GOAL_OPENING_HALF_WIDTH
+E1_MEZZALUNA_APEX_X = KEEPER_AREA_BOUNDS[0] + E1_MEZZALUNA_APEX_GOAL_OFFSET_M - 0.20
+E1_MEZZALUNA_HALF_WIDTH_Y = E1_GOAL_OPENING_HALF_WIDTH + 0.10
 BALL_CURB_CONTACT_SENSOR_NAME = "ball_curb_contact"
 LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME = "left_foot_ground_contact"
 RIGHT_FOOT_GROUND_CONTACT_SENSOR_NAME = "right_foot_ground_contact"
@@ -454,6 +462,10 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
     wall.friction = E1_WALL_FRICTION
     wall.solref = E1_WALL_SOLREF
     wall.solimp = E1_WALL_SOLIMP
+    # Ball-only collider: the RoboCup ball has default contype=1/conaffinity=1,
+    # while the T1 robot collision geoms use contype=0/conaffinity=1.
+    wall.contype = 0
+    wall.conaffinity = 1
 
   # Long sides (unchanged, continuous walls).
   long_side_wall_y = FIELD_HALF_WIDTH_Y
@@ -529,6 +541,27 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
     segment.group = E1_MEZZALUNA_VIS_GROUP
     segment.contype = 0
     segment.conaffinity = 0
+
+  spawn_x_min, spawn_x_max = E1_STAGE3_KEEPER_SPAWN_X_RANGE
+  spawn_y_min, spawn_y_max = E1_STAGE3_KEEPER_SPAWN_Y_RANGE
+  spawn_overlay = overlay_body.add_geom(
+    type=mujoco.mjtGeom.mjGEOM_BOX,
+    pos=(
+      0.5 * (float(spawn_x_min) + float(spawn_x_max)),
+      0.5 * (float(spawn_y_min) + float(spawn_y_max)),
+      E1_KEEPER_AREA_OVERLAY_Z,
+    ),
+    size=(
+      0.5 * (float(spawn_x_max) - float(spawn_x_min)),
+      0.5 * (float(spawn_y_max) - float(spawn_y_min)),
+      E1_AREA_OVERLAY_HALF_THICKNESS,
+    ),
+  )
+  spawn_overlay.name = "e1_stage3_keeper_spawn_overlay"
+  spawn_overlay.rgba = E1_STAGE3_KEEPER_SPAWN_RGBA
+  spawn_overlay.group = E1_STAGE3_KEEPER_SPAWN_VIS_GROUP
+  spawn_overlay.contype = 0
+  spawn_overlay.conaffinity = 0
 
 
 def get_e1_field_cfg_with_test_walls() -> EntityCfg:
@@ -696,8 +729,8 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       mezzaluna_center_y=E1_MEZZALUNA_CENTER_Y,
       mezzaluna_apex_x=E1_MEZZALUNA_APEX_X,
       mezzaluna_half_width_y=E1_MEZZALUNA_HALF_WIDTH_Y,
-      target_forward_range=TARGET_SPAWN_FORWARD_RANGE,
-      target_lateral_range=TARGET_SPAWN_LATERAL_RANGE,
+      target_spawn_x_range=TARGET_SPAWN_X_RANGE,
+      target_spawn_y_range=TARGET_SPAWN_Y_RANGE,
       target_height_min=TARGET_BALL_Z_MIN,
       target_height_exp_scale=TARGET_BALL_Z_EXP_SCALE,
       target_height_max=TARGET_BALL_Z_MAX,
@@ -709,6 +742,10 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       dead_ball_drift_speed_range=KICK_DEAD_BALL_DRIFT_SPEED_RANGE,
       kick_speed_range=KICK_SPEED_RANGE,
       kick_angle_noise_deg=KICK_ANGLE_NOISE_DEG,
+      sideline_throw_spawn_x_range=SIDELINE_THROW_SPAWN_X_RANGE,
+      sideline_throw_spawn_y_range=mdp.IntervalUnionCfg(intervals=SIDELINE_THROW_SPAWN_Y_INTERVALS),
+      sideline_throw_speed_range=SIDELINE_THROW_SPEED_RANGE,
+      sideline_throw_angle_noise_deg=SIDELINE_THROW_ANGLE_NOISE_DEG,
       dribble_num_taps_range=DRIBBLE_NUM_TAPS_RANGE,
       dribble_tap_time_range=DRIBBLE_TAP_TIME_RANGE,
       dribble_tap_interval_range=DRIBBLE_TAP_INTERVAL_RANGE,

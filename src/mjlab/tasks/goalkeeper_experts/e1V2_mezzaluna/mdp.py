@@ -416,16 +416,17 @@ def _mezzaluna_point_world_xy(
 
   dx = dir_xy[:, 0]
   dy = dir_xy[:, 1]
+  # Keep the target on the same upper/lower side of the mezzaluna even when the
+  # ball moves "behind" the ellipse center (dx > 0). Reflect only the x component
+  # into the defended half instead of reversing the whole ray, which would also
+  # flip the y side and cause target jumps across the arc.
+  proj_dx = torch.where(dx <= 0.0, dx, -dx)
+  proj_dy = dy
   denom = torch.sqrt(
-    torch.square(dx / a) + torch.square(dy / b)
+    torch.square(proj_dx / a) + torch.square(proj_dy / b)
   ).clamp_min(1.0e-6)
-
-  sign_x = torch.sign(dx)
-  sign_y = torch.where(dy >= 0.0, torch.ones_like(dy), -torch.ones_like(dy))
-  ray_sign = torch.where(torch.abs(dx) > 1.0e-6, -sign_x, sign_y)
-  t = ray_sign / denom
-
-  point_xy = center_xy + t.unsqueeze(1) * dir_xy
+  proj_dir_xy = torch.stack((proj_dx, proj_dy), dim=1)
+  point_xy = center_xy + proj_dir_xy / denom.unsqueeze(1)
 
   use_apex = torch.linalg.norm(dir_xy, dim=1) <= 1.0e-6
   if use_apex.any():
@@ -586,9 +587,9 @@ class SetSquareResetStageCfg:
   keeper_spawn_x_range: tuple[float, float]
   keeper_spawn_y_range: IntervalUnionCfg
   spawn_yaw_offset_range: tuple[float, float]
-  target_forward_range: tuple[float, float]
-  target_lateral_range: IntervalUnionCfg
-  launcher_mode_probs: tuple[float, float, float]
+  target_spawn_x_range: tuple[float, float]
+  target_spawn_y_range: IntervalUnionCfg
+  launcher_mode_probs: tuple[float, float, float, float]
 
 
 @dataclass(kw_only=True)
@@ -614,9 +615,9 @@ class SetSquareCommandCfg(CommandTermCfg):
   mezzaluna_apex_x: float = 6.15
   mezzaluna_half_width_y: float = 1.55
 
-  # Ball spawn sampling relative to keeper spawn.
-  target_forward_range: tuple[float, float] = (1.0, 2.5)
-  target_lateral_range: tuple[float, float] = (-1.2, 1.2)
+  # Ball spawn sampling in absolute world XY.
+  target_spawn_x_range: tuple[float, float] = (1.0, 2.5)
+  target_spawn_y_range: tuple[float, float] = (-1.2, 1.2)
   target_height_min: float = 0.11
   # Exponential scale (meters): smaller -> more mass near ground.
   target_height_exp_scale: float = 0.06
@@ -633,6 +634,12 @@ class SetSquareCommandCfg(CommandTermCfg):
 
   kick_speed_range: tuple[float, float] = (0.4, 1.6)
   kick_angle_noise_deg: float = 20.0
+  sideline_throw_spawn_x_range: tuple[float, float] = (0.0, 1.0)
+  sideline_throw_spawn_y_range: IntervalUnionCfg = IntervalUnionCfg(
+    intervals=((-4.5, -3.0), (3.0, 4.5))
+  )
+  sideline_throw_speed_range: tuple[float, float] = (0.4, 1.6)
+  sideline_throw_angle_noise_deg: float = 5.0
 
   dribble_num_taps_range: tuple[int, int] = (2, 5)
   dribble_tap_time_range: tuple[float, float] = (0.6, 1.8)
@@ -795,7 +802,7 @@ class SetSquareCommand(CommandTerm):
     super().compute(dt)
     self._update_status_markdown()
 
-  _LAUNCHER_MODE_NAMES = ["dead", "lateral", "dribble"]
+  _LAUNCHER_MODE_NAMES = ["dead", "lateral", "sideline_throw", "dribble"]
 
   def _update_status_markdown(self) -> None:
     if self._status_markdown is None or self._gui_get_env_idx is None:
@@ -896,7 +903,16 @@ class SetSquareCommand(CommandTerm):
     to_kick = (~self._kick_applied) & (time_s >= self._kick_time_s)
     if to_kick.any():
       env_ids = to_kick.nonzero(as_tuple=False).flatten()
-      self._set_ball_linear_velocity(env_ids, self._kick_vel_w[env_ids])
+      sideline_throw_ids = env_ids[self._launcher_mode[env_ids] == 2]
+      other_ids = env_ids[self._launcher_mode[env_ids] != 2]
+      if other_ids.numel() > 0:
+        self._set_ball_linear_velocity(other_ids, self._kick_vel_w[other_ids])
+      if sideline_throw_ids.numel() > 0:
+        self._set_ball_linear_velocity(
+          sideline_throw_ids,
+          self._kick_vel_w[sideline_throw_ids],
+          apply_goal_clamp=False,
+        )
       self._kick_applied[env_ids] = True
 
     to_tap = (
@@ -1105,23 +1121,21 @@ class SetSquareCommand(CommandTerm):
     assert default_root_state is not None
     stage_cfg = self.stage_cfg
 
-    forward = _sample_uniform_range(
-      stage_cfg.target_forward_range[0],
-      stage_cfg.target_forward_range[1],
+    spawn_x = _sample_uniform_range(
+      stage_cfg.target_spawn_x_range[0],
+      stage_cfg.target_spawn_x_range[1],
       len(env_ids),
       self.device,
     )
-    # Early curriculum stages use a disjoint union with an explicit hole around lateral=0.
-    lateral = _sample_union_range(
-      stage_cfg.target_lateral_range.intervals,
+    spawn_y = _sample_union_range(
+      stage_cfg.target_spawn_y_range.intervals,
       len(env_ids),
       self.device,
     )
 
     root_state = default_root_state[env_ids].clone()
-    # Sample the initial ball position relative to the keeper spawn position.
-    root_state[:, 0] = self._spawn_pos_w[env_ids, 0] - forward
-    root_state[:, 1] = self._spawn_pos_w[env_ids, 1] + lateral
+    root_state[:, 0] = self._env.scene.env_origins[env_ids, 0] + spawn_x
+    root_state[:, 1] = self._env.scene.env_origins[env_ids, 1] + spawn_y
     z_min = float(self.cfg.target_height_min)
     scale = max(float(self.cfg.target_height_exp_scale), 1.0e-6)
     u = torch.rand(len(env_ids), device=self.device)
@@ -1147,26 +1161,33 @@ class SetSquareCommand(CommandTerm):
       return
 
     n = len(env_ids)
-    dead_prob, lateral_prob, dribble_prob = self.stage_cfg.launcher_mode_probs
+    dead_prob, lateral_prob, sideline_throw_prob, dribble_prob = self.stage_cfg.launcher_mode_probs
     dead_prob = max(0.0, min(1.0, float(dead_prob)))
-    lateral_prob = max(0.0, min(1.0 - dead_prob, float(lateral_prob)))
+    lateral_prob = max(0.0, float(lateral_prob))
+    sideline_throw_prob = max(0.0, float(sideline_throw_prob))
     dribble_prob = max(0.0, float(dribble_prob))
-    total = dead_prob + lateral_prob + dribble_prob
+    total = dead_prob + lateral_prob + sideline_throw_prob + dribble_prob
     if total <= 1.0e-6:
-      dead_prob, lateral_prob, dribble_prob = 1.0, 0.0, 0.0
+      dead_prob, lateral_prob, sideline_throw_prob, dribble_prob = 1.0, 0.0, 0.0, 0.0
     else:
       dead_prob /= total
       lateral_prob /= total
+      sideline_throw_prob /= total
       dribble_prob /= total
 
     u = torch.rand(n, device=self.device)
     dead_mask = u < dead_prob
     lateral_mask = (u >= dead_prob) & (u < (dead_prob + lateral_prob))
-    dribble_mask = ~(dead_mask | lateral_mask)
+    sideline_throw_mask = (
+      (u >= (dead_prob + lateral_prob))
+      & (u < (dead_prob + lateral_prob + sideline_throw_prob))
+    )
+    dribble_mask = ~(dead_mask | lateral_mask | sideline_throw_mask)
 
     self._launcher_mode[env_ids] = 0
     self._launcher_mode[env_ids[lateral_mask]] = 1
-    self._launcher_mode[env_ids[dribble_mask]] = 2
+    self._launcher_mode[env_ids[sideline_throw_mask]] = 2
+    self._launcher_mode[env_ids[dribble_mask]] = 3
 
     self._kick_vel_w[env_ids] = 0.0
     self._kick_time_s[env_ids] = 1.0e9
@@ -1234,6 +1255,15 @@ class SetSquareCommand(CommandTerm):
         self.device,
       )
 
+    sideline_throw_ids = env_ids[sideline_throw_mask]
+    if sideline_throw_ids.numel() > 0:
+      self._reset_ball_pose_to_sideline_throw(sideline_throw_ids)
+      self._kick_vel_w[sideline_throw_ids] = self._sample_sideline_throw_velocity(
+        sideline_throw_ids
+      )
+      self._kick_applied[sideline_throw_ids] = False
+      self._kick_time_s[sideline_throw_ids] = 0.0
+
   def _force_ball_ground_spawn(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:
       return
@@ -1274,6 +1304,61 @@ class SetSquareCommand(CommandTerm):
     v_y = speed * torch.sin(angle)
     vel = torch.stack([v_x, v_y, torch.zeros_like(v_x)], dim=1)
     return self._clamp_toward_goal_speed(vel)
+
+  def _reset_ball_pose_to_sideline_throw(self, env_ids: torch.Tensor) -> None:
+    if env_ids.numel() == 0:
+      return
+
+    default_root_state = self._ball.data.default_root_state
+    assert default_root_state is not None
+
+    spawn_x = _sample_uniform_range(
+      self.cfg.sideline_throw_spawn_x_range[0],
+      self.cfg.sideline_throw_spawn_x_range[1],
+      len(env_ids),
+      self.device,
+    )
+    spawn_y = _sample_union_range(
+      self.cfg.sideline_throw_spawn_y_range.intervals,
+      len(env_ids),
+      self.device,
+    )
+
+    root_state = default_root_state[env_ids].clone()
+    root_state[:, 0] = self._env.scene.env_origins[env_ids, 0] + spawn_x
+    root_state[:, 1] = self._env.scene.env_origins[env_ids, 1] + spawn_y
+    root_state[:, 2] = self._env.scene.env_origins[env_ids, 2] + float(self.cfg.target_height_min)
+    root_state[:, 3:7] = 0.0
+    root_state[:, 3] = 1.0
+    root_state[:, 7:13] = 0.0
+    self._ball.write_root_state_to_sim(root_state, env_ids=env_ids)
+    self._target_pos_w[env_ids] = root_state[:, :3]
+
+  def _sample_sideline_throw_velocity(self, env_ids: torch.Tensor) -> torch.Tensor:
+    num = len(env_ids)
+    speed = _sample_uniform_range(
+      self.cfg.sideline_throw_speed_range[0],
+      self.cfg.sideline_throw_speed_range[1],
+      num,
+      self.device,
+    )
+    local_ball_y = self._target_pos_w[env_ids, 1] - self._env.scene.env_origins[env_ids, 1]
+    from_positive_y_side = local_ball_y >= 0.0
+    angle_lo_deg = torch.where(
+      from_positive_y_side,
+      torch.full((num,), -float(self.cfg.sideline_throw_angle_noise_deg), device=self.device),
+      torch.zeros(num, device=self.device),
+    )
+    angle_hi_deg = torch.where(
+      from_positive_y_side,
+      torch.zeros(num, device=self.device),
+      torch.full((num,), float(self.cfg.sideline_throw_angle_noise_deg), device=self.device),
+    )
+    angle_deg = angle_lo_deg + torch.rand(num, device=self.device) * (angle_hi_deg - angle_lo_deg)
+    angle = angle_deg * torch.pi / 180.0
+    v_x = speed * torch.cos(angle)
+    v_y = speed * torch.sin(angle)
+    return torch.stack([v_x, v_y, torch.zeros_like(v_x)], dim=1)
 
   def _sample_velocity_around_mean_direction(
     self,
@@ -1333,8 +1418,11 @@ class SetSquareCommand(CommandTerm):
     self,
     env_ids: torch.Tensor,
     vel_w_xyz: torch.Tensor,
+    apply_goal_clamp: bool = True,
   ) -> None:
-    vel_w_xyz = self._clamp_toward_goal_speed(vel_w_xyz.clone())
+    vel_w_xyz = vel_w_xyz.clone()
+    if apply_goal_clamp:
+      vel_w_xyz = self._clamp_toward_goal_speed(vel_w_xyz)
     ball_vel = self._ball.data.root_link_vel_w[env_ids].clone()
     ball_vel[:, :3] = vel_w_xyz
     self._ball.write_root_link_velocity_to_sim(ball_vel, env_ids=env_ids)
