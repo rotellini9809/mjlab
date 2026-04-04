@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import math
 import os
 import sys
 from pathlib import Path
 
 import mujoco
+import torch
 import yaml
 
 from mjlab.asset_zoo.robocup_assets.field import get_robocup_field_cfg
@@ -18,13 +20,13 @@ from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationT
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
-from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.motor_controller_stage1.latent_action import get_wandb_run_name
-from mjlab.tasks.goalkeeper_experts.e2_stand_block import mdp
+from mjlab.sensor import ContactMatch, ContactSensorCfg
+from mjlab.tasks.goalkeeper_experts.e2v2_mezzaluna import mdp
 from mjlab.tasks.goalkeeper_experts.launcher import (
-  E2_STAGE5_FINAL_HARDER,
+  E2_STAGE1_BASIC,
+  E2_STAGE3_VERTICAL_PACE,
   apply_e2_launcher_preset,
-  get_e2_launcher_curriculum_preset_name,
 )
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
 from mjlab.terrains import TerrainEntityCfg
@@ -36,15 +38,10 @@ E1_HOME_POINT_X = 6.70
 E1_HOME_POINT_Y = 0.0
 E1_HOME_POINT_BAND_RADIUS = 0.10
 
-# E2 keeper spawn centered at E1 home point with the same x-band as E1's home-point cue.
-KEEPER_SPAWN_X_RANGE = (
-  E1_HOME_POINT_X - E1_HOME_POINT_BAND_RADIUS,
-  E1_HOME_POINT_X + E1_HOME_POINT_BAND_RADIUS,
-)
-KEEPER_SPAWN_Y_RANGE = (
-  E1_HOME_POINT_Y - E1_HOME_POINT_BAND_RADIUS,
-  E1_HOME_POINT_Y + E1_HOME_POINT_BAND_RADIUS,
-)
+# Legacy fixed ranges retained for compatibility; E2V2 reset now spawns from the
+# mezzaluna using the sampled ball spawn instead of using these directly.
+KEEPER_SPAWN_X_RANGE = (6.4, 6.8)
+KEEPER_SPAWN_Y_RANGE = (-0.4, 0.4)
 # Matches E1's ready-pose spawn after compensating for the measured
 # foot-collision clearance above the field collider.
 KEEPER_SPAWN_Z = 0.6728
@@ -96,15 +93,29 @@ UPRIGHT_PITCH_SIGMA = 0.30
 # Keep reset close to standing/default with light noise.
 KEEPER_JOINT_POS_NOISE = 0.02
 KEEPER_JOINT_VEL_NOISE = 0.08
+MEZZALUNA_CENTER_X = GOAL_X_LINE - 0.20
+MEZZALUNA_CENTER_Y = 0.0
+MEZZALUNA_APEX_X = (GOAL_X_LINE - 1.0) + 0.15 - 0.20
+MEZZALUNA_HALF_WIDTH_Y = 1.55 + 0.10
+MEZZALUNA_SPAWN_XY_JITTER_RANGE = (-0.10, 0.10)
+MEZZALUNA_SPAWN_RADIAL_JITTER_RANGE = (-0.04, 0.04)
 
 # Reusable launcher defaults for E2. Presets only override launcher sampling.
-E2_RESET_CURRICULUM_STAGE = os.environ.get("MJLAB_E2_RESET_CURRICULUM_STAGE", "").strip()
-E2_DEFAULT_LAUNCHER_PRESET_NAME = E2_STAGE5_FINAL_HARDER
+E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE = os.environ.get(
+  "MJLAB_E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE", ""
+).strip()
+E2V2_MEZZALUNA_DEFAULT_LAUNCHER_PRESET_NAME = (
+  mdp.E2V2_MEZZALUNA_STAGE2_GROUND_AIR
+)
 E2_DEFLECTION_TIME_AFTER_LAUNCH_RANGE = (0.08, 0.22)
 E2_DEFLECTION_DV_MAG_RANGE = (0.35, 1.25)
 E2_LAUNCH_MAX_SPEED = 8.5
 E2_LAUNCH_MAX_ABS_VZ = 5.5
 E2_MIN_TOWARD_GOAL_SPEED = 0.8
+E2V2_GROUND_NEAR_X_RANGE = (4.8, 5.9)
+E2V2_GROUND_FAR_X_RANGE = (3.2, 4.8)
+E2V2_ONE_BOUNCE_X_RANGE = (3.6, 5.4)
+E2V2_LOB_X_RANGE = (3.5, 5.3)
 
 # Goal-plane aperture (used for both detection and visualization).
 GOAL_PLANE_X = GOAL_X_LINE
@@ -116,9 +127,15 @@ GOAL_PLANE_Z_MAX = 1.85
 GOAL_PLANE_VIS_HALF_THICKNESS = 0.005
 GOAL_PLANE_VIS_RGBA = (0.15, 0.85, 0.95, 0.08)
 GOAL_PLANE_VIS_GROUP = 3
+MEZZALUNA_VIS_GROUP = 2
+MEZZALUNA_VIS_RGBA = (0.56, 0.95, 0.62, 0.80)
+MEZZALUNA_HALF_WIDTH = 0.02
+MEZZALUNA_HALF_THICKNESS = 0.003
+MEZZALUNA_Z = 0.006
+MEZZALUNA_SEGMENTS = 40
 
 # E2 ball danger area used by clearance-quality shaping.
-E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 1.8, GOAL_X_LINE + 0.3, -2.5, 2.5)
+E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 2.3, GOAL_X_LINE + 0.3, -2.5, 2.5)
 E2_DANGER_AREA_OVERLAY_HALF_THICKNESS = 0.0015
 E2_DANGER_AREA_OVERLAY_Z = 0.003
 E2_DANGER_AREA_OVERLAY_RGBA = (0.95, 0.18, 0.18, 0.22)
@@ -126,7 +143,7 @@ E2_DANGER_AREA_VIS_GROUP = 3
 
 # E2 keeper area used by the outside-area penalty. Matches E3's keeper-area
 # bounds and local goal-line anchoring convention.
-E2_KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1.0, GOAL_X_LINE + 0.6, -2.0, 2.0)
+E2_KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1.8, GOAL_X_LINE + 0.6, -2.0, 2.0)
 E2_KEEPER_AREA_OVERLAY_HALF_THICKNESS = 0.0015
 E2_KEEPER_AREA_OVERLAY_Z = 0.005
 E2_KEEPER_AREA_OVERLAY_RGBA = (0.95, 0.85, 0.10, 0.24)
@@ -134,7 +151,9 @@ E2_KEEPER_AREA_VIS_GROUP = 3
 
 BALL_ROBOT_CONTACT_SENSOR_NAME = "ball_robot_contact"
 HEAD_BALL_CONTACT_SENSOR_NAME = "head_ball_contact"
+ARM_BALL_CONTACT_SENSOR_NAME = "arm_ball_contact"
 HEAD_BODIES = ("H1", "H2")
+ARM_CONTACT_BODIES = ("AL1", "AL2", "AL3", "left_hand_link", "AR1", "AR2", "AR3", "right_hand_link")
 RESOLUTION_WINDOW_S = 1.5
 
 # Stage-1 command dimension used in motor-observation layout.
@@ -144,8 +163,8 @@ MOTOR_ACT_DIM = 23
 EPISODE_LENGTH_S = 6.0
 SIM_TIMESTEP_S = 0.005
 CONTROL_DECIMATION = 4
-E2_TASK_ID = "Mjlab-GK-Expert-StandBlock-Booster-T1_23"
-E2_EXPERIMENT_NAME = "gk_expert_stand_block_booster_t1_23"
+E2V2_MEZZALUNA_TASK_ID = "Mjlab-GK-Expert-E2V2-Mezzaluna-Booster-T1_23"
+E2V2_MEZZALUNA_EXPERIMENT_NAME = "gk_expert_e2v2_mezzaluna_booster_t1_23"
 
 
 def _get_cli_flag_value(flag: str) -> str | None:
@@ -163,7 +182,7 @@ def _is_e2_play_cli_invocation() -> bool:
   script_stem = Path(sys.argv[0]).stem.lower()
   if "play" not in script_stem:
     return False
-  return len(sys.argv) > 1 and sys.argv[1] == E2_TASK_ID
+  return len(sys.argv) > 1 and sys.argv[1] == E2V2_MEZZALUNA_TASK_ID
 
 
 def _download_wandb_run_file(log_root: Path, run_path: str, filename: str) -> Path:
@@ -291,7 +310,7 @@ def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
   if not wandb_run_path:
     return None
 
-  log_root = (Path("logs") / "rsl_rl" / E2_EXPERIMENT_NAME).resolve()
+  log_root = (Path("logs") / "rsl_rl" / E2V2_MEZZALUNA_EXPERIMENT_NAME).resolve()
   config_yaml_path = _try_download_wandb_run_file(
     log_root, wandb_run_path, "config.yaml"
   )
@@ -330,7 +349,7 @@ def _resolve_saved_e2_play_stage1_run() -> tuple[str | None, str | None]:
   if not wandb_run_path:
     return None, None
 
-  log_root = (Path("logs") / "rsl_rl" / E2_EXPERIMENT_NAME).resolve()
+  log_root = (Path("logs") / "rsl_rl" / E2V2_MEZZALUNA_EXPERIMENT_NAME).resolve()
   config_yaml_path = _try_download_wandb_run_file(
     log_root, wandb_run_path, "config.yaml"
   )
@@ -416,6 +435,35 @@ def _add_field_overlays(spec: mujoco.MjSpec) -> None:
   keeper_overlay.contype = 0
   keeper_overlay.conaffinity = 0
 
+  ellipse_a = max(float(MEZZALUNA_CENTER_X) - float(MEZZALUNA_APEX_X), 1.0e-6)
+  ellipse_b = max(float(MEZZALUNA_HALF_WIDTH_Y), 1.0e-6)
+  theta = torch.linspace(
+    -0.5 * math.pi,
+    0.5 * math.pi,
+    steps=int(MEZZALUNA_SEGMENTS) + 1,
+    dtype=torch.float32,
+  )
+  x = float(MEZZALUNA_CENTER_X) - ellipse_a * torch.cos(theta)
+  y = float(MEZZALUNA_CENTER_Y) + ellipse_b * torch.sin(theta)
+  for index in range(int(MEZZALUNA_SEGMENTS)):
+    p0 = torch.tensor([x[index], y[index]], dtype=torch.float32)
+    p1 = torch.tensor([x[index + 1], y[index + 1]], dtype=torch.float32)
+    center = 0.5 * (p0 + p1)
+    delta = p1 - p0
+    half_len = max(0.5 * torch.linalg.norm(delta).item(), 1.0e-6)
+    angle = math.atan2(float(delta[1].item()), float(delta[0].item()))
+    segment = overlay_body.add_geom(
+      type=mujoco.mjtGeom.mjGEOM_BOX,
+      pos=(float(center[0].item()), float(center[1].item()), MEZZALUNA_Z),
+      size=(half_len, MEZZALUNA_HALF_WIDTH, MEZZALUNA_HALF_THICKNESS),
+      quat=(math.cos(0.5 * angle), 0.0, 0.0, math.sin(0.5 * angle)),
+    )
+    segment.name = f"e2v2_mezzaluna_segment_{index:02d}"
+    segment.rgba = MEZZALUNA_VIS_RGBA
+    segment.group = MEZZALUNA_VIS_GROUP
+    segment.contype = 0
+    segment.conaffinity = 0
+
 
 def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
   field_cfg = get_robocup_field_cfg()
@@ -430,7 +478,42 @@ def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
   return field_cfg
 
 
-def booster_t1_23_gk_expert_stand_block_env_cfg(
+def _apply_e2v2_mezzaluna_launcher_preset(
+  cfg: mdp.GoalkeeperBallLauncherCfg,
+  preset_name: str,
+) -> mdp.GoalkeeperBallLauncherCfg:
+  cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
+  cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
+  cfg.one_bounce_x_range = E2V2_ONE_BOUNCE_X_RANGE
+  cfg.lob_x_range = E2V2_LOB_X_RANGE
+  if preset_name == mdp.E2V2_MEZZALUNA_STAGE1_GROUND:
+    cfg = apply_e2_launcher_preset(cfg, E2_STAGE1_BASIC)
+    cfg.active_preset_name = preset_name
+    cfg.enabled_families = (True, False, False, False, False)
+    cfg.family_weights = (1.0, 0.0, 0.0, 0.0, 0.0)
+    cfg.shot_low_z_prob = 1.0
+    cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
+    cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
+    cfg.one_bounce_x_range = E2V2_ONE_BOUNCE_X_RANGE
+    cfg.lob_x_range = E2V2_LOB_X_RANGE
+    return cfg
+  if preset_name == mdp.E2V2_MEZZALUNA_STAGE2_GROUND_AIR:
+    cfg = apply_e2_launcher_preset(cfg, E2_STAGE3_VERTICAL_PACE)
+    cfg.active_preset_name = preset_name
+    cfg.enabled_families = (True, True, True, True, True)
+    cfg.family_weights = (0.45, 0.20, 0.15, 0.10, 0.10)
+    cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
+    cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
+    cfg.one_bounce_x_range = E2V2_ONE_BOUNCE_X_RANGE
+    cfg.lob_x_range = E2V2_LOB_X_RANGE
+    return cfg
+  supported = ", ".join(mdp.E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES)
+  raise ValueError(
+    f"Unknown E2V2 mezzaluna launcher preset '{preset_name}'. Supported presets: {supported}."
+  )
+
+
+def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
   play: bool = False,
   launcher_preset_name: str | None = None,
   launcher_curriculum_stage: int | None = None,
@@ -483,7 +566,21 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     num_slots=1,
     track_air_time=True,
   )
-  cfg.scene.sensors = (*cfg.scene.sensors, ball_robot_contact_cfg, head_ball_contact_cfg)
+  arm_ball_contact_cfg = ContactSensorCfg(
+    name=ARM_BALL_CONTACT_SENSOR_NAME,
+    primary=ContactMatch(mode="body", pattern=ARM_CONTACT_BODIES, entity="robot"),
+    secondary=ContactMatch(mode="geom", pattern="ball_collision", entity="soccer_ball"),
+    fields=("found",),
+    reduce="none",
+    num_slots=1,
+    track_air_time=True,
+  )
+  cfg.scene.sensors = (
+    *cfg.scene.sensors,
+    ball_robot_contact_cfg,
+    head_ball_contact_cfg,
+    arm_ball_contact_cfg,
+  )
 
   motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
     act_dim=MOTOR_ACT_DIM,
@@ -538,7 +635,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
 
   resolved_preset_name = launcher_preset_name
   if resolved_preset_name is None and launcher_curriculum_stage is not None:
-    resolved_preset_name = get_e2_launcher_curriculum_preset_name(
+    resolved_preset_name = mdp.get_e2v2_mezzaluna_launcher_curriculum_preset_name(
       launcher_curriculum_stage
     )
   if resolved_preset_name is None and play:
@@ -548,12 +645,12 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
         f"[INFO]: Auto-selected E2 play launcher preset from saved run: "
         f"{resolved_preset_name}"
       )
-  if resolved_preset_name is None and E2_RESET_CURRICULUM_STAGE:
-    resolved_preset_name = get_e2_launcher_curriculum_preset_name(
-      int(E2_RESET_CURRICULUM_STAGE)
+  if resolved_preset_name is None and E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE:
+    resolved_preset_name = mdp.get_e2v2_mezzaluna_launcher_curriculum_preset_name(
+      int(E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE)
     )
   if resolved_preset_name is None:
-    resolved_preset_name = E2_DEFAULT_LAUNCHER_PRESET_NAME
+    resolved_preset_name = E2V2_MEZZALUNA_DEFAULT_LAUNCHER_PRESET_NAME
 
   launcher_cfg = mdp.GoalkeeperBallLauncherCfg(
     ball_entity_name="soccer_ball",
@@ -569,7 +666,7 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     deflection_time_after_launch_range=E2_DEFLECTION_TIME_AFTER_LAUNCH_RANGE,
     deflection_dv_mag_range=E2_DEFLECTION_DV_MAG_RANGE,
   )
-  launcher_cfg = apply_e2_launcher_preset(launcher_cfg, resolved_preset_name)
+  launcher_cfg = _apply_e2v2_mezzaluna_launcher_preset(launcher_cfg, resolved_preset_name)
 
   cfg.commands = {
     "stand_block": mdp.StandBlockCommandCfg(
@@ -580,6 +677,12 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       keeper_spawn_x_range=KEEPER_SPAWN_X_RANGE,
       keeper_spawn_y_range=KEEPER_SPAWN_Y_RANGE,
       spawn_yaw_range=SPAWN_YAW_RANGE,
+      mezzaluna_center_x=MEZZALUNA_CENTER_X,
+      mezzaluna_center_y=MEZZALUNA_CENTER_Y,
+      mezzaluna_apex_x=MEZZALUNA_APEX_X,
+      mezzaluna_half_width_y=MEZZALUNA_HALF_WIDTH_Y,
+      mezzaluna_spawn_xy_jitter_range=MEZZALUNA_SPAWN_XY_JITTER_RANGE,
+      mezzaluna_spawn_radial_jitter_range=MEZZALUNA_SPAWN_RADIAL_JITTER_RANGE,
       keeper_joint_pos_noise=KEEPER_JOINT_POS_NOISE,
       keeper_joint_vel_noise=KEEPER_JOINT_VEL_NOISE,
       launcher_cfg=launcher_cfg,
@@ -705,6 +808,14 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       params={
         "command_name": "stand_block",
         "only_on_first_contact": True,
+      },
+    ),
+    "arm_high_throw_deflect_reward": RewardTermCfg(
+      func=mdp.arm_high_throw_deflect_reward,
+      weight=6.0,
+      params={
+        "command_name": "stand_block",
+        "arm_sensor_name": ARM_BALL_CONTACT_SENSOR_NAME,
       },
     ),
     "clearance_quality": RewardTermCfg(

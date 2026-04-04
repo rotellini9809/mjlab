@@ -115,8 +115,8 @@ MAX_TOWARD_GOAL_VX = 0.5
 
 # Spawn from the ready pose on half of resets; otherwise use default pose.
 P_READY = 0.5
-E1_STAGE3_KEEPER_SPAWN_X_RANGE = (5.3, 6.8)
-E1_STAGE3_KEEPER_SPAWN_Y_RANGE = (-1.4, 1.4)
+E1_STAGE3_KEEPER_SPAWN_X_RANGE = (3.5, 6.8)
+E1_STAGE3_KEEPER_SPAWN_Y_RANGE = (-2.5, 2.5)
 E1_STAGE3_KEEPER_SPAWN_VIS_GROUP = 5
 E1_STAGE3_KEEPER_SPAWN_RGBA = (0.10, 0.95, 0.35, 0.16)
 
@@ -196,7 +196,7 @@ E1_KEEPER_AREA_OVERLAY_Z = 0.0035
 E1_HARD_AREA_RGBA = (0.95, 0.55, 0.10, 0.22)
 E1_KEEPER_AREA_RGBA = (0.05, 0.60, 0.95, 0.30)
 E1_MEZZALUNA_VIS_GROUP = 2
-E1_MEZZALUNA_RGBA = (0.98, 0.88, 0.12, 0.80)
+E1_MEZZALUNA_RGBA = (0.56, 0.95, 0.62, 0.80)
 E1_MEZZALUNA_HALF_WIDTH = 0.02
 E1_MEZZALUNA_HALF_THICKNESS = 0.003
 E1_MEZZALUNA_Z = 0.006
@@ -513,30 +513,28 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
   ellipse_a = max(float(E1_MEZZALUNA_CENTER_X) - keeper_front_x, 1.0e-6)
   ellipse_b = max(goal_opening_half_y, 1.0e-6)
   theta = torch.linspace(
-    -0.5 * torch.pi,
-    0.5 * torch.pi,
+    -0.5 * math.pi,
+    0.5 * math.pi,
     steps=int(E1_MEZZALUNA_SEGMENTS) + 1,
-    dtype=torch.float64,
+    dtype=torch.float32,
   )
   x = float(E1_MEZZALUNA_CENTER_X) - ellipse_a * torch.cos(theta)
-  y = ellipse_b * torch.sin(theta)
+  y = float(E1_MEZZALUNA_CENTER_Y) + ellipse_b * torch.sin(theta)
 
   for index in range(int(E1_MEZZALUNA_SEGMENTS)):
-    p0 = torch.stack((x[index], y[index]))
-    p1 = torch.stack((x[index + 1], y[index + 1]))
+    p0 = torch.tensor([x[index], y[index]], dtype=torch.float32)
+    p1 = torch.tensor([x[index + 1], y[index + 1]], dtype=torch.float32)
     center = 0.5 * (p0 + p1)
     delta = p1 - p0
-    half_len = 0.5 * torch.linalg.norm(delta).item()
-    if half_len <= 1.0e-9:
-      continue
-    yaw = math.atan2(float(delta[1].item()), float(delta[0].item()))
+    half_len = max(0.5 * torch.linalg.norm(delta).item(), 1.0e-6)
+    angle = math.atan2(float(delta[1].item()), float(delta[0].item()))
     segment = overlay_body.add_geom(
       type=mujoco.mjtGeom.mjGEOM_BOX,
       pos=(float(center[0].item()), float(center[1].item()), E1_MEZZALUNA_Z),
       size=(half_len, E1_MEZZALUNA_HALF_WIDTH, E1_MEZZALUNA_HALF_THICKNESS),
-      euler=(0.0, 0.0, yaw),
+      quat=(math.cos(0.5 * angle), 0.0, 0.0, math.sin(0.5 * angle)),
     )
-    segment.name = f"e1_mezzaluna_seg_{index:02d}"
+    segment.name = f"e1v2_mezzaluna_segment_{index:02d}"
     segment.rgba = E1_MEZZALUNA_RGBA
     segment.group = E1_MEZZALUNA_VIS_GROUP
     segment.contype = 0
@@ -575,6 +573,12 @@ def get_e1_field_cfg_with_test_walls() -> EntityCfg:
 
   field_cfg.spec_fn = _spec_fn
   return field_cfg
+
+
+def _disable_e1_ball_robot_collision(spec: mujoco.MjSpec) -> None:
+  # Scene.attach prefixes body names with "<entity_name>/", so exclude the
+  # ball body against the robot root body tree at the combined scene-spec level.
+  spec.add_exclude(name="e1_ball_robot_exclude", bodyname1="robot/Trunk", bodyname2="soccer_ball/ball")
 
 
 def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
@@ -663,6 +667,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     left_foot_ground_contact_cfg,
     right_foot_ground_contact_cfg,
   )
+  cfg.scene.spec_fn = _disable_e1_ball_robot_collision
 
   motor_obs_terms, motor_obs_term_dims = mdp.default_motor_obs_layout(
     act_dim=MOTOR_ACT_DIM,
@@ -958,6 +963,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       weight=-0.65,
       params={
         "command_name": "set_square",
+        "ortho_deadband": 0.10,
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },
@@ -967,6 +973,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       weight=0.0,
       params={
         "command_name": "set_square",
+        "ortho_deadband": 0.10,
         "max_delta": 0.2,
         "apply_standing_gate": True,
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -997,7 +1004,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "upright": RewardTermCfg(
       func=mdp.upright_stability_reward,
-      weight=0.45,
+      weight=0.8,
       params={
         "roll_band": UPRIGHT_ROLL_BAND,
         "roll_sigma": UPRIGHT_ROLL_SIGMA,

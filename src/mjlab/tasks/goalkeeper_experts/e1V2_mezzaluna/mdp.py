@@ -546,6 +546,7 @@ def _stance_ortho_score(
   asset_cfg: SceneEntityCfg,
   left_foot_body_name: str,
   right_foot_body_name: str,
+  ortho_deadband: float = 0.10,
   eps: float = 1.0e-6,
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
@@ -565,7 +566,7 @@ def _stance_ortho_score(
   ball_norm = torch.linalg.norm(ball_vec_xy, dim=1, keepdim=True).clamp_min(float(eps))
   ball_dir_xy = ball_vec_xy / ball_norm
   dot = torch.sum(stance_dir_xy * ball_dir_xy, dim=1).clamp(-1.0, 1.0)
-  return torch.abs(dot)
+  return torch.relu(torch.abs(dot) - float(ortho_deadband))
 
 
 def get_target_ball_cfg() -> EntityCfg:
@@ -2190,6 +2191,7 @@ def stance_ortho_abs_penalty(
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   left_foot_body_name: str = r"^left_foot_link$",
   right_foot_body_name: str = r"^right_foot_link$",
+  ortho_deadband: float = 0.10,
 ) -> torch.Tensor:
   ortho_err = _stance_ortho_score(
     env,
@@ -2197,6 +2199,7 @@ def stance_ortho_abs_penalty(
     asset_cfg,
     left_foot_body_name,
     right_foot_body_name,
+    ortho_deadband,
   )
   log = _get_log_dict(env)
   if log is not None:
@@ -2217,6 +2220,7 @@ def stance_ortho_progress_reward(
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   left_foot_body_name: str = r"^left_foot_link$",
   right_foot_body_name: str = r"^right_foot_link$",
+  ortho_deadband: float = 0.10,
   max_delta: float = 0.20,
   apply_standing_gate: bool = False,
 ) -> torch.Tensor:
@@ -2226,6 +2230,7 @@ def stance_ortho_progress_reward(
     asset_cfg,
     left_foot_body_name,
     right_foot_body_name,
+    ortho_deadband,
   )
   prev = _get_float_state_buffer(
     env,

@@ -22,10 +22,12 @@ from mjlab.envs.mdp.rewards import (
   joint_pos_limits as _base_joint_pos_limits,
 )
 from mjlab.tasks.goalkeeper_experts.launcher import (
-  LAUNCH_FAMILY_NAMES,
+  CROSS_FAMILY,
+    LAUNCH_FAMILY_NAMES,
+  LOB_CHIP_FAMILY,
+  LONG_DRIVEN_FAMILY,
   GoalkeeperBallLauncher,
   GoalkeeperBallLauncherCfg,
-  get_e2_launcher_curriculum_stage_index,
 )
 from mjlab.utils.lab_api.math import (
   quat_apply,
@@ -37,6 +39,31 @@ if TYPE_CHECKING:
   import viser
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
+E2V2_MEZZALUNA_STAGE1_GROUND = "e2v2_mezzaluna_stage1_ground"
+E2V2_MEZZALUNA_STAGE2_GROUND_AIR = "e2v2_mezzaluna_stage2_ground_air"
+E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES = (
+  E2V2_MEZZALUNA_STAGE1_GROUND,
+  E2V2_MEZZALUNA_STAGE2_GROUND_AIR,
+)
+
+
+def get_e2v2_mezzaluna_launcher_curriculum_stage_index(
+  preset_name: str,
+) -> int | None:
+  try:
+    return E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES.index(preset_name) + 1
+  except ValueError:
+    return None
+
+
+def get_e2v2_mezzaluna_launcher_curriculum_preset_name(stage_index: int) -> str:
+  if not (1 <= int(stage_index) <= len(E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES)):
+    raise ValueError(
+      "E2V2 mezzaluna curriculum stage must be within "
+      f"[1, {len(E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES)}], "
+      f"got {stage_index}."
+    )
+  return E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES[int(stage_index) - 1]
 
 
 def _sample_uniform_range(
@@ -83,6 +110,42 @@ def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
 
 def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
   return pos_w_xyz - env.scene.env_origins
+
+
+def _mezzaluna_point_world_xy_from_ball_xy(
+  env,
+  ball_xy_w: torch.Tensor,
+  center_x: float,
+  center_y: float,
+  apex_x: float,
+  half_width_y: float,
+) -> torch.Tensor:
+  center_xy = env.scene.env_origins[:, :2] + torch.tensor(
+    [center_x, center_y],
+    device=env.device,
+    dtype=torch.float32,
+  )
+  dir_xy = ball_xy_w - center_xy
+
+  a = max(float(center_x) - float(apex_x), 1.0e-6)
+  b = max(float(half_width_y), 1.0e-6)
+
+  dx = dir_xy[:, 0]
+  dy = dir_xy[:, 1]
+  proj_dx = torch.where(dx <= 0.0, dx, -dx)
+  proj_dy = dy
+  denom = torch.sqrt(
+    torch.square(proj_dx / a) + torch.square(proj_dy / b)
+  ).clamp_min(1.0e-6)
+  proj_dir_xy = torch.stack((proj_dx, proj_dy), dim=1)
+  point_xy = center_xy + proj_dir_xy / denom.unsqueeze(1)
+
+  use_apex = torch.linalg.norm(dir_xy, dim=1) <= 1.0e-6
+  if use_apex.any():
+    point_xy[use_apex, 0] = float(apex_x) + env.scene.env_origins[use_apex, 0]
+    point_xy[use_apex, 1] = float(center_y) + env.scene.env_origins[use_apex, 1]
+
+  return point_xy
 
 
 def _resolve_body_index_pair_cached(
@@ -278,6 +341,12 @@ class StandBlockCommandCfg(CommandTermCfg):
   keeper_spawn_x_range: tuple[float, float]
   keeper_spawn_y_range: tuple[float, float]
   spawn_yaw_range: tuple[float, float]
+  mezzaluna_center_x: float = 6.8
+  mezzaluna_center_y: float = 0.0
+  mezzaluna_apex_x: float = 6.15
+  mezzaluna_half_width_y: float = 1.65
+  mezzaluna_spawn_xy_jitter_range: tuple[float, float] = (-0.10, 0.10)
+  mezzaluna_spawn_radial_jitter_range: tuple[float, float] = (-0.04, 0.04)
 
   # Small noise around default standing pose.
   keeper_joint_pos_noise: float = 0.02
@@ -367,7 +436,9 @@ class StandBlockCommand(CommandTerm):
 
   @property
   def launcher_curriculum_stage(self) -> int | None:
-    return get_e2_launcher_curriculum_stage_index(self.launcher_preset_name)
+    return get_e2v2_mezzaluna_launcher_curriculum_stage_index(
+      self.launcher_preset_name
+    )
 
   def _update_status_markdown(self) -> None:
     if self._status_markdown is None or self._gui_get_env_idx is None:
@@ -448,7 +519,7 @@ class StandBlockCommand(CommandTerm):
     self._launcher.step(time_s)
 
   def _reset_robot_pose(self, env_ids: torch.Tensor) -> None:
-    from mjlab.tasks.goalkeeper_experts.e2_stand_block.config.t1_23dof.env_cfgs import (
+    from mjlab.tasks.goalkeeper_experts.e2v2_mezzaluna.config.t1_23dof.env_cfgs import (
       KEEPER_SPAWN_Z,
       READY_JOINT_POS,
       READY_ROOT_QUAT,
@@ -461,27 +532,56 @@ class StandBlockCommand(CommandTerm):
     assert default_root_state is not None
     assert default_joint_vel is not None
 
-    spawn_x = _sample_uniform_range(
-      self.cfg.keeper_spawn_x_range[0],
-      self.cfg.keeper_spawn_x_range[1],
-      len(env_ids),
-      self.device,
-    )
-    spawn_y = _sample_uniform_range(
-      self.cfg.keeper_spawn_y_range[0],
-      self.cfg.keeper_spawn_y_range[1],
-      len(env_ids),
-      self.device,
-    )
-
     root_state = default_root_state[env_ids].clone()
     origins = self._env.scene.env_origins[env_ids]
-    root_state[:, 0] = origins[:, 0] + spawn_x
-    root_state[:, 1] = origins[:, 1] + spawn_y
+    ball_xy = self._launcher.spawn_pos_w[env_ids, :2]
+    mezzaluna_point_xy = _mezzaluna_point_world_xy_from_ball_xy(
+      self._env,
+      self._launcher.spawn_pos_w[:, :2],
+      center_x=float(self.cfg.mezzaluna_center_x),
+      center_y=float(self.cfg.mezzaluna_center_y),
+      apex_x=float(self.cfg.mezzaluna_apex_x),
+      half_width_y=float(self.cfg.mezzaluna_half_width_y),
+    )[env_ids]
+    center_xy = self._env.scene.env_origins[env_ids, :2] + torch.tensor(
+      [self.cfg.mezzaluna_center_x, self.cfg.mezzaluna_center_y],
+      device=self.device,
+      dtype=torch.float32,
+    )
+    radial_dir_xy = _normalize_xy(mezzaluna_point_xy - center_xy)
+    jitter_lo, jitter_hi = self.cfg.mezzaluna_spawn_xy_jitter_range
+    if abs(jitter_hi - jitter_lo) <= 1.0e-9:
+      jitter_xy = torch.full(
+        (len(env_ids), 2),
+        float(jitter_lo),
+        device=self.device,
+      )
+    else:
+      jitter_xy = _sample_uniform_range(
+        jitter_lo,
+        jitter_hi,
+        len(env_ids) * 2,
+        self.device,
+      ).view(len(env_ids), 2)
+    radial_lo, radial_hi = self.cfg.mezzaluna_spawn_radial_jitter_range
+    if abs(radial_hi - radial_lo) <= 1.0e-9:
+      radial_jitter = torch.full((len(env_ids),), float(radial_lo), device=self.device)
+    else:
+      radial_jitter = _sample_uniform_range(
+        radial_lo,
+        radial_hi,
+        len(env_ids),
+        self.device,
+      )
+    spawn_xy = (
+      mezzaluna_point_xy
+      + jitter_xy
+      + radial_jitter.unsqueeze(1) * radial_dir_xy
+    )
+    root_state[:, 0:2] = spawn_xy
     root_state[:, 2] = origins[:, 2] + float(KEEPER_SPAWN_Z)
 
     # Face the sampled ball spawn point in XY, with optional additive yaw offset.
-    ball_xy = self._launcher.spawn_pos_w[env_ids, :2]
     robot_xy = root_state[:, :2]
     to_ball_xy = ball_xy - robot_xy
     yaw_face_ball = torch.atan2(to_ball_xy[:, 1], to_ball_xy[:, 0])
@@ -711,6 +811,23 @@ def _first_ball_robot_contact_mask(
     return torch.any(first_contact, dim=1)
   except RuntimeError:
     return _ball_robot_contact_mask(env, sensor_name)
+
+
+def _high_throw_mask_from_command(
+  env,
+  command_name: str,
+  high_throw_target_z_min: float = 0.55,
+) -> torch.Tensor:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  family_id = cmd.launcher.family_id
+  valid_family = family_id >= 0
+  family_mask = (
+    (family_id == LOB_CHIP_FAMILY)
+    | (family_id == CROSS_FAMILY)
+    | (family_id == LONG_DRIVEN_FAMILY)
+  )
+  fallback_height_mask = cmd.launcher.target_pos_w[:, 2] >= float(high_throw_target_z_min)
+  return torch.where(valid_family, family_mask, fallback_height_mask)
 
 
 # ---------------- Observations ----------------
@@ -1159,6 +1276,55 @@ def head_contact_penalty(
   if log is not None:
     log["Metrics/e2_head_contact_active_mean"] = torch.mean(contact_now.to(torch.float32))
     log["Metrics/e2_head_contact_event_mean"] = torch.mean(raw)
+
+  return raw
+
+
+def arm_high_throw_deflect_reward(
+  env,
+  arm_sensor_name: str,
+  command_name: str = "stand_block",
+  high_throw_target_z_min: float = 0.55,
+) -> torch.Tensor:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  high_throw_mask = _high_throw_mask_from_command(
+    env,
+    command_name,
+    high_throw_target_z_min=high_throw_target_z_min,
+  )
+  _contact_now, new_contact = _contact_rising_edge_event(
+    env,
+    arm_sensor_name,
+    state_key=f"e2_prev_arm_contact::{arm_sensor_name}",
+  )
+  used = _get_bool_state_buffer(env, key=f"e2_arm_contact_reward_used::{arm_sensor_name}")
+  is_first = env.episode_length_buf <= 1
+  used[is_first] = False
+
+  first_arm_contact_mask = new_contact & (~used)
+  used |= first_arm_contact_mask
+
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+  vx = ball.data.root_link_lin_vel_w[:, 0]
+  if cmd.cfg.goal_toward_positive_x:
+    away_speed = torch.clamp(-vx, min=0.0)
+  else:
+    away_speed = torch.clamp(vx, min=0.0)
+  vel_factor = torch.tanh(away_speed / 2.0)
+  raw = (
+    high_throw_mask.to(torch.float32)
+    * first_arm_contact_mask.to(torch.float32)
+    * (0.2 + 0.8 * vel_factor)
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_high_throw_mask_mean"] = torch.mean(high_throw_mask.to(torch.float32))
+    log["Metrics/e2_first_arm_contact_event_mean"] = torch.mean(
+      first_arm_contact_mask.to(torch.float32)
+    )
+    log["Metrics/e2_arm_deflect_away_speed_mean"] = torch.mean(away_speed)
+    log["Metrics/e2_arm_high_throw_deflect_raw_mean"] = torch.mean(raw)
 
   return raw
 
