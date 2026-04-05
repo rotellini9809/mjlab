@@ -881,7 +881,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       weight=-90.0,
       params={
         "min_height": 0.32,
-        "max_tilt": 1.25,
+        "max_roll_deg": 100.0,
       },
     ),
   }
@@ -904,7 +904,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       func=mdp.FallTermination,
       params={
         "min_height": 0.32,
-        "max_tilt": 1.25,
+        "max_roll_deg": 100.0,
         "consecutive_steps": 6,
       },
     ),

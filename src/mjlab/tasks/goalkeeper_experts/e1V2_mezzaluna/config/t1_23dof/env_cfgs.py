@@ -889,7 +889,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       weight=fallen_weight,
       params={
         "min_height": 0.32,
-        "max_tilt": 1.25,
+        "max_roll_deg": 100.0,
       },
     ),
     "joint_pos_limits": RewardTermCfg(
@@ -1034,7 +1034,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       func=mdp.FallTermination,
       params={
         "min_height": 0.32,
-        "max_tilt": 1.25,
+        "max_roll_deg": 100.0,
         "consecutive_steps": 6,
       },
     ),

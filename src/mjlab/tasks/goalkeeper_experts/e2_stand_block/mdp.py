@@ -191,6 +191,7 @@ def _posture_score_components(
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
   sagittal = projected_gravity_b[:, 0]
   lateral = projected_gravity_b[:, 1]
+  vertical = projected_gravity_b[:, 2]
 
   roll_error = torch.relu(torch.abs(lateral) - float(roll_band))
   roll_score = torch.exp(
@@ -204,7 +205,8 @@ def _posture_score_components(
     -torch.square(pitch_error) / max(float(pitch_sigma) * float(pitch_sigma), 1.0e-6)
   )
 
-  posture_score = roll_score * pitch_score
+  upright_sign_score = torch.clamp(-vertical, min=0.0, max=1.0)
+  posture_score = roll_score * pitch_score * upright_sign_score
   return posture_score, roll_score, pitch_score, lateral, sagittal
 
 

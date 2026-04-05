@@ -253,9 +253,12 @@ def _posture_score_components(
   Body-frame convention used across mjlab:
   - x: sagittal (forward/backward)
   - y: lateral (left/right)
+  - z: vertical; upright poses should keep projected gravity pointing downward
+    in body frame, so upside-down poses must not receive upright reward.
   """
   sagittal = projected_gravity_b[:, 0]
   lateral = projected_gravity_b[:, 1]
+  vertical = projected_gravity_b[:, 2]
 
   roll_error = torch.relu(torch.abs(lateral) - float(roll_band))
   roll_score = torch.exp(
@@ -267,7 +270,8 @@ def _posture_score_components(
     -torch.square(pitch_error) / max(float(pitch_sigma) * float(pitch_sigma), 1.0e-6)
   )
 
-  posture_score = roll_score * pitch_score
+  upright_sign_score = torch.clamp(-vertical, min=0.0, max=1.0)
+  posture_score = roll_score * pitch_score * upright_sign_score
   return posture_score, roll_score, pitch_score, lateral, sagittal
 
 
@@ -2196,12 +2200,12 @@ def fallen_indicator(
   env,
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   min_height: float = 0.30,
-  max_tilt: float = 1.20,
+  max_roll_deg: float = 100.0,
 ) -> torch.Tensor:
   robot: Entity = env.scene[asset_cfg.name]
   height = robot.data.root_link_pos_w[:, 2]
-  tilt = torch.linalg.norm(robot.data.projected_gravity_b[:, :2], dim=1)
-  fallen = (height < min_height) | (tilt > max_tilt)
+  torso_roll_deg = torch.abs(torch.rad2deg(_roll_from_quat_wxyz(robot.data.root_link_quat_w)))
+  fallen = (height < min_height) | (torso_roll_deg > float(max_roll_deg))
   return _apply_reward_active_mask(fallen.float(), env)
 
 
@@ -2235,13 +2239,13 @@ class FallTermination:
     env,
     asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
     min_height: float = 0.30,
-    max_tilt: float = 1.20,
+    max_roll_deg: float = 100.0,
     consecutive_steps: int = 6,
   ) -> torch.Tensor:
     robot: Entity = env.scene[asset_cfg.name]
     height = robot.data.root_link_pos_w[:, 2]
-    tilt = torch.linalg.norm(robot.data.projected_gravity_b[:, :2], dim=1)
-    fallen_now = (height < min_height) | (tilt > max_tilt)
+    torso_roll_deg = torch.abs(torch.rad2deg(_roll_from_quat_wxyz(robot.data.root_link_quat_w)))
+    fallen_now = (height < min_height) | (torso_roll_deg > float(max_roll_deg))
     self._counter = torch.where(
       fallen_now,
       self._counter + 1,
