@@ -128,19 +128,6 @@ def _compute_torso_yaw_error(
   return _yaw_error_from_heading(torso_pos_w_xy, torso_yaw, target_pos_w)
 
 
-def _compute_waist_yaw_error(
-  env,
-  robot: Entity,
-  target_pos_w: torch.Tensor,
-  waist_body_name: str = r"(?i)^waist$",
-) -> torch.Tensor:
-  """Signed yaw-only error between anatomical waist/pelvis heading and target."""
-  waist_idx = _resolve_single_body_index_cached(env, robot, waist_body_name)
-  waist_pos_w_xy = robot.data.body_link_pos_w[:, waist_idx, :2]
-  waist_yaw = _yaw_from_quat_wxyz(robot.data.body_link_quat_w[:, waist_idx, :])
-  return _yaw_error_from_heading(waist_pos_w_xy, waist_yaw, target_pos_w)
-
-
 def _wrap_angle_pi(angle: torch.Tensor) -> torch.Tensor:
   return torch.atan2(torch.sin(angle), torch.cos(angle))
 
@@ -216,27 +203,6 @@ def _resolve_single_body_index_cached(
   return cache[key]
 
 
-def _get_waist_yaw_progress_prev_error_buffer(
-  env,
-  robot: Entity,
-  waist_body_name: str,
-) -> torch.Tensor:
-  """Get/create per-env previous waist yaw error magnitude buffer."""
-  env_obj = getattr(env, "unwrapped", env)
-  cache_name = "_e1_waist_yaw_progress_prev_error_cache"
-  cache = getattr(env_obj, cache_name, None)
-  if cache is None:
-    cache = {}
-    setattr(env_obj, cache_name, cache)
-
-  key = (id(robot), waist_body_name)
-  prev = cache.get(key)
-  if prev is None or prev.shape[0] != int(env.num_envs) or prev.device != robot.data.root_link_pos_w.device:
-    prev = torch.zeros(env.num_envs, device=robot.data.root_link_pos_w.device)
-    cache[key] = prev
-  return prev
-
-
 def _get_float_state_buffer(
   env,
   name: str,
@@ -303,30 +269,6 @@ def _posture_score_components(
 
   posture_score = roll_score * pitch_score
   return posture_score, roll_score, pitch_score, lateral, sagittal
-
-
-def _yaw_reward_posture_score(
-  projected_gravity_b: torch.Tensor,
-  tilt_target: float,
-  tilt_band: float,
-  tilt_sigma: float,
-) -> torch.Tensor:
-  """Posture score used by E1 yaw shaping gates.
-
-  Reuses E1's anisotropic posture convention while letting the yaw helpers
-  configure the sagittal target and shared deadband/sigma.
-  """
-  band = max(float(tilt_band), 0.0)
-  sigma = max(float(tilt_sigma), 1.0e-6)
-  posture_score, _, _, _, _ = _posture_score_components(
-    projected_gravity_b,
-    roll_band=band,
-    roll_sigma=sigma,
-    pitch_target=tilt_target,
-    pitch_band=band,
-    pitch_sigma=sigma,
-  )
-  return posture_score.clamp_min(torch.finfo(projected_gravity_b.dtype).tiny)
 
 
 def _standing_gate(
@@ -1753,35 +1695,6 @@ def desired_point_relative_xy(
   return target_w_xy - robot.data.root_link_pos_w[:, :2]
 
 
-def yaw_alignment_waist_reward(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  k: float = 2.5,
-  waist_body_name: str = r"(?i)^waist$",
-  apply_standing_gate: bool = False,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  ball: Entity = env.scene[command.cfg.ball_entity_name]
-  # Waist alignment encourages leg/foot pivot micro-steps instead of trunk-only rotation.
-  yaw_error = _compute_waist_yaw_error(
-    env,
-    robot,
-    ball.data.root_link_pos_w,
-    waist_body_name=waist_body_name,
-  )
-  raw = torch.exp(-k * torch.square(yaw_error))
-  reward = _apply_standing_gate_if_enabled(
-    raw,
-    env,
-    asset_cfg,
-    apply_standing_gate,
-  )
-  reward = reward * _alignment_home_ramp(env, command_name, asset_cfg)
-  return _apply_reward_active_mask(reward, env, command_name)
-
-
 def waist_ready_twist_abs_penalty(
   env,
   command_name: str = "set_square",
@@ -1846,104 +1759,6 @@ def waist_ready_twist_abs_penalty(
     log["Metrics/e1_waist_ready_twist_abs_err_mean"] = torch.mean(torch.abs(twist_err))
     log["Metrics/e1_waist_ready_twist_abs_pen_mean"] = torch.mean(penalty)
 
-  return _apply_reward_active_mask(penalty, env, command_name)
-
-
-def waist_yaw_progress_reward(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  waist_body_name: str = r"(?i)^waist$",
-  err_gate: float = 0.25,
-  upright_gate: float = 0.80,
-  max_delta: float = 0.35,
-  tilt_target: float = 0.0,
-  tilt_band: float = -1.0,
-  tilt_sigma: float = 0.5,
-  apply_standing_gate: bool = False,
-) -> torch.Tensor:
-  """Reward positive reduction in absolute waist yaw error to the ball."""
-  robot: Entity = env.scene[asset_cfg.name]
-  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  ball: Entity = env.scene[command.cfg.ball_entity_name]
-
-  yaw_err_waist = _compute_waist_yaw_error(
-    env,
-    robot,
-    ball.data.root_link_pos_w,
-    waist_body_name=waist_body_name,
-  )
-  err_abs = yaw_err_waist.abs()
-
-  prev_err_abs = _get_waist_yaw_progress_prev_error_buffer(env, robot, waist_body_name)
-  reward_steps = _reward_step_count(env, command_name)
-  active_mask = _reward_active_mask(env, command_name)
-  is_first_step = reward_steps <= 1
-  effective_prev = torch.where(is_first_step, err_abs, prev_err_abs)
-
-  prog_raw = effective_prev - err_abs
-  prog = torch.clamp(prog_raw, min=0.0, max=float(max_delta))
-  posture_score = _yaw_reward_posture_score(
-    robot.data.projected_gravity_b,
-    tilt_target=tilt_target,
-    tilt_band=tilt_band,
-    tilt_sigma=tilt_sigma,
-  )
-  ok_err = err_abs > float(err_gate)
-  ok_upright = posture_score > float(upright_gate)
-  reward = torch.where(ok_err & ok_upright, prog, torch.zeros_like(prog))
-  reward = _apply_standing_gate_if_enabled(
-    reward,
-    env,
-    asset_cfg,
-    apply_standing_gate,
-  )
-  reward = reward * _alignment_home_ramp(env, command_name, asset_cfg)
-  reward = _apply_reward_active_mask(reward, env, command_name)
-
-  prev_err_abs[active_mask] = err_abs[active_mask]
-  return reward
-
-
-def waist_yaw_abs_penalty(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  waist_body_name: str = r"(?i)^waist$",
-  upright_gate: float = 0.85,
-  tilt_target: float = 0.0,
-  tilt_band: float = -1.0,
-  tilt_sigma: float = 0.5,
-) -> torch.Tensor:
-  """Penalize absolute waist yaw error to keep persistent pressure to square up."""
-  robot: Entity = env.scene[asset_cfg.name]
-  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  ball: Entity = env.scene[command.cfg.ball_entity_name]
-
-  yaw_err_waist = _compute_waist_yaw_error(
-    env,
-    robot,
-    ball.data.root_link_pos_w,
-    waist_body_name=waist_body_name,
-  )
-  err_abs = yaw_err_waist.abs()
-  posture_score = _yaw_reward_posture_score(
-    robot.data.projected_gravity_b,
-    tilt_target=tilt_target,
-    tilt_band=tilt_band,
-    tilt_sigma=tilt_sigma,
-  )
-  penalty = torch.where(
-    posture_score > float(upright_gate),
-    err_abs,
-    torch.zeros_like(err_abs),
-  )
-
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e1_waist_yaw_abs_pen_raw_mean"] = torch.mean(err_abs)
-
-  penalty = penalty * _alignment_home_ramp(env, command_name, asset_cfg)
   return _apply_reward_active_mask(penalty, env, command_name)
 
 
@@ -2130,13 +1945,6 @@ def stance_center_home_axis_progress_reward(
   prog = _apply_reward_active_mask(prog, env, command_name)
 
   prev[active_mask] = err_abs[active_mask]
-
-  log = _get_log_dict(env)
-  if log is not None:
-    if axis_idx == 0:
-      log["Metrics/e1_home_x_progress_mean"] = torch.mean(prog)
-    else:
-      log["Metrics/e1_home_y_progress_mean"] = torch.mean(prog)
   return prog
 
 
@@ -2179,9 +1987,6 @@ def stance_center_move_toward_home_reward(
   reward = torch.clamp(toward_speed, min=0.0, max=float(v_cap))
   reward = _apply_standing_gate_if_enabled(reward, env, asset_cfg, apply_standing_gate)
 
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e1_move_toward_home_mean"] = torch.mean(reward)
   return _apply_reward_active_mask(reward, env, command_name)
 
 
@@ -2257,7 +2062,6 @@ def stance_ortho_progress_reward(
   log = _get_log_dict(env)
   if log is not None:
     log["Metrics/e1_stance_ortho_err_mean"] = torch.mean(ortho_err)
-    log["Metrics/e1_stance_ortho_progress_mean"] = torch.mean(prog)
 
   return prog
 
@@ -2343,16 +2147,6 @@ def pelvis_between_feet_reward(
     left_foot_body_name=left_foot_body_name,
     right_foot_body_name=right_foot_body_name,
   )
-
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e1_pelvis_between_feet_mean"] = torch.mean(reward)
-    log["Metrics/e1_pelvis_between_feet_lateral_offset_mean"] = torch.mean(
-      torch.abs(lateral_offset)
-    )
-    log["Metrics/e1_pelvis_between_feet_longitudinal_offset_mean"] = torch.mean(
-      torch.abs(longitudinal_offset)
-    )
 
   return _apply_reward_active_mask(reward, env, command_name)
 

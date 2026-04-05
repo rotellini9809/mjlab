@@ -948,7 +948,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "stance_center_move_toward_home": RewardTermCfg(
       func=mdp.stance_center_move_toward_home_reward,
-      weight=0.3,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "r_deadband": HOME_POINT_BAND_RADIUS,
@@ -1022,27 +1022,6 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
         "waist_body_name": WAIST_BODY_NAME_REGEX,
-        "apply_standing_gate": True,
-      },
-    ),
-    "yaw_err_abs_pen": RewardTermCfg(
-      func=mdp.waist_yaw_abs_penalty,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-        "upright_gate": 0.0,
-      },
-    ),
-    "yaw_progress": RewardTermCfg(
-      func=mdp.waist_yaw_progress_reward,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "waist_body_name": WAIST_BODY_NAME_REGEX,
-        "err_gate": 0.0,
-        "upright_gate": 0.0,
-        "max_delta": 0.2,
         "apply_standing_gate": True,
       },
     ),
