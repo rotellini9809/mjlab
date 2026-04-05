@@ -870,7 +870,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
   }
 
-  fallen_weight = -6.0
+  fallen_weight = -20.0
 
   cfg.rewards = {
     "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
