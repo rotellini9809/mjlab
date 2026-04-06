@@ -619,6 +619,10 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
       func=mdp.target_direction_xy,
       params={"command_name": "stand_block"},
     ),
+    "robot_pos_rel_goal_line_xy": ObservationTermCfg(
+      func=mdp.robot_position_relative_goal_line_xy,
+      params={"command_name": "stand_block"},
+    ),
     "ball_pos_rel_xyz": ObservationTermCfg(
       func=mdp.ball_position_relative_xyz,
       params={"command_name": "stand_block"},
@@ -650,6 +654,10 @@ def booster_t1_23_gk_expert_stand_block_env_cfg(
     ),
     "target_dir_xy": ObservationTermCfg(
       func=mdp.target_direction_xy,
+      params={"command_name": "stand_block"},
+    ),
+    "robot_pos_rel_goal_line_xy": ObservationTermCfg(
+      func=mdp.robot_position_relative_goal_line_xy,
       params={"command_name": "stand_block"},
     ),
     "ball_pos_rel_xyz": ObservationTermCfg(

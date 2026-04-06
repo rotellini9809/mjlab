@@ -112,6 +112,18 @@ def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
   return pos_w_xyz - env.scene.env_origins
 
 
+def _goal_line_center_world_xy(
+  env,
+  command_name: str,
+) -> torch.Tensor:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  return env.scene.env_origins[:, :2] + torch.tensor(
+    [cmd.cfg.goal_plane_x, cmd.cfg.goal_plane_y_center],
+    device=env.device,
+    dtype=torch.float32,
+  )
+
+
 def _mezzaluna_point_world_xy_from_ball_xy(
   env,
   ball_xy_w: torch.Tensor,
@@ -856,6 +868,15 @@ def ball_position_relative_xyz(
   cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
   return ball.data.root_link_pos_w - robot.data.root_link_pos_w
+
+
+def robot_position_relative_goal_line_xy(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  return robot.data.root_link_pos_w[:, :2] - _goal_line_center_world_xy(env, command_name)
 
 
 def ball_velocity_relative_xyz(

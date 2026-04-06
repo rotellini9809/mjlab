@@ -150,6 +150,18 @@ def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
 
+def _goal_line_center_world_xy(
+  env,
+  command_name: str,
+) -> torch.Tensor:
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  return env.scene.env_origins[:, :2] + torch.tensor(
+    [command.cfg.goal_line_x, command.cfg.goal_line_y_center],
+    device=env.device,
+    dtype=torch.float32,
+  )
+
+
 def _resolve_body_index_pair_cached(
   env,
   robot: Entity,
@@ -612,6 +624,8 @@ class SetSquareCommandCfg(CommandTermCfg):
   # Keeper home point (local env coords, before adding env origin).
   home_point_x: float = 6.75
   home_point_y: float = 0.0
+  goal_line_x: float = 7.0
+  goal_line_y_center: float = 0.0
 
   # Manual reset curriculum.
   curriculum_stage: int = 4
@@ -1678,6 +1692,15 @@ def target_position_relative_xyz(
   return ball.data.root_link_pos_w - robot.data.root_link_pos_w
 
 
+def robot_position_relative_goal_line_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  return robot.data.root_link_pos_w[:, :2] - _goal_line_center_world_xy(env, command_name)
+
+
 def ball_velocity_relative_xyz(
   env,
   command_name: str = "set_square",
@@ -1772,48 +1795,36 @@ def stance_ortho_to_ball_reward(
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   left_foot_body_name: str = r"^left_foot_link$",
   right_foot_body_name: str = r"^right_foot_link$",
-  w_min: float = 0.10,
-  d_min: float = 0.35,
-  eps: float = 1.0e-6,
-  neutral_when_mask_off: bool = True,
+  ortho_deadband: float = 0.10,
 ) -> torch.Tensor:
   """Reward stance axis orthogonality to ball direction in XY plane.
 
   stance axis: left->right foot direction
   target: dot(stance_dir, ball_dir) ~= 0
   """
-  robot: Entity = env.scene[asset_cfg.name]
-  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  ball: Entity = env.scene[command.cfg.ball_entity_name]
-
-  left_idx, right_idx = _resolve_body_index_pair_cached(
+  ortho_err = _stance_ortho_score(
     env,
-    robot,
+    command_name,
+    asset_cfg,
     left_foot_body_name,
     right_foot_body_name,
+    ortho_deadband,
   )
+  ortho_reward = 1.0 - ortho_err
 
-  body_pos_w = robot.data.body_link_pos_w
-  p_l_xy = body_pos_w[:, left_idx, :2]
-  p_r_xy = body_pos_w[:, right_idx, :2]
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_stance_ortho_err_mean"] = torch.mean(ortho_err)
+    log["Metrics/e1_stance_ortho_reward_mean"] = torch.mean(ortho_reward)
 
-  stance_vec_xy = p_r_xy - p_l_xy
-  stance_width = torch.linalg.norm(stance_vec_xy, dim=1)
-  stance_dir_xy = stance_vec_xy / stance_width.unsqueeze(1).clamp_min(float(eps))
-
-  root_xy = robot.data.root_link_pos_w[:, :2]
-  ball_xy = ball.data.root_link_pos_w[:, :2]
-  ball_vec_xy = ball_xy - root_xy
-  ball_dist = torch.linalg.norm(ball_vec_xy, dim=1)
-  ball_dir_xy = ball_vec_xy / ball_dist.unsqueeze(1).clamp_min(float(eps))
-
-  dot = torch.sum(stance_dir_xy * ball_dir_xy, dim=1).clamp(-1.0, 1.0)
-  stance_ortho = 1.0 - torch.square(dot)
-
-  mask = (stance_width > float(w_min)) & (ball_dist > float(d_min))
-  if neutral_when_mask_off:
-    return torch.where(mask, stance_ortho, torch.ones_like(stance_ortho))
-  return mask.float() * stance_ortho
+  reward = ortho_reward * _alignment_home_ramp(
+    env,
+    command_name,
+    asset_cfg,
+    left_foot_body_name=left_foot_body_name,
+    right_foot_body_name=right_foot_body_name,
+  )
+  return _apply_reward_active_mask(reward, env, command_name)
 
 
 def upright_stability_reward(

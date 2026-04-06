@@ -676,6 +676,8 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
       p_ready=P_READY,
       home_point_x=KEEPER_HOME_POINT_X,
       home_point_y=KEEPER_HOME_POINT_Y,
+      goal_line_x=GOAL_X_LINE,
+      goal_line_y_center=0.0,
       curriculum_stage=curriculum_stage,
       curriculum_stages=E1_RESET_STAGE_CFGS,
       nominal_keeper_facing_yaw=KEEPER_NOMINAL_FACING_YAW,
@@ -710,6 +712,10 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "target_dir_xy": ObservationTermCfg(
       func=mdp.target_direction_xy,
+      params={"command_name": "set_square"},
+    ),
+    "robot_pos_rel_goal_line_xy": ObservationTermCfg(
+      func=mdp.robot_position_relative_goal_line_xy,
       params={"command_name": "set_square"},
     ),
     "desired_point_rel_xy": ObservationTermCfg(
@@ -747,6 +753,10 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
     ),
     "target_dir_xy": ObservationTermCfg(
       func=mdp.target_direction_xy,
+      params={"command_name": "set_square"},
+    ),
+    "robot_pos_rel_goal_line_xy": ObservationTermCfg(
+      func=mdp.robot_position_relative_goal_line_xy,
       params={"command_name": "set_square"},
     ),
     "desired_point_rel_xy": ObservationTermCfg(

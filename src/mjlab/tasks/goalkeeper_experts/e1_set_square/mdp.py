@@ -163,6 +163,18 @@ def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
 
+def _goal_line_center_world_xy(
+  env,
+  command_name: str,
+) -> torch.Tensor:
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  return env.scene.env_origins[:, :2] + torch.tensor(
+    [command.cfg.goal_line_x, command.cfg.goal_line_y_center],
+    device=env.device,
+    dtype=torch.float32,
+  )
+
+
 def _resolve_body_index_pair_cached(
   env,
   robot: Entity,
@@ -600,6 +612,8 @@ class SetSquareCommandCfg(CommandTermCfg):
   # Keeper home point (local env coords, before adding env origin).
   home_point_x: float = 6.75
   home_point_y: float = 0.0
+  goal_line_x: float = 7.0
+  goal_line_y_center: float = 0.0
 
   # Manual reset curriculum.
   curriculum_stage: int = 4
@@ -1567,6 +1581,15 @@ def target_position_relative_xyz(
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[command.cfg.ball_entity_name]
   return ball.data.root_link_pos_w - robot.data.root_link_pos_w
+
+
+def robot_position_relative_goal_line_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  return robot.data.root_link_pos_w[:, :2] - _goal_line_center_world_xy(env, command_name)
 
 
 def ball_velocity_relative_xyz(
