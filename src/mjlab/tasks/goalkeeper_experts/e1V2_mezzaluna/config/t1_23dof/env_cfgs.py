@@ -143,7 +143,7 @@ E1_RESET_STAGE_CFGS = (
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
-    launcher_mode_probs=(0.3, 0.3, 0.2, 0.2),
+    launcher_mode_probs=(0.1, 0.4, 0.25, 0.25),
   ),
 )
 
