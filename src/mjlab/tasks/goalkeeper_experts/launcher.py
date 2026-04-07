@@ -549,8 +549,16 @@ class GoalkeeperBallLauncherCfg:
     (0.45, 0.55, 0.75),
     (0.30, 0.42, 0.58),
   )
+  # Long-driven target distribution can be more centered than generic shots.
+  long_driven_target_mode_probs: tuple[float, float, float] = (0.34, 0.34, 0.32)
+  long_driven_target_nearpost_abs_y_range: tuple[float, float] = (0.75, 1.20)
+  long_driven_target_farpost_abs_y_range: tuple[float, float] = (0.95, 1.30)
+  long_driven_target_center_y_range: tuple[float, float] = (-0.35, 0.35)
   # Keep long-driven shots airborne at the goal plane.
   long_driven_target_z_range: tuple[float, float] = (0.80, 1.35)
+  long_driven_target_z_tiers: tuple[tuple[float, float, float], ...] = (
+    (1.0, 0.80, 1.35),
+  )
   # Ensure this family does not collapse into slow long shots.
   long_driven_min_toward_goal_speed: float = 2.0
 
@@ -1010,9 +1018,13 @@ class GoalkeeperBallLauncher:
       target_local = self._sample_goal_target_local(
         source_y_local=y_local,
         m=m,
-        use_mid_z=True,
+        use_mid_z=False,
+        target_mode_probs=self.cfg.long_driven_target_mode_probs,
+        nearpost_abs_y_range=self.cfg.long_driven_target_nearpost_abs_y_range,
+        farpost_abs_y_range=self.cfg.long_driven_target_farpost_abs_y_range,
+        center_y_range=self.cfg.long_driven_target_center_y_range,
       )
-      target_z = self._sample_uniform(self.cfg.long_driven_target_z_range, m)
+      target_z = self._sample_tiered(self.cfg.long_driven_target_z_tiers, m)
       target_local[:, 2] = torch.clamp(
         target_z,
         min=float(self.cfg.goal_z_min + self.cfg.ball_radius),
@@ -1164,10 +1176,36 @@ class GoalkeeperBallLauncher:
     source_y_local: torch.Tensor,
     m: int,
     use_mid_z: bool,
+    *,
+    target_mode_probs: tuple[float, float, float] | None = None,
+    nearpost_abs_y_range: tuple[float, float] | None = None,
+    farpost_abs_y_range: tuple[float, float] | None = None,
+    center_y_range: tuple[float, float] | None = None,
   ) -> torch.Tensor:
     target_x = torch.full((m,), float(self.cfg.goal_plane_x), device=self.device)
 
-    mode = self._sample_categorical(self.cfg.shot_target_mode_probs, m)
+    mode_probs = (
+      self.cfg.shot_target_mode_probs
+      if target_mode_probs is None
+      else target_mode_probs
+    )
+    nearpost_range = (
+      self.cfg.shot_nearpost_abs_y_range
+      if nearpost_abs_y_range is None
+      else nearpost_abs_y_range
+    )
+    farpost_range = (
+      self.cfg.shot_farpost_abs_y_range
+      if farpost_abs_y_range is None
+      else farpost_abs_y_range
+    )
+    center_range = (
+      self.cfg.shot_center_y_range
+      if center_y_range is None
+      else center_y_range
+    )
+
+    mode = self._sample_categorical(mode_probs, m)
 
     side_sign = torch.sign(source_y_local)
     near_zero = torch.abs(side_sign) < 1.0e-5
@@ -1185,17 +1223,17 @@ class GoalkeeperBallLauncher:
 
     if near_m.any():
       count = int(near_m.sum().item())
-      y_abs = self._sample_uniform(self.cfg.shot_nearpost_abs_y_range, count)
+      y_abs = self._sample_uniform(nearpost_range, count)
       target_y[near_m] = side_sign[near_m] * y_abs
 
     if far_m.any():
       count = int(far_m.sum().item())
-      y_abs = self._sample_uniform(self.cfg.shot_farpost_abs_y_range, count)
+      y_abs = self._sample_uniform(farpost_range, count)
       target_y[far_m] = -side_sign[far_m] * y_abs
 
     if center_m.any():
       target_y[center_m] = self._sample_uniform(
-        self.cfg.shot_center_y_range,
+        center_range,
         int(center_m.sum().item()),
       )
 

@@ -115,41 +115,31 @@ MAX_TOWARD_GOAL_VX = 0.5
 
 # Spawn from the ready pose on half of resets; otherwise use default pose.
 P_READY = 0.5
-E1_STAGE3_KEEPER_SPAWN_X_RANGE = (3.5, 6.8)
-E1_STAGE3_KEEPER_SPAWN_Y_RANGE = (-2.5, 2.5)
-E1_STAGE3_KEEPER_SPAWN_VIS_GROUP = 5
-E1_STAGE3_KEEPER_SPAWN_RGBA = (0.10, 0.95, 0.35, 0.16)
+E1_STAGE1_KEEPER_SPAWN_X_RANGE = (3.5, 6.8)
+E1_STAGE1_KEEPER_SPAWN_Y_RANGE = (-2.5, 2.5)
+E1_STAGE2_KEEPER_SPAWN_X_RANGE = (5.2, 6.8)
+E1_STAGE2_KEEPER_SPAWN_Y_RANGE = (-2.3, 2.3)
+E1_KEEPER_SPAWN_VIS_GROUP = 5
+E1_KEEPER_SPAWN_RGBA = (0.10, 0.95, 0.35, 0.16)
 
 # Manual reset curriculum.
-E1_RESET_CURRICULUM_STAGE_ENV = os.environ.get(
-  "MJLAB_E1_RESET_CURRICULUM_STAGE", ""
-).strip()
-E1_DEFAULT_RESET_CURRICULUM_STAGE = 3
+E1_DEFAULT_RESET_CURRICULUM_STAGE = 1
 # Goalkeeper nominal facing in field coordinates: look out into the field, not at the sampled ball.
 KEEPER_NOMINAL_FACING_YAW = math.pi
 
-# Early stages intentionally use disjoint Y/lateral intervals with a hole around zero.
-# This keeps starts easier while still requiring meaningful repositioning, without rejection sampling.
+# Reset curriculum for E1V2 mezzaluna.
 E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(KEEPER_HOME_POINT_X - 0.08, KEEPER_HOME_POINT_X + 0.08),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
-    spawn_yaw_offset_range=(-math.radians(35.0), math.radians(35.0)),
-    target_spawn_x_range=TARGET_SPAWN_X_RANGE,
-    target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
-    launcher_mode_probs=(1.0, 0.0, 0.0, 0.0),
-  ),
-  mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=(6.50, 6.82),
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=((-1.0, -0.2), (0.2, 1.0))),
+    keeper_spawn_x_range=E1_STAGE1_KEEPER_SPAWN_X_RANGE,
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE1_KEEPER_SPAWN_Y_RANGE,)),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
-    launcher_mode_probs=(0.8, 0.2, 0.0, 0.0),
+    launcher_mode_probs=(0.3, 0.3, 0.2, 0.2),
   ),
   mdp.SetSquareResetStageCfg(
-    keeper_spawn_x_range=E1_STAGE3_KEEPER_SPAWN_X_RANGE,
-    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE3_KEEPER_SPAWN_Y_RANGE,)),
+    keeper_spawn_x_range=E1_STAGE2_KEEPER_SPAWN_X_RANGE,
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE2_KEEPER_SPAWN_Y_RANGE,)),
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
@@ -299,6 +289,10 @@ def _normalize_e1_curriculum_stage(stage_index: int) -> int | None:
   return None
 
 
+def _get_e1_reset_curriculum_stage_env() -> str:
+  return os.environ.get("MJLAB_E1_RESET_CURRICULUM_STAGE", "").strip()
+
+
 def _extract_e1_curriculum_stage_from_env_data(env_data: object) -> int | None:
   if not isinstance(env_data, dict):
     return None
@@ -436,7 +430,11 @@ def _resolve_saved_e1_play_stage1_run() -> tuple[str | None, str | None]:
   return _extract_saved_e1_stage1_run_from_env_data(env_data)
 
 
-def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
+def _add_e1_test_walls(
+  spec: mujoco.MjSpec,
+  *,
+  curriculum_stage: int,
+) -> None:
   overlay_body = next(
     (body for body in spec.bodies if body.name == "e1_field_overlays"), None
   )
@@ -540,35 +538,45 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
     segment.contype = 0
     segment.conaffinity = 0
 
-  spawn_x_min, spawn_x_max = E1_STAGE3_KEEPER_SPAWN_X_RANGE
-  spawn_y_min, spawn_y_max = E1_STAGE3_KEEPER_SPAWN_Y_RANGE
-  spawn_overlay = overlay_body.add_geom(
-    type=mujoco.mjtGeom.mjGEOM_BOX,
-    pos=(
-      0.5 * (float(spawn_x_min) + float(spawn_x_max)),
-      0.5 * (float(spawn_y_min) + float(spawn_y_max)),
-      E1_KEEPER_AREA_OVERLAY_Z,
-    ),
-    size=(
-      0.5 * (float(spawn_x_max) - float(spawn_x_min)),
-      0.5 * (float(spawn_y_max) - float(spawn_y_min)),
-      E1_AREA_OVERLAY_HALF_THICKNESS,
-    ),
-  )
-  spawn_overlay.name = "e1_stage3_keeper_spawn_overlay"
-  spawn_overlay.rgba = E1_STAGE3_KEEPER_SPAWN_RGBA
-  spawn_overlay.group = E1_STAGE3_KEEPER_SPAWN_VIS_GROUP
-  spawn_overlay.contype = 0
-  spawn_overlay.conaffinity = 0
+  stage_cfg = E1_RESET_STAGE_CFGS[int(curriculum_stage) - 1]
+  spawn_x_min, spawn_x_max = stage_cfg.keeper_spawn_x_range
+  for interval_index, (spawn_y_min, spawn_y_max) in enumerate(
+    stage_cfg.keeper_spawn_y_range.intervals
+  ):
+    spawn_overlay = overlay_body.add_geom(
+      type=mujoco.mjtGeom.mjGEOM_BOX,
+      pos=(
+        0.5 * (float(spawn_x_min) + float(spawn_x_max)),
+        0.5 * (float(spawn_y_min) + float(spawn_y_max)),
+        E1_KEEPER_AREA_OVERLAY_Z,
+      ),
+      size=(
+        0.5 * (float(spawn_x_max) - float(spawn_x_min)),
+        0.5 * (float(spawn_y_max) - float(spawn_y_min)),
+        E1_AREA_OVERLAY_HALF_THICKNESS,
+      ),
+    )
+    spawn_overlay.name = (
+      f"e1_stage{int(curriculum_stage)}_keeper_spawn_overlay_{interval_index:02d}"
+    )
+    spawn_overlay.rgba = E1_KEEPER_SPAWN_RGBA
+    spawn_overlay.group = E1_KEEPER_SPAWN_VIS_GROUP
+    spawn_overlay.contype = 0
+    spawn_overlay.conaffinity = 0
 
 
-def get_e1_field_cfg_with_test_walls() -> EntityCfg:
+def get_e1_field_cfg_with_test_walls(curriculum_stage: int) -> EntityCfg:
   field_cfg = get_robocup_field_cfg()
   base_spec_fn = field_cfg.spec_fn
+  resolved_stage = _normalize_e1_curriculum_stage(int(curriculum_stage))
+  if resolved_stage is None:
+    raise ValueError(
+      f"curriculum_stage must be within [1, {len(E1_RESET_STAGE_CFGS)}], got {curriculum_stage}."
+    )
 
   def _spec_fn() -> mujoco.MjSpec:
     spec = base_spec_fn()
-    _add_e1_test_walls(spec)
+    _add_e1_test_walls(spec, curriculum_stage=resolved_stage)
     return spec
 
   field_cfg.spec_fn = _spec_fn
@@ -586,6 +594,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
 ) -> ManagerBasedRlEnvCfg:
   cfg = make_tracking_env_cfg()
   curriculum_stage = E1_DEFAULT_RESET_CURRICULUM_STAGE
+  env_stage_raw = _get_e1_reset_curriculum_stage_env()
   if play:
     saved_stage = _resolve_saved_e1_play_curriculum_stage()
     if saved_stage is not None:
@@ -594,15 +603,15 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
         f"[INFO]: Auto-selected E1 play curriculum stage from saved run: "
         f"{curriculum_stage}"
       )
-    elif E1_RESET_CURRICULUM_STAGE_ENV:
-      env_stage = _normalize_e1_curriculum_stage(int(E1_RESET_CURRICULUM_STAGE_ENV))
+    elif env_stage_raw:
+      env_stage = _normalize_e1_curriculum_stage(int(env_stage_raw))
       if env_stage is None:
         raise ValueError(
           f"MJLAB_E1_RESET_CURRICULUM_STAGE must be within [1, {len(E1_RESET_STAGE_CFGS)}]."
         )
       curriculum_stage = env_stage
-  elif E1_RESET_CURRICULUM_STAGE_ENV:
-    env_stage = _normalize_e1_curriculum_stage(int(E1_RESET_CURRICULUM_STAGE_ENV))
+  elif env_stage_raw:
+    env_stage = _normalize_e1_curriculum_stage(int(env_stage_raw))
     if env_stage is None:
       raise ValueError(
         f"MJLAB_E1_RESET_CURRICULUM_STAGE must be within [1, {len(E1_RESET_STAGE_CFGS)}]."
@@ -631,7 +640,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
   cfg.scene.num_envs = 512 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,
-    "soccer_field": get_e1_field_cfg_with_test_walls(),
+    "soccer_field": get_e1_field_cfg_with_test_walls(curriculum_stage),
     "goalpost_left": goal_left_cfg,
     "goalpost_right": goal_right_cfg,
     "soccer_ball": soccer_ball_cfg,
