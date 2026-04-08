@@ -100,7 +100,7 @@ E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE = os.environ.get(
   "MJLAB_E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE", ""
 ).strip()
 E2V2_MEZZALUNA_DEFAULT_LAUNCHER_PRESET_NAME = (
-  mdp.E2V2_MEZZALUNA_STAGE2_GROUND_AIR
+  mdp.E2V2_MEZZALUNA_STAGE1_GROUND_ONLY
 )
 E2_DEFLECTION_TIME_AFTER_LAUNCH_RANGE = (0.08, 0.22)
 E2_DEFLECTION_DV_MAG_RANGE = (0.35, 1.25)
@@ -477,11 +477,42 @@ def _apply_e2v2_mezzaluna_launcher_preset(
   cfg: mdp.GoalkeeperBallLauncherCfg,
   preset_name: str,
 ) -> mdp.GoalkeeperBallLauncherCfg:
+  legacy_stage1_alias = "e2v2_mezzaluna_stage1_ground"
+  legacy_stage2_alias = "e2v2_mezzaluna_stage2_ground_air"
   cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
   cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
   cfg.one_bounce_x_range = E2V2_ONE_BOUNCE_X_RANGE
   cfg.lob_x_range = E2V2_LOB_X_RANGE
-  if preset_name == mdp.E2V2_MEZZALUNA_STAGE1_GROUND:
+  if preset_name == mdp.E2V2_MEZZALUNA_STAGE1_GROUND_ONLY:
+    cfg.active_preset_name = preset_name
+    cfg.delay_range = (0.10, 0.22)
+    cfg.t_goal_band = (0.34, 1.02)
+    cfg.enabled_families = (True, False, False, False, False)
+    cfg.family_weights = (1.0, 0.0, 0.0, 0.0, 0.0)
+    cfg.ground_near_depth_prob = 0.45
+    cfg.ground_center_y_range = (-0.70, 0.70)
+    cfg.ground_left_y_range = (0.75, 4.0)
+    cfg.ground_right_y_range = (-4.0, -0.75)
+    cfg.ground_channel_probs = (0.28, 0.36, 0.36)
+    cfg.shot_target_mode_probs = (0.34, 0.30, 0.36)
+    cfg.shot_nearpost_abs_y_range = (0.75, 1.20)
+    cfg.shot_farpost_abs_y_range = (0.95, 1.28)
+    cfg.shot_center_y_range = (-0.40, 0.40)
+    cfg.shot_low_z_range = (0.11, 0.18)
+    cfg.shot_mid_z_range = (0.20, 0.44)
+    cfg.shot_low_z_prob = 0.68
+    cfg.ground_time_tiers = (
+      (0.34, 0.72, 1.02),
+      (0.38, 0.50, 0.76),
+      (0.28, 0.34, 0.54),
+    )
+    cfg.deflection_prob = 0.0
+    return cfg
+  if preset_name in (
+    mdp.E2V2_MEZZALUNA_STAGE2_GROUND_LONG_DRIVEN,
+    legacy_stage1_alias,
+    legacy_stage2_alias,
+  ):
     cfg.active_preset_name = preset_name
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
@@ -526,56 +557,33 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.long_driven_min_toward_goal_speed = 1.9
     cfg.deflection_prob = 0.0
     return cfg
-  if preset_name == mdp.E2V2_MEZZALUNA_STAGE2_GROUND_AIR:
+  if preset_name == mdp.E2V2_MEZZALUNA_STAGE3_LONG_DRIVEN_ONLY:
     cfg.active_preset_name = preset_name
-    cfg.enabled_families = (True, True, True, True, True)
-    cfg.family_weights = (0.32, 0.16, 0.18, 0.12, 0.22)
-    cfg.delay_range = (0.10, 0.20)
-    cfg.t_goal_band = (0.35, 0.76)
-    cfg.ground_near_depth_prob = 0.45
-    cfg.ground_center_y_range = (-0.70, 0.70)
-    cfg.ground_left_y_range = (0.75, 4.0)
-    cfg.ground_right_y_range = (-4.0, -0.75)
-    cfg.ground_channel_probs = (0.28, 0.36, 0.36)
-    cfg.shot_target_mode_probs = (0.34, 0.34, 0.32)
-    cfg.shot_nearpost_abs_y_range = (0.75, 1.20)
-    cfg.shot_farpost_abs_y_range = (0.95, 1.30)
-    cfg.shot_center_y_range = (-0.35, 0.35)
-    cfg.shot_low_z_range = (0.11, 0.18)
-    cfg.shot_mid_z_range = (0.22, 1.05)
-    cfg.shot_low_z_prob = 0.45
-    cfg.ground_time_tiers = (
-      (0.25, 0.53, 0.76),
-      (0.45, 0.42, 0.54),
-      (0.30, 0.35, 0.44),
-    )
-    cfg.one_bounce_time_tiers = (
-      (0.35, 0.52, 0.76),
-      (0.45, 0.40, 0.53),
-      (0.20, 0.35, 0.43),
-    )
-    cfg.one_bounce_vz_range = (1.0, 2.2)
-    cfg.one_bounce_fraction_range = (0.32, 1.10)
-    cfg.lob_tof_range = (0.38, 0.74)
-    cfg.lob_target_z_range = (0.78, 1.48)
-    cfg.cross_target_x_range = (6.84, 6.99)
-    cfg.cross_driven_tof_range = (0.30, 0.50)
-    cfg.cross_lofted_tof_range = (0.44, 0.62)
-    cfg.cross_driven_target_z_range = (0.42, 0.92)
-    cfg.cross_lofted_target_z_range = (0.90, 1.55)
+    cfg.delay_range = (0.10, 0.22)
+    cfg.t_goal_band = (0.34, 1.02)
+    cfg.enabled_families = (False, False, False, False, True)
+    cfg.family_weights = (0.0, 0.0, 0.0, 0.0, 1.0)
     cfg.long_driven_x_range = (3.0, 5.0)
     cfg.long_driven_center_y_range = (-0.80, 0.80)
     cfg.long_driven_left_y_range = (0.80, 4.0)
     cfg.long_driven_right_y_range = (-4.0, -0.80)
     cfg.long_driven_channel_probs = (0.48, 0.26, 0.26)
     cfg.long_driven_time_tiers = (
-      (0.22, 0.48, 0.70),
-      (0.43, 0.38, 0.52),
-      (0.35, 0.34, 0.42),
+      (0.30, 0.66, 0.96),
+      (0.42, 0.46, 0.70),
+      (0.28, 0.34, 0.52),
     )
-    cfg.long_driven_target_z_range = (0.82, 1.35)
-    cfg.long_driven_min_toward_goal_speed = 2.2
-    cfg.deflection_prob = 0.04
+    cfg.long_driven_target_mode_probs = (0.18, 0.07, 0.75)
+    cfg.long_driven_target_nearpost_abs_y_range = (0.72, 1.10)
+    cfg.long_driven_target_farpost_abs_y_range = (0.92, 1.18)
+    cfg.long_driven_target_center_y_range = (-0.14, 0.14)
+    cfg.long_driven_target_z_range = (0.72, 1.24)
+    cfg.long_driven_target_z_tiers = (
+      (0.72, 0.72, 0.94),
+      (0.28, 0.94, 1.24),
+    )
+    cfg.long_driven_min_toward_goal_speed = 1.9
+    cfg.deflection_prob = 0.0
     return cfg
   supported = ", ".join(mdp.E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES)
   raise ValueError(
