@@ -12,6 +12,7 @@ LOB_CHIP_FAMILY = 2
 CROSS_FAMILY = 3
 LONG_DRIVEN_FAMILY = 4
 NUM_LAUNCH_FAMILIES = 5
+ONE_BOUNCE_GROUND_SPAWN_X_OFFSET = -0.5
 
 LAUNCH_FAMILY_NAMES = (
   "ground_shot",
@@ -504,8 +505,6 @@ class GoalkeeperBallLauncherCfg:
   )
 
   # ---------------- One-bounce controls ----------------
-  one_bounce_x_range: tuple[float, float] = (4.2, 6.1)
-  one_bounce_y_range: tuple[float, float] = (-1.7, 1.7)
   one_bounce_time_tiers: tuple[tuple[float, float, float], ...] = (
     (0.35, 0.70, 0.95),
     (0.45, 0.50, 0.75),
@@ -806,32 +805,7 @@ class GoalkeeperBallLauncher:
       m: int,
       local_origins: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-      near_mask = torch.rand(m, device=self.device) < float(
-        self.cfg.ground_near_depth_prob
-      )
-      x_local = torch.where(
-        near_mask,
-        self._sample_uniform(self.cfg.ground_near_x_range, m),
-        self._sample_uniform(self.cfg.ground_far_x_range, m),
-      )
-
-      channel = self._sample_categorical(self.cfg.ground_channel_probs, m)
-      y_local = torch.zeros(m, device=self.device)
-      center_m = channel == 0
-      left_m = channel == 1
-      right_m = channel == 2
-      if center_m.any():
-        y_local[center_m] = self._sample_uniform(
-          self.cfg.ground_center_y_range, int(center_m.sum().item())
-        )
-      if left_m.any():
-        y_local[left_m] = self._sample_uniform(
-          self.cfg.ground_left_y_range, int(left_m.sum().item())
-        )
-      if right_m.any():
-        y_local[right_m] = self._sample_uniform(
-          self.cfg.ground_right_y_range, int(right_m.sum().item())
-        )
+      x_local, y_local = self._sample_ground_spawn_local(m)
 
       z_local = torch.full((m,), float(self.cfg.ball_radius), device=self.device)
       spawn_local = torch.stack([x_local, y_local, z_local], dim=1)
@@ -858,8 +832,8 @@ class GoalkeeperBallLauncher:
       m: int,
       local_origins: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-      x_local = self._sample_uniform(self.cfg.one_bounce_x_range, m)
-      y_local = self._sample_uniform(self.cfg.one_bounce_y_range, m)
+      x_local, y_local = self._sample_ground_spawn_local(m)
+      x_local = x_local + ONE_BOUNCE_GROUND_SPAWN_X_OFFSET
       z_local = torch.full((m,), float(self.cfg.ball_radius), device=self.device)
 
       spawn_local = torch.stack([x_local, y_local, z_local], dim=1)
@@ -887,6 +861,38 @@ class GoalkeeperBallLauncher:
       _sample_once,
       extra_valid_fn=self._one_bounce_valid,
     )
+
+  def _sample_ground_spawn_local(
+    self,
+    m: int,
+  ) -> tuple[torch.Tensor, torch.Tensor]:
+    near_mask = torch.rand(m, device=self.device) < float(
+      self.cfg.ground_near_depth_prob
+    )
+    x_local = torch.where(
+      near_mask,
+      self._sample_uniform(self.cfg.ground_near_x_range, m),
+      self._sample_uniform(self.cfg.ground_far_x_range, m),
+    )
+
+    channel = self._sample_categorical(self.cfg.ground_channel_probs, m)
+    y_local = torch.zeros(m, device=self.device)
+    center_m = channel == 0
+    left_m = channel == 1
+    right_m = channel == 2
+    if center_m.any():
+      y_local[center_m] = self._sample_uniform(
+        self.cfg.ground_center_y_range, int(center_m.sum().item())
+      )
+    if left_m.any():
+      y_local[left_m] = self._sample_uniform(
+        self.cfg.ground_left_y_range, int(left_m.sum().item())
+      )
+    if right_m.any():
+      y_local[right_m] = self._sample_uniform(
+        self.cfg.ground_right_y_range, int(right_m.sum().item())
+      )
+    return x_local, y_local
 
   def _sample_lob_chip(
     self,

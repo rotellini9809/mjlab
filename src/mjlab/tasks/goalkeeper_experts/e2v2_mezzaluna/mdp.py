@@ -1460,6 +1460,9 @@ class FaceBallAfterExitReward:
     waist_body_name: str = r"(?i)^waist$",
     deadband_deg: float = 12.0,
     sigma_deg: float = 25.0,
+    stage1_scale: float = 1.0,
+    stage2_scale: float = 1.0,
+    stage3_scale: float = 0.0,
   ) -> torch.Tensor:
     _in_danger_now, _t_contact, _exit_event, post_exit_active = self._exit_latch.update(
       env,
@@ -1529,7 +1532,16 @@ class FaceBallAfterExitReward:
     shaped_err = torch.relu(yaw_err - deadband_rad)
     facing_score = torch.exp(-torch.square(shaped_err) / (sigma_rad * sigma_rad))
     facing_score = target_active.to(facing_score.dtype) * facing_score
-    raw = post_exit_active.to(facing_score.dtype) * facing_score
+    stage_index = cmd.launcher_curriculum_stage
+    if stage_index == 1:
+      stage_scale = float(stage1_scale)
+    elif stage_index == 2:
+      stage_scale = float(stage2_scale)
+    elif stage_index == 3:
+      stage_scale = float(stage3_scale)
+    else:
+      stage_scale = 1.0
+    raw = post_exit_active.to(facing_score.dtype) * facing_score * stage_scale
 
     log = _get_log_dict(env)
     if log is not None:

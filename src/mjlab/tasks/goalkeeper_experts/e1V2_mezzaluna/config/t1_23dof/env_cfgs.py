@@ -137,7 +137,7 @@ E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=E1_STAGE1_KEEPER_SPAWN_X_RANGE,
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE1_KEEPER_SPAWN_Y_RANGE,)),
-    spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
+    spawn_yaw_offset_range=(-math.radians(90.0), math.radians(90.0)),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
     launcher_mode_probs=(0.3, 0.3, 0.2, 0.2, 0.0),

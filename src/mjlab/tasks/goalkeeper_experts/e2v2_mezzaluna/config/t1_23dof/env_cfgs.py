@@ -93,7 +93,7 @@ MEZZALUNA_CENTER_Y = 0.0
 MEZZALUNA_APEX_X = (GOAL_X_LINE - 1.0) + 0.15 - 0.20
 MEZZALUNA_HALF_WIDTH_Y = 1.55 + 0.10
 MEZZALUNA_SPAWN_XY_JITTER_RANGE = (-0.10, 0.10)
-MEZZALUNA_SPAWN_RADIAL_JITTER_RANGE = (-0.05, 0.05)
+MEZZALUNA_SPAWN_RADIAL_JITTER_RANGE = (-0.15, 0.15)
 
 # Dedicated E2V2 launcher curriculum. This task no longer inherits E2 presets.
 E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE = os.environ.get(
@@ -109,7 +109,6 @@ E2_LAUNCH_MAX_ABS_VZ = 5.5
 E2_MIN_TOWARD_GOAL_SPEED = 0.8
 E2V2_GROUND_NEAR_X_RANGE = (4.8, 5.8)
 E2V2_GROUND_FAR_X_RANGE = (3.2, 4.8)
-E2V2_ONE_BOUNCE_X_RANGE = (3.6, 5.4)
 E2V2_LOB_X_RANGE = (3.5, 5.3)
 
 # Goal-plane aperture (used for both detection and visualization).
@@ -149,7 +148,7 @@ HEAD_BALL_CONTACT_SENSOR_NAME = "head_ball_contact"
 ARM_BALL_CONTACT_SENSOR_NAME = "arm_ball_contact"
 HEAD_BODIES = ("H1", "H2")
 ARM_CONTACT_BODIES = ("AL1", "AL2", "AL3", "left_hand_link", "AR1", "AR2", "AR3", "right_hand_link")
-RESOLUTION_WINDOW_S = 1.5
+RESOLUTION_WINDOW_S = 3.0
 
 # Stage-1 command dimension used in motor-observation layout.
 MOTOR_COMMAND_DIM = 46
@@ -481,7 +480,6 @@ def _apply_e2v2_mezzaluna_launcher_preset(
   legacy_stage2_alias = "e2v2_mezzaluna_stage2_ground_air"
   cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
   cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
-  cfg.one_bounce_x_range = E2V2_ONE_BOUNCE_X_RANGE
   cfg.lob_x_range = E2V2_LOB_X_RANGE
   if preset_name == mdp.E2V2_MEZZALUNA_STAGE1_GROUND_ONLY:
     cfg.active_preset_name = preset_name
@@ -561,8 +559,8 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.active_preset_name = preset_name
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
-    cfg.enabled_families = (False, False, False, False, True)
-    cfg.family_weights = (0.0, 0.0, 0.0, 0.0, 1.0)
+    cfg.enabled_families = (False, True, False, False, False)
+    cfg.family_weights = (0.0, 1.0, 0.0, 0.0, 0.0)
     cfg.long_driven_x_range = (3.0, 5.0)
     cfg.long_driven_center_y_range = (-0.80, 0.80)
     cfg.long_driven_left_y_range = (0.80, 4.0)
@@ -912,7 +910,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     ),
     "arm_high_throw_deflect_reward": RewardTermCfg(
       func=mdp.arm_high_throw_deflect_reward,
-      weight=6.0,
+      weight=20.0,
       params={
         "command_name": "stand_block",
         "arm_sensor_name": ARM_BALL_CONTACT_SENSOR_NAME,
@@ -934,8 +932,13 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     ),
     "face_ball_after_exit_reward": RewardTermCfg(
       func=mdp.FaceBallAfterExitReward,
-      weight=0.0,
-      params={"command_name": "stand_block"},
+      weight=3.0,
+      params={
+        "command_name": "stand_block",
+        "stage1_scale": 1.0,
+        "stage2_scale": 0.0,
+        "stage3_scale": 0.0,
+      },
     ),
     "low_height_soft_penalty": RewardTermCfg(
       func=mdp.low_height_soft_penalty,
@@ -968,7 +971,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     ),
     "head_contact_penalty": RewardTermCfg(
       func=mdp.head_contact_penalty,
-      weight=-6.0,
+      weight=-100.0,
       params={"head_sensor_name": HEAD_BALL_CONTACT_SENSOR_NAME},
     ),
     "outside_area": RewardTermCfg(

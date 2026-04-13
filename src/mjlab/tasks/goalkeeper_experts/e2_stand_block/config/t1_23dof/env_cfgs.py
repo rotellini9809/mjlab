@@ -135,7 +135,7 @@ E2_KEEPER_AREA_VIS_GROUP = 3
 BALL_ROBOT_CONTACT_SENSOR_NAME = "ball_robot_contact"
 HEAD_BALL_CONTACT_SENSOR_NAME = "head_ball_contact"
 HEAD_BODIES = ("H1", "H2")
-RESOLUTION_WINDOW_S = 1.5
+RESOLUTION_WINDOW_S = 3.0
 
 # Stage-1 command dimension used in motor-observation layout.
 MOTOR_COMMAND_DIM = 46
