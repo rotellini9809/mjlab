@@ -918,7 +918,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     ),
     "clearance_quality": RewardTermCfg(
       func=mdp.ClearanceQualityReward,
-      weight=8.0,
+      weight=0.0,
       params={
         "command_name": "stand_block",
         "t_clear_clip": 0.5,
