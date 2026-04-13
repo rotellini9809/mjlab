@@ -246,6 +246,56 @@ def _get_bool_state_buffer(
   return buf
 
 
+def _get_float_state_buffer(
+  env,
+  key: str,
+  *,
+  fill_value: float = 0.0,
+) -> torch.Tensor:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e2_float_state_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  buf = cache.get(key)
+  if buf is None or buf.shape != (env.num_envs,) or buf.device != env.device:
+    buf = torch.full(
+      (env.num_envs,),
+      fill_value=float(fill_value),
+      device=env.device,
+      dtype=torch.float32,
+    )
+    cache[key] = buf
+  return buf
+
+
+def _get_long_state_buffer(
+  env,
+  key: str,
+  *,
+  fill_value: int = 0,
+) -> torch.Tensor:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e2_long_state_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  buf = cache.get(key)
+  if buf is None or buf.shape != (env.num_envs,) or buf.device != env.device:
+    buf = torch.full(
+      (env.num_envs,),
+      fill_value=int(fill_value),
+      device=env.device,
+      dtype=torch.long,
+    )
+    cache[key] = buf
+  return buf
+
+
 def _reward_active_mask(
   env,
   command_name: str = "stand_block",
@@ -850,6 +900,146 @@ def _high_throw_mask_from_command(
   return torch.where(valid_family, family_mask, fallback_height_mask)
 
 
+def _toward_goal_speed_from_command(
+  env,
+  command_name: str,
+) -> torch.Tensor:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+  vx = ball.data.root_link_lin_vel_w[:, 0]
+  if cmd.cfg.goal_toward_positive_x:
+    toward_speed = vx
+  else:
+    toward_speed = -vx
+  return torch.nan_to_num(toward_speed, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def _project_ball_crossing_to_goal_plane(
+  env,
+  command_name: str,
+  *,
+  min_forward_speed: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+  ball_local = _world_to_env_local_xyz(env, ball.data.root_link_pos_w)
+  vel_w = ball.data.root_link_lin_vel_w
+
+  x = ball_local[:, 0]
+  y = ball_local[:, 1]
+  z = ball_local[:, 2]
+  vx = vel_w[:, 0]
+  vy = vel_w[:, 1]
+  vz = vel_w[:, 2]
+
+  min_speed = max(float(min_forward_speed), 1.0e-6)
+  if cmd.cfg.goal_toward_positive_x:
+    dx = float(cmd.cfg.goal_plane_x) - x
+    toward_speed = vx
+  else:
+    dx = x - float(cmd.cfg.goal_plane_x)
+    toward_speed = -vx
+
+  valid = (toward_speed >= min_speed) & (dx >= 0.0)
+  t_cross = torch.zeros_like(dx)
+  t_cross = torch.where(valid, dx / toward_speed.clamp_min(min_speed), t_cross)
+
+  gravity = float(cmd.launcher.cfg.gravity)
+  y_proj = y + vy * t_cross
+  z_proj = z + vz * t_cross - 0.5 * gravity * torch.square(t_cross)
+
+  finite = (
+    torch.isfinite(t_cross)
+    & torch.isfinite(y_proj)
+    & torch.isfinite(z_proj)
+  )
+  valid = valid & finite & (t_cross >= 0.0)
+
+  return valid, t_cross, y_proj, z_proj
+
+
+def _goal_projection_score_from_command(
+  env,
+  command_name: str,
+  *,
+  min_forward_speed: float,
+  projection_margin_y: float,
+  projection_margin_z: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  valid, _t_cross, y_proj, z_proj = _project_ball_crossing_to_goal_plane(
+    env,
+    command_name,
+    min_forward_speed=min_forward_speed,
+  )
+
+  y_err = torch.relu(
+    torch.abs(y_proj - float(cmd.cfg.goal_plane_y_center)) - float(cmd.cfg.goal_plane_y_half)
+  )
+  z_err_low = torch.relu(float(cmd.cfg.goal_plane_z_min) - z_proj)
+  z_err_high = torch.relu(z_proj - float(cmd.cfg.goal_plane_z_max))
+  z_err = torch.maximum(z_err_low, z_err_high)
+
+  if float(projection_margin_y) > 0.0:
+    y_score = 1.0 - torch.clamp(y_err / float(projection_margin_y), min=0.0, max=1.0)
+    y_near = y_err <= float(projection_margin_y)
+  else:
+    y_score = (y_err <= 0.0).to(torch.float32)
+    y_near = y_err <= 0.0
+
+  if float(projection_margin_z) > 0.0:
+    z_score = 1.0 - torch.clamp(z_err / float(projection_margin_z), min=0.0, max=1.0)
+    z_near = z_err <= float(projection_margin_z)
+  else:
+    z_score = (z_err <= 0.0).to(torch.float32)
+    z_near = z_err <= 0.0
+
+  near_mask = valid & y_near & z_near
+  score = torch.where(near_mask, y_score * z_score, torch.zeros_like(y_score))
+  score = torch.nan_to_num(score, nan=0.0, posinf=0.0, neginf=0.0)
+  return score.clamp(0.0, 1.0), near_mask
+
+
+def _danger_score_from_command(
+  env,
+  command_name: str,
+  *,
+  v_ref: float,
+  min_forward_speed: float,
+  projection_margin_y: float,
+  projection_margin_z: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+  toward_speed = _toward_goal_speed_from_command(env, command_name)
+  forward_speed_score = torch.clamp(
+    toward_speed / max(float(v_ref), 1.0e-6),
+    min=0.0,
+    max=1.0,
+  )
+  goal_projection_score, projection_near_mask = _goal_projection_score_from_command(
+    env,
+    command_name,
+    min_forward_speed=min_forward_speed,
+    projection_margin_y=projection_margin_y,
+    projection_margin_z=projection_margin_z,
+  )
+  danger_area_mask = _ball_in_danger_area_mask_from_command(env, command_name)
+  danger_area_score = danger_area_mask.to(torch.float32)
+
+  danger = (
+    0.5 * forward_speed_score
+    + 0.3 * goal_projection_score
+    + 0.2 * danger_area_score
+  )
+  danger = torch.nan_to_num(danger, nan=0.0, posinf=0.0, neginf=0.0).clamp(0.0, 1.0)
+
+  pre_threat_mask = (
+    (toward_speed >= float(min_forward_speed))
+    & projection_near_mask
+    & danger_area_mask
+  )
+  return danger, pre_threat_mask
+
+
 # ---------------- Observations ----------------
 
 
@@ -951,6 +1141,108 @@ def joint_pos_limits(
     env,
     command_name,
   )
+
+
+class DangerReductionOnFirstContactReward:
+  def __init__(self, cfg, env):
+    del cfg
+    self._env = env
+    self._key_pre = "e2_danger_pre_contact::{}"
+    self._key_paid = "e2_danger_bridge_paid::{}"
+    self.reset(env_ids=slice(None))
+
+  def reset(
+    self,
+    env_ids: torch.Tensor | slice | None = None,
+  ) -> None:
+    env = self._env
+    pre = _get_float_state_buffer(
+      env,
+      self._key_pre.format("stand_block"),
+      fill_value=float("nan"),
+    )
+    paid = _get_bool_state_buffer(env, self._key_paid.format("stand_block"))
+    pre[env_ids] = float("nan")
+    paid[env_ids] = False
+
+  def __call__(
+    self,
+    env,
+    command_name: str = "stand_block",
+    resolution_term_name: str = "contact_resolution_window",
+    v_ref: float = 6.0,
+    min_forward_speed: float = 1.0,
+    projection_margin_y: float = 0.35,
+    projection_margin_z: float = 0.25,
+    post_contact_delay_steps: int = 2,
+  ) -> torch.Tensor:
+    key_pre = self._key_pre.format(command_name)
+    key_paid = self._key_paid.format(command_name)
+
+    pre_buf = _get_float_state_buffer(env, key_pre, fill_value=float("nan"))
+    paid_buf = _get_bool_state_buffer(env, key_paid)
+
+    is_first = env.episode_length_buf <= 1
+    pre_buf[is_first] = float("nan")
+    paid_buf[is_first] = False
+
+    danger_now, pre_threat_mask = _danger_score_from_command(
+      env,
+      command_name,
+      v_ref=v_ref,
+      min_forward_speed=min_forward_speed,
+      projection_margin_y=projection_margin_y,
+      projection_margin_z=projection_margin_z,
+    )
+
+    t_contact = _contact_time_buffer_from_termination(env, resolution_term_name)
+    has_contact = t_contact >= 0.0
+    not_armed = (~has_contact) & (~paid_buf)
+    updated_pre = torch.where(
+      not_armed & pre_threat_mask,
+      danger_now,
+      pre_buf,
+    )
+
+    time_s = env.episode_length_buf.to(torch.float32) * env.step_dt
+    delay_steps = max(int(post_contact_delay_steps), 0)
+    delay_s = float(delay_steps) * float(env.step_dt)
+    due = (
+      has_contact
+      & (~paid_buf)
+      & ((time_s - t_contact) >= delay_s)
+    )
+    active_mask = due & torch.isfinite(updated_pre)
+
+    danger_post = torch.where(due, danger_now, torch.zeros_like(danger_now))
+    danger_delta = torch.where(
+      torch.isfinite(updated_pre),
+      torch.clamp(updated_pre - danger_post, min=0.0, max=1.0),
+      torch.zeros_like(danger_now),
+    )
+    raw = active_mask.to(torch.float32) * danger_delta
+    raw = torch.nan_to_num(raw, nan=0.0, posinf=0.0, neginf=0.0).clamp(0.0, 1.0)
+
+    updated_paid = paid_buf | due
+
+    pre_buf.copy_(updated_pre)
+    paid_buf.copy_(updated_paid)
+
+    log = _get_log_dict(env)
+    if log is not None:
+      safe_pre = torch.where(
+        torch.isfinite(updated_pre),
+        updated_pre,
+        torch.zeros_like(updated_pre),
+      )
+      log["Metrics/e2_danger_pre_mean"] = torch.mean(safe_pre)
+      log["Metrics/e2_danger_post_mean"] = torch.mean(danger_post)
+      log["Metrics/e2_danger_delta_mean"] = torch.mean(
+        torch.where(active_mask, danger_delta, torch.zeros_like(danger_delta))
+      )
+      log["Metrics/e2_danger_bridge_raw_mean"] = torch.mean(raw)
+
+    return raw
 
 
 class ClearanceQualityReward:
@@ -1143,10 +1435,20 @@ class StabilizeAfterExitReward:
 class FaceBallAfterExitReward:
   def __init__(self, cfg, env):
     del cfg
+    self._env = env
     self._exit_latch = _ConfirmedDangerExitLatchState(env)
+    self._key_target_x = "e2_face_ball_after_exit_latched_target_x"
+    self._key_target_y = "e2_face_ball_after_exit_latched_target_y"
+    self._key_active = "e2_face_ball_after_exit_latched_active"
+    self._key_steps = "e2_face_ball_after_exit_latched_steps"
 
   def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    env = self._env
     self._exit_latch.reset(env_ids)
+    _get_float_state_buffer(env, self._key_target_x)[env_ids] = 0.0
+    _get_float_state_buffer(env, self._key_target_y)[env_ids] = 0.0
+    _get_bool_state_buffer(env, self._key_active)[env_ids] = False
+    _get_long_state_buffer(env, self._key_steps)[env_ids] = 0
 
   def __call__(
     self,
@@ -1171,8 +1473,44 @@ class FaceBallAfterExitReward:
 
     waist_idx = _resolve_single_body_index_cached(env, robot, waist_body_name)
     waist_xy = robot.data.body_link_pos_w[:, waist_idx, :2]
-    ball_xy = ball.data.root_link_pos_w[:, :2]
-    to_ball_xy = _normalize_xy(ball_xy - waist_xy)
+    ball_xy_w = ball.data.root_link_pos_w[:, :2]
+    ball_xy_local = _world_to_env_local_xy(env, ball_xy_w)
+    ball_in_play_area = (
+      (ball_xy_local[:, 0] >= -7.0)
+      & (ball_xy_local[:, 0] <= 7.0)
+      & (ball_xy_local[:, 1] >= -4.5)
+      & (ball_xy_local[:, 1] <= 4.5)
+    )
+
+    latched_target_x = _get_float_state_buffer(env, self._key_target_x)
+    latched_target_y = _get_float_state_buffer(env, self._key_target_y)
+    latched_active = _get_bool_state_buffer(env, self._key_active)
+    latched_steps = _get_long_state_buffer(env, self._key_steps)
+
+    latch_horizon_steps = max(
+      int(torch.ceil(torch.tensor(0.3 / float(env.step_dt))).item()),
+      1,
+    )
+
+    target_dir_xy = torch.zeros((env.num_envs, 2), device=env.device, dtype=torch.float32)
+    live_target_dir_xy = _normalize_xy(ball_xy_w - waist_xy)
+
+    if ball_in_play_area.any():
+      target_dir_xy[ball_in_play_area] = live_target_dir_xy[ball_in_play_area]
+      latched_target_x[ball_in_play_area] = live_target_dir_xy[ball_in_play_area, 0]
+      latched_target_y[ball_in_play_area] = live_target_dir_xy[ball_in_play_area, 1]
+      latched_active[ball_in_play_area] = True
+      latched_steps[ball_in_play_area] = latch_horizon_steps
+
+    use_latched_target = (~ball_in_play_area) & latched_active & (latched_steps > 0)
+    if use_latched_target.any():
+      target_dir_xy[use_latched_target, 0] = latched_target_x[use_latched_target]
+      target_dir_xy[use_latched_target, 1] = latched_target_y[use_latched_target]
+      latched_steps[use_latched_target] -= 1
+      latch_expired = use_latched_target & (latched_steps <= 0)
+      latched_active[latch_expired] = False
+
+    target_active = ball_in_play_area | use_latched_target
 
     forward_local = torch.tensor([1.0, 0.0, 0.0], device=env.device).expand(
       env.num_envs, -1
@@ -1181,13 +1519,16 @@ class FaceBallAfterExitReward:
     forward_w = quat_apply(waist_quat_w, forward_local)
     forward_xy = _normalize_xy(forward_w[:, :2])
 
-    cos_err = torch.sum(forward_xy * to_ball_xy, dim=1).clamp(-1.0, 1.0)
-    yaw_err = torch.acos(cos_err)
+    cos_err = torch.sum(forward_xy * target_dir_xy, dim=1).clamp(-1.0, 1.0)
+    yaw_err = torch.zeros((env.num_envs,), device=env.device, dtype=torch.float32)
+    if target_active.any():
+      yaw_err[target_active] = torch.acos(cos_err[target_active])
 
     deadband_rad = float(torch.deg2rad(torch.tensor(deadband_deg)).item())
     sigma_rad = max(float(torch.deg2rad(torch.tensor(sigma_deg)).item()), 1.0e-6)
     shaped_err = torch.relu(yaw_err - deadband_rad)
     facing_score = torch.exp(-torch.square(shaped_err) / (sigma_rad * sigma_rad))
+    facing_score = target_active.to(facing_score.dtype) * facing_score
     raw = post_exit_active.to(facing_score.dtype) * facing_score
 
     log = _get_log_dict(env)

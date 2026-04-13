@@ -537,12 +537,11 @@ def run_sim(
 
   motion_video_path: Path | None = None
   if render:
-    from moviepy import ImageSequenceClip
+    import mediapy as media
 
     print("Creating video...")
     motion_video_path = Path("/tmp") / f"{output_name}.mp4"
-    clip = ImageSequenceClip(frames, fps=output_fps)
-    clip.write_videofile(str(motion_video_path))
+    media.write_video(str(motion_video_path), frames, fps=output_fps)
 
   print("Uploading to Weights & Biases...")
   _upload_motion_artifact(

@@ -549,10 +549,10 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.long_driven_target_nearpost_abs_y_range = (0.72, 1.10)
     cfg.long_driven_target_farpost_abs_y_range = (0.92, 1.18)
     cfg.long_driven_target_center_y_range = (-0.14, 0.14)
-    cfg.long_driven_target_z_range = (0.72, 1.24)
+    cfg.long_driven_target_z_range = (0.44, 0.88)
     cfg.long_driven_target_z_tiers = (
-      (0.72, 0.72, 0.94),
-      (0.28, 0.94, 1.24),
+      (0.72, 0.44, 0.66),
+      (0.28, 0.58, 0.88),
     )
     cfg.long_driven_min_toward_goal_speed = 1.9
     cfg.deflection_prob = 0.0
@@ -577,10 +577,10 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.long_driven_target_nearpost_abs_y_range = (0.72, 1.10)
     cfg.long_driven_target_farpost_abs_y_range = (0.92, 1.18)
     cfg.long_driven_target_center_y_range = (-0.14, 0.14)
-    cfg.long_driven_target_z_range = (0.72, 1.24)
+    cfg.long_driven_target_z_range = (0.44, 0.88)
     cfg.long_driven_target_z_tiers = (
-      (0.72, 0.72, 0.94),
-      (0.28, 0.94, 1.24),
+      (0.72, 0.44, 0.66),
+      (0.28, 0.58, 0.88),
     )
     cfg.long_driven_min_toward_goal_speed = 1.9
     cfg.deflection_prob = 0.0
@@ -616,7 +616,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
   cfg.scene.terrain = TerrainEntityCfg(
     terrain_type="plane",
   )
-  cfg.scene.num_envs = 512 if not play else 1
+  cfg.scene.num_envs = 4096 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,
     "soccer_field": get_e2_field_cfg_with_goal_plane(),
@@ -894,6 +894,20 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       params={
         "command_name": "stand_block",
         "only_on_first_contact": True,
+        "clip_speed": 2.0,
+      },
+    ),
+    "danger_reduction_on_first_contact_reward": RewardTermCfg(
+      func=mdp.DangerReductionOnFirstContactReward,
+      weight=4.0,
+      params={
+        "command_name": "stand_block",
+        "resolution_term_name": "contact_resolution_window",
+        "v_ref": 6.0,
+        "min_forward_speed": 1.0,
+        "projection_margin_y": 0.35,
+        "projection_margin_z": 0.25,
+        "post_contact_delay_steps": 2,
       },
     ),
     "arm_high_throw_deflect_reward": RewardTermCfg(
@@ -915,12 +929,12 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     ),
     "stabilize_after_exit": RewardTermCfg(
       func=mdp.StabilizeAfterExitReward,
-      weight=2.5,
+      weight=2.0,
       params={"command_name": "stand_block"},
     ),
     "face_ball_after_exit_reward": RewardTermCfg(
       func=mdp.FaceBallAfterExitReward,
-      weight=1.0,
+      weight=0.0,
       params={"command_name": "stand_block"},
     ),
     "low_height_soft_penalty": RewardTermCfg(

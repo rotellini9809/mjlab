@@ -545,7 +545,7 @@ def booster_t1_23_gk_expert_set_square_env_cfg(
   cfg.scene.terrain = TerrainEntityCfg(
     terrain_type="plane",
   )
-  cfg.scene.num_envs = 512 if not play else 1
+  cfg.scene.num_envs = 4096 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,
     "soccer_field": get_e1_field_cfg_with_test_walls(),

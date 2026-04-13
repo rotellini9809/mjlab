@@ -100,6 +100,11 @@ SIDELINE_THROW_SPAWN_X_RANGE = (1.0, 2.0)
 SIDELINE_THROW_SPAWN_Y_INTERVALS = ((-4.2, -2.5), (2.5, 4.2))
 SIDELINE_THROW_SPEED_RANGE = (0.0, KICK_SPEED_RANGE[1])
 SIDELINE_THROW_ANGLE_NOISE_DEG = 3.0
+CORNER_THROW_SPAWN_X_RANGE = (5.9, 6.7)
+CORNER_THROW_SPAWN_Y_INTERVALS = ((-4.05, -3.55), (3.55, 4.05))
+CORNER_THROW_SPEED_RANGE = (1.2, 3.0)
+CORNER_THROW_ANGLE_NOISE_DEG = 6.0
+CORNER_THROW_TARGET_X_RANGE = (3.5, 5.0)
 DRIBBLE_NUM_TAPS_RANGE = (2, 4)
 DRIBBLE_TAP_TIME_RANGE = (0.5, 1.4)
 DRIBBLE_TAP_INTERVAL_RANGE = (0.16, 0.64)
@@ -135,7 +140,7 @@ E1_RESET_STAGE_CFGS = (
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
-    launcher_mode_probs=(0.3, 0.3, 0.2, 0.2),
+    launcher_mode_probs=(0.3, 0.3, 0.2, 0.2, 0.0),
   ),
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=E1_STAGE2_KEEPER_SPAWN_X_RANGE,
@@ -143,7 +148,15 @@ E1_RESET_STAGE_CFGS = (
     spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
-    launcher_mode_probs=(0.1, 0.4, 0.25, 0.25),
+    launcher_mode_probs=(0.1, 0.35, 0.2, 0.2, 0.15),
+  ),
+  mdp.SetSquareResetStageCfg(
+    keeper_spawn_x_range=E1_STAGE2_KEEPER_SPAWN_X_RANGE,
+    keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE2_KEEPER_SPAWN_Y_RANGE,)),
+    spawn_yaw_offset_range=(-math.radians(55.0), math.radians(55.0)),
+    target_spawn_x_range=TARGET_SPAWN_X_RANGE,
+    target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
+    launcher_mode_probs=(0.0, 0.0, 0.0, 0.0, 1.0),
   ),
 )
 
@@ -637,7 +650,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
   cfg.scene.terrain = TerrainEntityCfg(
     terrain_type="plane",
   )
-  cfg.scene.num_envs = 512 if not play else 1
+  cfg.scene.num_envs = 4096 if not play else 1
   cfg.scene.entities = {
     "robot": robot_cfg,
     "soccer_field": get_e1_field_cfg_with_test_walls(curriculum_stage),
@@ -760,6 +773,11 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       sideline_throw_spawn_y_range=mdp.IntervalUnionCfg(intervals=SIDELINE_THROW_SPAWN_Y_INTERVALS),
       sideline_throw_speed_range=SIDELINE_THROW_SPEED_RANGE,
       sideline_throw_angle_noise_deg=SIDELINE_THROW_ANGLE_NOISE_DEG,
+      corner_throw_spawn_x_range=CORNER_THROW_SPAWN_X_RANGE,
+      corner_throw_spawn_y_range=mdp.IntervalUnionCfg(intervals=CORNER_THROW_SPAWN_Y_INTERVALS),
+      corner_throw_speed_range=CORNER_THROW_SPEED_RANGE,
+      corner_throw_angle_noise_deg=CORNER_THROW_ANGLE_NOISE_DEG,
+      corner_throw_target_x_range=CORNER_THROW_TARGET_X_RANGE,
       dribble_num_taps_range=DRIBBLE_NUM_TAPS_RANGE,
       dribble_tap_time_range=DRIBBLE_TAP_TIME_RANGE,
       dribble_tap_interval_range=DRIBBLE_TAP_INTERVAL_RANGE,
