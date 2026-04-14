@@ -426,6 +426,7 @@ class StandBlockCommandCfg(CommandTermCfg):
   launcher_cfg: GoalkeeperBallLauncherCfg = field(
     default_factory=GoalkeeperBallLauncherCfg
   )
+  curriculum_stage: int | None = None
 
   # Goal-plane aperture used by goal detection.
   goal_toward_positive_x: bool = True
@@ -506,6 +507,8 @@ class StandBlockCommand(CommandTerm):
 
   @property
   def launcher_curriculum_stage(self) -> int | None:
+    if self.cfg.curriculum_stage is not None:
+      return int(self.cfg.curriculum_stage)
     return get_e2v2_mezzaluna_launcher_curriculum_stage_index(
       self.launcher_preset_name
     )

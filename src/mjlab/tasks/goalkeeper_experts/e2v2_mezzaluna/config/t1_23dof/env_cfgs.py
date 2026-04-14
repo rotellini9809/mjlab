@@ -210,11 +210,11 @@ def _try_download_wandb_run_file(
     return None
 
 
-def _extract_saved_e2_launcher_preset_name(env_yaml_path: Path) -> str | None:
+def _extract_saved_e2_curriculum_stage(env_yaml_path: Path) -> int | None:
   with env_yaml_path.open("r", encoding="utf-8") as handle:
     env_data = yaml.safe_load(handle) or {}
 
-  return _extract_e2_launcher_preset_name_from_env_data(env_data)
+  return _extract_e2_curriculum_stage_from_env_data(env_data)
 
 
 def _extract_saved_e2_stage1_run_from_env_data(
@@ -236,7 +236,13 @@ def _extract_saved_e2_stage1_run_from_env_data(
   return resolved_run_path or None, resolved_run_name or None
 
 
-def _extract_e2_launcher_preset_name_from_env_data(env_data: object) -> str | None:
+def _normalize_e2_curriculum_stage(stage_index: int) -> int | None:
+  if 1 <= stage_index <= len(mdp.E2V2_MEZZALUNA_LAUNCHER_CURRICULUM_PRESET_NAMES):
+    return stage_index
+  return None
+
+
+def _extract_e2_curriculum_stage_from_env_data(env_data: object) -> int | None:
   if not isinstance(env_data, dict):
     return None
   commands = env_data.get("commands")
@@ -245,19 +251,19 @@ def _extract_e2_launcher_preset_name_from_env_data(env_data: object) -> str | No
   stand_block_cfg = commands.get("stand_block")
   if not isinstance(stand_block_cfg, dict):
     return None
-  launcher_cfg = stand_block_cfg.get("launcher_cfg")
-  if not isinstance(launcher_cfg, dict):
+
+  stage_value = stand_block_cfg.get("curriculum_stage")
+  try:
+    stage_index = int(stage_value)
+  except (TypeError, ValueError):
     return None
-  preset_name = launcher_cfg.get("active_preset_name")
-  if not isinstance(preset_name, str):
-    return None
-  preset_name = preset_name.strip()
-  return preset_name or None
+
+  return _normalize_e2_curriculum_stage(stage_index)
 
 
-def _extract_saved_e2_launcher_preset_name_from_wandb_config(
+def _extract_saved_e2_curriculum_stage_from_wandb_config(
   config_yaml_path: Path,
-) -> str | None:
+) -> int | None:
   with config_yaml_path.open("r", encoding="utf-8") as handle:
     config_data = yaml.safe_load(handle) or {}
 
@@ -267,7 +273,7 @@ def _extract_saved_e2_launcher_preset_name_from_wandb_config(
   if not isinstance(env_cfg, dict):
     return None
   env_cfg_value = env_cfg.get("value")
-  return _extract_e2_launcher_preset_name_from_env_data(env_cfg_value)
+  return _extract_e2_curriculum_stage_from_env_data(env_cfg_value)
 
 
 def _extract_saved_e2_stage1_run_from_wandb_config(
@@ -285,7 +291,7 @@ def _extract_saved_e2_stage1_run_from_wandb_config(
   return _extract_saved_e2_stage1_run_from_env_data(env_cfg_value)
 
 
-def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
+def _resolve_saved_e2_play_curriculum_stage() -> int | None:
   if not _is_e2_play_cli_invocation():
     return None
 
@@ -295,10 +301,10 @@ def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
     if not env_yaml_path.exists():
       print(
         "[WARN]: Saved E2 env config was not found next to the checkpoint; "
-        "using the default play preset."
+        "using the default play stage."
       )
       return None
-    return _extract_saved_e2_launcher_preset_name(env_yaml_path)
+    return _extract_saved_e2_curriculum_stage(env_yaml_path)
 
   wandb_run_path = _get_cli_flag_value("--wandb-run-path")
   if not wandb_run_path:
@@ -308,22 +314,25 @@ def _resolve_saved_e2_play_launcher_preset_name() -> str | None:
   config_yaml_path = _try_download_wandb_run_file(
     log_root, wandb_run_path, "config.yaml"
   )
-  if config_yaml_path is None:
+  if config_yaml_path is not None:
+    stage_index = _extract_saved_e2_curriculum_stage_from_wandb_config(config_yaml_path)
+    if stage_index is not None:
+      return stage_index
     print(
-      "[WARN]: Saved E2 W&B config was not found in the run; "
-      "using the default play preset."
+      "[WARN]: E2 curriculum stage was not found in the W&B config; "
+      "falling back to the saved env config if available."
     )
-    return None
-  preset_name = _extract_saved_e2_launcher_preset_name_from_wandb_config(
-    config_yaml_path
+
+  env_yaml_path = _try_download_wandb_run_file(
+    log_root, wandb_run_path, "params/env.yaml"
   )
-  if preset_name is None:
+  if env_yaml_path is None:
     print(
-      "[WARN]: E2 launcher preset was not found in the W&B config; "
-      "using the default play preset."
+      "[WARN]: Saved E2 env config was not found in the W&B run; "
+      "using the default play stage."
     )
     return None
-  return preset_name
+  return _extract_saved_e2_curriculum_stage(env_yaml_path)
 
 
 def _resolve_saved_e2_play_stage1_run() -> tuple[str | None, str | None]:
@@ -481,12 +490,13 @@ def _apply_e2v2_mezzaluna_launcher_preset(
   cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
   cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
   cfg.lob_x_range = E2V2_LOB_X_RANGE
+  cfg.one_bounce_vz_range = (1.35, 2.1)
   if preset_name == mdp.E2V2_MEZZALUNA_STAGE1_GROUND_ONLY:
     cfg.active_preset_name = preset_name
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
-    cfg.enabled_families = (True, False, False, False, False)
-    cfg.family_weights = (1.0, 0.0, 0.0, 0.0, 0.0)
+    cfg.enabled_families = (False, False, False, False, True)
+    cfg.family_weights = (0.0, 0.0, 0.0, 0.0, 1.0)
     cfg.ground_near_depth_prob = 0.45
     cfg.ground_center_y_range = (-0.70, 0.70)
     cfg.ground_left_y_range = (0.75, 4.0)
@@ -514,8 +524,8 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.active_preset_name = preset_name
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
-    cfg.enabled_families = (True, False, False, False, True)
-    cfg.family_weights = (0.70, 0.0, 0.0, 0.0, 0.30)
+    cfg.enabled_families = (True, True, False, False, True)
+    cfg.family_weights = (0.40, 0.20, 0.0, 0.0, 0.40)
     cfg.ground_near_depth_prob = 0.45
     cfg.ground_center_y_range = (-0.70, 0.70)
     cfg.ground_left_y_range = (0.75, 4.0)
@@ -559,8 +569,8 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.active_preset_name = preset_name
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
-    cfg.enabled_families = (False, True, False, False, False)
-    cfg.family_weights = (0.0, 1.0, 0.0, 0.0, 0.0)
+    cfg.enabled_families = (True, True, False, False, False)
+    cfg.family_weights = (0.65, 0.35, 0.0, 0.0, 0.0)
     cfg.long_driven_x_range = (3.0, 5.0)
     cfg.long_driven_center_y_range = (-0.80, 0.80)
     cfg.long_driven_left_y_range = (0.80, 4.0)
@@ -709,24 +719,37 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     )
   }
 
+  resolved_stage = launcher_curriculum_stage
   resolved_preset_name = launcher_preset_name
-  if resolved_preset_name is None and launcher_curriculum_stage is not None:
+  if resolved_stage is None and resolved_preset_name is not None:
+    resolved_stage = mdp.get_e2v2_mezzaluna_launcher_curriculum_stage_index(
+      resolved_preset_name
+    )
+  if resolved_preset_name is None and resolved_stage is not None:
     resolved_preset_name = mdp.get_e2v2_mezzaluna_launcher_curriculum_preset_name(
-      launcher_curriculum_stage
+      resolved_stage
     )
   if resolved_preset_name is None and play:
-    resolved_preset_name = _resolve_saved_e2_play_launcher_preset_name()
-    if resolved_preset_name is not None:
+    resolved_stage = _resolve_saved_e2_play_curriculum_stage()
+    if resolved_stage is not None:
+      resolved_preset_name = mdp.get_e2v2_mezzaluna_launcher_curriculum_preset_name(
+        resolved_stage
+      )
       print(
-        f"[INFO]: Auto-selected E2 play launcher preset from saved run: "
-        f"{resolved_preset_name}"
+        f"[INFO]: Auto-selected E2 play curriculum stage from saved run: "
+        f"{resolved_stage}"
       )
   if resolved_preset_name is None and E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE:
+    resolved_stage = int(E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE)
     resolved_preset_name = mdp.get_e2v2_mezzaluna_launcher_curriculum_preset_name(
-      int(E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE)
+      resolved_stage
     )
   if resolved_preset_name is None:
     resolved_preset_name = E2V2_MEZZALUNA_DEFAULT_LAUNCHER_PRESET_NAME
+  if resolved_stage is None:
+    resolved_stage = mdp.get_e2v2_mezzaluna_launcher_curriculum_stage_index(
+      resolved_preset_name
+    )
 
   launcher_cfg = mdp.GoalkeeperBallLauncherCfg(
     ball_entity_name="soccer_ball",
@@ -750,6 +773,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       ball_entity_name="soccer_ball",
       ball_robot_contact_sensor_name=BALL_ROBOT_CONTACT_SENSOR_NAME,
       command_dim=MOTOR_COMMAND_DIM,
+      curriculum_stage=resolved_stage,
       keeper_spawn_x_range=KEEPER_SPAWN_X_RANGE,
       keeper_spawn_y_range=KEEPER_SPAWN_Y_RANGE,
       spawn_yaw_range=SPAWN_YAW_RANGE,
@@ -935,9 +959,9 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       weight=3.0,
       params={
         "command_name": "stand_block",
-        "stage1_scale": 1.0,
-        "stage2_scale": 0.0,
-        "stage3_scale": 0.0,
+        "stage1_scale": 0.0,
+        "stage2_scale": 1.0,
+        "stage3_scale": 1.0,
       },
     ),
     "low_height_soft_penalty": RewardTermCfg(
