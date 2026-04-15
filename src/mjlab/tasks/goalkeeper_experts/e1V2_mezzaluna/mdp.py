@@ -132,6 +132,16 @@ def _wrap_angle_pi(angle: torch.Tensor) -> torch.Tensor:
   return torch.atan2(torch.sin(angle), torch.cos(angle))
 
 
+def _clamp_yaw_relative_to_reference(
+  yaw: torch.Tensor,
+  reference_yaw: torch.Tensor,
+  max_abs_delta: float,
+) -> torch.Tensor:
+  delta = _wrap_angle_pi(yaw - reference_yaw)
+  delta = torch.clamp(delta, min=-float(max_abs_delta), max=float(max_abs_delta))
+  return _wrap_angle_pi(reference_yaw + delta)
+
+
 def _outside_area_violation(
   pos_xy: torch.Tensor,
   bounds: tuple[float, float, float, float],
@@ -523,7 +533,18 @@ def _stance_ortho_score(
   ball_vec_xy = ball.data.root_link_pos_w[:, :2] - center_xy
   ball_norm = torch.linalg.norm(ball_vec_xy, dim=1, keepdim=True).clamp_min(float(eps))
   ball_dir_xy = ball_vec_xy / ball_norm
-  dot = torch.sum(stance_dir_xy * ball_dir_xy, dim=1).clamp(-1.0, 1.0)
+  torso_yaw = _yaw_from_quat_wxyz(robot.data.root_link_quat_w)
+  ball_facing_yaw = torch.atan2(ball_dir_xy[:, 1], ball_dir_xy[:, 0])
+  capped_ball_yaw = _clamp_yaw_relative_to_reference(
+    ball_facing_yaw,
+    torso_yaw,
+    0.5 * math.pi,
+  )
+  capped_ball_dir_xy = torch.stack(
+    (torch.cos(capped_ball_yaw), torch.sin(capped_ball_yaw)),
+    dim=1,
+  )
+  dot = torch.sum(stance_dir_xy * capped_ball_dir_xy, dim=1).clamp(-1.0, 1.0)
   return torch.relu(torch.abs(dot) - float(ortho_deadband))
 
 
@@ -726,6 +747,9 @@ class SetSquareCommand(CommandTerm):
     self.metrics["stance_width"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["outside_keeper_area"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["ball_speed_xy"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["curriculum_stage_num"] = torch.zeros(
+      env.num_envs, device=self.device
+    )
 
   @property
   def command(self) -> torch.Tensor:
@@ -842,6 +866,13 @@ class SetSquareCommand(CommandTerm):
     self.metrics["ball_speed_xy"] = torch.linalg.norm(
       self._ball.data.root_link_lin_vel_w[:, :2], dim=1
     )
+    stage_value = float(self.curriculum_stage)
+    self.metrics["curriculum_stage_num"].fill_(stage_value)
+    log = _get_log_dict(self._env)
+    if log is not None:
+      log["Metrics/e1_curriculum_stage_num"] = torch.tensor(
+        stage_value, device=self.device, dtype=torch.float32
+      )
 
   def _resample_command(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:
@@ -1880,7 +1911,13 @@ def waist_ready_twist_abs_penalty(
     normal_sign,
   )
   desired_normal_xy = support_normal_xy * normal_sign.unsqueeze(1)
+  ball_facing_yaw = torch.atan2(ball_dir_xy[:, 1], ball_dir_xy[:, 0])
   desired_ready_yaw = torch.atan2(desired_normal_xy[:, 1], desired_normal_xy[:, 0])
+  desired_ready_yaw = _clamp_yaw_relative_to_reference(
+    desired_ready_yaw,
+    ball_facing_yaw,
+    0.5 * math.pi,
+  )
 
   waist_idx = _resolve_single_body_index_cached(env, robot, waist_body_name)
   waist_yaw = _yaw_from_quat_wxyz(robot.data.body_link_quat_w[:, waist_idx, :])

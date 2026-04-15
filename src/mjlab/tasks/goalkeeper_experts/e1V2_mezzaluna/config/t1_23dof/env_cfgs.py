@@ -131,13 +131,17 @@ E1_KEEPER_SPAWN_RGBA = (0.10, 0.95, 0.35, 0.16)
 E1_DEFAULT_RESET_CURRICULUM_STAGE = 1
 # Goalkeeper nominal facing in field coordinates: look out into the field, not at the sampled ball.
 KEEPER_NOMINAL_FACING_YAW = math.pi
+E1_SPAWN_YAW_RANDOMIZATION_DEG = 80.0
 
 # Reset curriculum for E1V2 mezzaluna.
 E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=E1_STAGE1_KEEPER_SPAWN_X_RANGE,
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE1_KEEPER_SPAWN_Y_RANGE,)),
-    spawn_yaw_offset_range=(-math.radians(75.0), math.radians(75.0)),
+    spawn_yaw_offset_range=(
+      -math.radians(E1_SPAWN_YAW_RANDOMIZATION_DEG),
+      math.radians(E1_SPAWN_YAW_RANDOMIZATION_DEG),
+    ),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
     launcher_mode_probs=(0.3, 0.3, 0.2, 0.2, 0.0),
@@ -145,7 +149,10 @@ E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=E1_STAGE2_KEEPER_SPAWN_X_RANGE,
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE2_KEEPER_SPAWN_Y_RANGE,)),
-    spawn_yaw_offset_range=(-math.radians(75.0), math.radians(75.0)),
+    spawn_yaw_offset_range=(
+      -math.radians(E1_SPAWN_YAW_RANDOMIZATION_DEG),
+      math.radians(E1_SPAWN_YAW_RANDOMIZATION_DEG),
+    ),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
     launcher_mode_probs=(0.1, 0.35, 0.2, 0.2, 0.15),
@@ -153,7 +160,10 @@ E1_RESET_STAGE_CFGS = (
   mdp.SetSquareResetStageCfg(
     keeper_spawn_x_range=E1_STAGE2_KEEPER_SPAWN_X_RANGE,
     keeper_spawn_y_range=mdp.IntervalUnionCfg(intervals=(E1_STAGE2_KEEPER_SPAWN_Y_RANGE,)),
-    spawn_yaw_offset_range=(-math.radians(75.0), math.radians(75.0)),
+    spawn_yaw_offset_range=(
+      -math.radians(E1_SPAWN_YAW_RANDOMIZATION_DEG),
+      math.radians(E1_SPAWN_YAW_RANDOMIZATION_DEG),
+    ),
     target_spawn_x_range=TARGET_SPAWN_X_RANGE,
     target_spawn_y_range=mdp.IntervalUnionCfg(intervals=(TARGET_SPAWN_Y_RANGE,)),
     launcher_mode_probs=(0.0, 0.0, 0.0, 0.0, 1.0),
@@ -189,6 +199,7 @@ FIELD_HALF_WIDTH_Y = 4.5
 E1_WALL_THICKNESS = 0.16
 E1_WALL_HEIGHT = 0.07
 E1_GOAL_OPENING_HALF_WIDTH = 1.55
+E1_WALL_GOALPOST_CORNER_CLEARANCE = 0.25
 E1_WALL_RGBA = (0.92, 0.18, 0.18, 0.45)
 E1_WALL_FRICTION = (1.2, 0.02, 0.002)
 E1_WALL_SOLREF = (0.02, 1.5)
@@ -492,10 +503,13 @@ def _add_e1_test_walls(
   )
 
   # Short sides split in two per side, leaving opening for goalpost.
-  short_side_segment_half_y = (FIELD_HALF_WIDTH_Y - E1_GOAL_OPENING_HALF_WIDTH) / 2.0
+  short_side_opening_half_width = (
+    E1_GOAL_OPENING_HALF_WIDTH + E1_WALL_GOALPOST_CORNER_CLEARANCE
+  )
+  short_side_segment_half_y = (FIELD_HALF_WIDTH_Y - short_side_opening_half_width) / 2.0
   if short_side_segment_half_y <= 0.0:
-    raise ValueError("E1_GOAL_OPENING_HALF_WIDTH is too large for field width.")
-  short_side_segment_center_y = E1_GOAL_OPENING_HALF_WIDTH + short_side_segment_half_y
+    raise ValueError("Short-side wall opening is too large for field width.")
+  short_side_segment_center_y = short_side_opening_half_width + short_side_segment_half_y
   short_side_wall_x = FIELD_HALF_LENGTH_X
 
   _add_wall(

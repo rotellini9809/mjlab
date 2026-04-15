@@ -474,6 +474,9 @@ class StandBlockCommand(CommandTerm):
     self.metrics["goal_detected"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["launch_family_id"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["launch_t_goal_est_s"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["curriculum_stage_num"] = torch.zeros(
+      env.num_envs, device=self.device
+    )
     self._status_markdown = None
     self._gui_get_env_idx: Callable[[], int] | None = None
 
@@ -576,6 +579,14 @@ class StandBlockCommand(CommandTerm):
     self.metrics["goal_detected"] = self._goal_conceded_mask().float()
     self.metrics["launch_family_id"] = self._launcher.family_id.to(torch.float)
     self.metrics["launch_t_goal_est_s"] = self._launcher.t_goal_est_s
+    stage_index = self.launcher_curriculum_stage
+    stage_value = 0.0 if stage_index is None else float(stage_index)
+    self.metrics["curriculum_stage_num"].fill_(stage_value)
+    log = _get_log_dict(self._env)
+    if log is not None:
+      log["Metrics/e2_curriculum_stage_num"] = torch.tensor(
+        stage_value, device=self.device, dtype=torch.float32
+      )
 
   def _resample_command(self, env_ids: torch.Tensor) -> None:
     if env_ids.numel() == 0:

@@ -177,6 +177,7 @@ FIELD_HALF_WIDTH_Y = 4.5
 E1_WALL_THICKNESS = 0.16
 E1_WALL_HEIGHT = 0.07
 E1_GOAL_OPENING_HALF_WIDTH = 1.55
+E1_WALL_GOALPOST_CORNER_CLEARANCE = 0.25
 E1_WALL_RGBA = (0.92, 0.18, 0.18, 0.45)
 E1_WALL_FRICTION = (1.2, 0.02, 0.002)
 E1_WALL_SOLREF = (0.02, 1.5)
@@ -457,10 +458,13 @@ def _add_e1_test_walls(spec: mujoco.MjSpec) -> None:
   )
 
   # Short sides split in two per side, leaving opening for goalpost.
-  short_side_segment_half_y = (FIELD_HALF_WIDTH_Y - E1_GOAL_OPENING_HALF_WIDTH) / 2.0
+  short_side_opening_half_width = (
+    E1_GOAL_OPENING_HALF_WIDTH + E1_WALL_GOALPOST_CORNER_CLEARANCE
+  )
+  short_side_segment_half_y = (FIELD_HALF_WIDTH_Y - short_side_opening_half_width) / 2.0
   if short_side_segment_half_y <= 0.0:
-    raise ValueError("E1_GOAL_OPENING_HALF_WIDTH is too large for field width.")
-  short_side_segment_center_y = E1_GOAL_OPENING_HALF_WIDTH + short_side_segment_half_y
+    raise ValueError("Short-side wall opening is too large for field width.")
+  short_side_segment_center_y = short_side_opening_half_width + short_side_segment_half_y
   short_side_wall_x = FIELD_HALF_LENGTH_X
 
   _add_wall(
