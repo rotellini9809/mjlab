@@ -16,7 +16,10 @@ from mjlab.motor_controller_stage1.latent_action import (
   MotorLatentActionCfg,
   motor_last_decoded_action,
 )
-from mjlab.sensor import BuiltinSensor
+from mjlab.tasks.goalkeeper_experts.fov_helpers import (
+  compute_fov_visibility,
+  update_last_seen_ball_state,
+)
 from mjlab.utils.lab_api.math import (
   quat_from_euler_xyz,
   quat_mul,
@@ -160,6 +163,10 @@ def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
 
+def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
+  return pos_w_xyz - env.scene.env_origins
+
+
 def _goal_line_center_world_xy(
   env,
   command_name: str,
@@ -227,27 +234,51 @@ def _resolve_single_body_index_cached(
 
 def _get_float_state_buffer(
   env,
-  name: str,
-  num_envs: int,
-  device: torch.device | str,
+  key: str,
+  *,
+  fill_value: float = 0.0,
 ) -> torch.Tensor:
-  """Get/create per-env float buffer used by stateful reward shaping."""
   env_obj = getattr(env, "unwrapped", env)
-  cache_name = "_e1_reward_float_state_cache"
+  cache_name = "_e1_float_state_cache"
   cache = getattr(env_obj, cache_name, None)
   if cache is None:
     cache = {}
     setattr(env_obj, cache_name, cache)
 
-  buf = cache.get(name)
-  if (
-    buf is None
-    or buf.shape != (num_envs,)
-    or buf.device != torch.device(device)
-    or not torch.is_floating_point(buf)
-  ):
-    buf = torch.zeros((num_envs,), dtype=torch.float32, device=device)
-    cache[name] = buf
+  buf = cache.get(key)
+  if buf is None or buf.shape != (env.num_envs,) or buf.device != env.device:
+    buf = torch.full(
+      (env.num_envs,),
+      fill_value=float(fill_value),
+      device=env.device,
+      dtype=torch.float32,
+    )
+    cache[key] = buf
+  return buf
+
+
+def _get_bool_state_buffer(
+  env,
+  key: str,
+  *,
+  fill_value: bool = False,
+) -> torch.Tensor:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e1_bool_state_cache"
+  cache = getattr(env_obj, cache_name, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_name, cache)
+
+  buf = cache.get(key)
+  if buf is None or buf.shape != (env.num_envs,) or buf.device != env.device:
+    buf = torch.full(
+      (env.num_envs,),
+      fill_value=bool(fill_value),
+      device=env.device,
+      dtype=torch.bool,
+    )
+    cache[key] = buf
   return buf
 
 
@@ -665,6 +696,8 @@ class SetSquareCommandCfg(CommandTermCfg):
 
   # Keep target fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
+  fov_active: bool = True
+  ball_fov_half_angle_deg: float = 90.0
   debug_vis: bool = False
   stance_left_foot_body_name: str = r"^left_foot_link$"
   stance_right_foot_body_name: str = r"^right_foot_link$"
@@ -1832,6 +1865,158 @@ def target_direction_xy(
   return _normalize_xy(rel_xy)
 
 
+def visible_target_direction_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  target_dir_xy = target_direction_xy(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return target_dir_xy * visible.unsqueeze(1).to(target_dir_xy.dtype)
+
+
+def _ball_visibility_mask(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  eps: float = 1.0e-6,
+) -> torch.Tensor:
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  robot: Entity = env.scene[asset_cfg.name]
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  rel_xy = ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+  torso_yaw = _yaw_from_quat_wxyz(robot.data.root_link_quat_w)
+  forward_xy = torch.stack([torch.cos(torso_yaw), torch.sin(torso_yaw)], dim=1)
+  return compute_fov_visibility(
+    rel_xy,
+    forward_xy,
+    fov_active=bool(command.cfg.fov_active),
+    half_angle_deg=float(command.cfg.ball_fov_half_angle_deg),
+    eps=float(eps),
+  )
+
+
+def _ball_visibility_obs_context(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+  robot: Entity = env.scene[asset_cfg.name]
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+
+  rel_pos_xyz = ball.data.root_link_pos_w - robot.data.root_link_pos_w
+  rel_vel_xyz = ball.data.root_link_lin_vel_w - robot.data.root_link_lin_vel_w
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+
+  last_seen_pos_xy, last_seen_vel_xy, last_seen_secs = update_last_seen_ball_state(
+    env,
+    visible=visible,
+    rel_pos_xyz=rel_pos_xyz,
+    rel_vel_xyz=rel_vel_xyz,
+    key_prefix=f"e1_ball_visibility::{command_name}",
+    get_float_state_buffer=_get_float_state_buffer,
+    get_bool_state_buffer=_get_bool_state_buffer,
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_ball_visible_mean"] = torch.mean(visible.to(torch.float32))
+    log["Metrics/e1_ball_last_seen_secs_mean"] = torch.mean(last_seen_secs)
+
+  return visible, rel_pos_xyz, rel_vel_xyz, last_seen_pos_xy, last_seen_vel_xy, last_seen_secs
+
+
+def ball_visible(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible, _, _, _, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return visible.to(torch.float32).unsqueeze(1)
+
+
+def visible_ball_position_relative_xyz(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible, rel_pos_xyz, _, _, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return rel_pos_xyz * visible.unsqueeze(1).to(rel_pos_xyz.dtype)
+
+
+def visible_ball_velocity_relative_xyz(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible, _, rel_vel_xyz, _, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return rel_vel_xyz * visible.unsqueeze(1).to(rel_vel_xyz.dtype)
+
+
+def last_seen_ball_position_relative_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  _, _, _, last_seen_pos_xy, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return last_seen_pos_xy
+
+
+def last_seen_ball_velocity_relative_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  _, _, _, _, last_seen_vel_xy, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return last_seen_vel_xy
+
+
+def last_seen_ball_secs(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  _, _, _, _, _, last_seen_secs = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return last_seen_secs.unsqueeze(1)
+
+
 def target_position_relative_xyz(
   env,
   command_name: str = "set_square",
@@ -1863,6 +2048,55 @@ def ball_velocity_relative_xyz(
   return ball.data.root_link_lin_vel_w - robot.data.root_link_lin_vel_w
 
 
+def time_to_goal_plane(
+  env,
+  command_name: str = "set_square",
+  max_time: float = 2.0,
+  min_toward_speed: float = 0.05,
+) -> torch.Tensor:
+  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[command.cfg.ball_entity_name]
+  ball_local = _world_to_env_local_xyz(env, ball.data.root_link_pos_w)
+
+  x = ball_local[:, 0]
+  vx = ball.data.root_link_lin_vel_w[:, 0]
+
+  if command.cfg.goal_toward_positive_x:
+    dx = float(command.cfg.goal_line_x) - x
+    toward = vx > float(min_toward_speed)
+    t = dx / torch.clamp(vx, min=float(min_toward_speed))
+  else:
+    dx = x - float(command.cfg.goal_line_x)
+    toward = vx < -float(min_toward_speed)
+    t = dx / torch.clamp(-vx, min=float(min_toward_speed))
+
+  valid = toward & (dx >= 0.0)
+  t = torch.where(valid, t, torch.full_like(t, float(max_time)))
+  t = torch.clamp(t, min=0.0, max=float(max_time))
+  return t.unsqueeze(1)
+
+
+def visible_time_to_goal_plane(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  max_time: float = 2.0,
+  min_toward_speed: float = 0.05,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  t_goal = time_to_goal_plane(
+    env,
+    command_name=command_name,
+    max_time=max_time,
+    min_toward_speed=min_toward_speed,
+  )
+  return t_goal * visible.unsqueeze(1).to(t_goal.dtype)
+
+
 def desired_point_relative_xy(
   env,
   command_name: str = "set_square",
@@ -1871,6 +2105,24 @@ def desired_point_relative_xy(
   robot: Entity = env.scene[asset_cfg.name]
   target_w_xy = _reward_target_world_xy(env, command_name)
   return target_w_xy - robot.data.root_link_pos_w[:, :2]
+
+
+def visible_desired_point_relative_xy(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  desired_point_xy = desired_point_relative_xy(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return desired_point_xy * visible.unsqueeze(1).to(desired_point_xy.dtype)
 
 
 def waist_ready_twist_abs_penalty(
@@ -2081,163 +2333,6 @@ def stance_center_home_x_asymmetric_abs_penalty(
   ) * _reward_active_float_mask(env, command_name)
 
 
-def stance_center_home_axis_progress_reward(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  axis: str = "y",
-  max_delta: float = 0.20,
-  left_foot_body_name: str = r"^left_foot_link$",
-  right_foot_body_name: str = r"^right_foot_link$",
-  apply_standing_gate: bool = False,
-) -> torch.Tensor:
-  axis_idx = 0 if axis.lower() == "x" else 1
-  robot: Entity = env.scene[asset_cfg.name]
-  center_xy, _, _ = _stance_center_xy(
-    env,
-    robot,
-    left_foot_body_name,
-    right_foot_body_name,
-  )
-  home_xy = _reward_target_world_xy(env, command_name)
-  err_abs = torch.abs(home_xy[:, axis_idx] - center_xy[:, axis_idx])
-
-  prev = _get_float_state_buffer(
-    env,
-    name=f"home_axis_prev::{axis}",
-    num_envs=env.num_envs,
-    device=env.device,
-  )
-  reward_steps = _reward_step_count(env, command_name)
-  active_mask = _reward_active_mask(env, command_name)
-  is_first_step = reward_steps <= 1
-  effective_prev = torch.where(is_first_step, err_abs, prev)
-  prog = torch.clamp(effective_prev - err_abs, min=0.0, max=float(max_delta))
-  prog = _apply_standing_gate_if_enabled(prog, env, asset_cfg, apply_standing_gate)
-  prog = _apply_reward_active_mask(prog, env, command_name)
-
-  prev[active_mask] = err_abs[active_mask]
-  return prog
-
-
-def stance_center_move_toward_home_reward(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  left_foot_body_name: str = r"^left_foot_link$",
-  right_foot_body_name: str = r"^right_foot_link$",
-  r_deadband: float = 0.10,
-  v_cap: float = 0.6,
-  apply_standing_gate: bool = False,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  center_xy, _, _ = _stance_center_xy(
-    env,
-    robot,
-    left_foot_body_name,
-    right_foot_body_name,
-  )
-  left_idx, right_idx = _resolve_body_index_pair_cached(
-    env,
-    robot,
-    left_foot_body_name,
-    right_foot_body_name,
-  )
-  v_center_xy = 0.5 * (
-    robot.data.body_link_lin_vel_w[:, left_idx, :2]
-    + robot.data.body_link_lin_vel_w[:, right_idx, :2]
-  )
-
-  home_xy = _reward_target_world_xy(env, command_name)
-  to_home_xy = home_xy - center_xy
-  dist = torch.linalg.norm(to_home_xy, dim=1)
-  dir_xy = to_home_xy / dist.unsqueeze(1).clamp_min(1.0e-6)
-  active = dist > float(r_deadband)
-  dir_xy = torch.where(active.unsqueeze(1), dir_xy, torch.zeros_like(dir_xy))
-
-  toward_speed = torch.sum(v_center_xy * dir_xy, dim=1)
-  reward = torch.clamp(toward_speed, min=0.0, max=float(v_cap))
-  reward = _apply_standing_gate_if_enabled(reward, env, asset_cfg, apply_standing_gate)
-
-  return _apply_reward_active_mask(reward, env, command_name)
-
-
-def stance_ortho_abs_penalty(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  left_foot_body_name: str = r"^left_foot_link$",
-  right_foot_body_name: str = r"^right_foot_link$",
-  ortho_deadband: float = 0.10,
-) -> torch.Tensor:
-  ortho_err = _stance_ortho_score(
-    env,
-    command_name,
-    asset_cfg,
-    left_foot_body_name,
-    right_foot_body_name,
-    ortho_deadband,
-  )
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e1_stance_ortho_err_mean"] = torch.mean(ortho_err)
-  penalty = ortho_err * _alignment_home_ramp(
-    env,
-    command_name,
-    asset_cfg,
-    left_foot_body_name=left_foot_body_name,
-    right_foot_body_name=right_foot_body_name,
-  )
-  return _apply_reward_active_mask(penalty, env, command_name)
-
-
-def stance_ortho_progress_reward(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  left_foot_body_name: str = r"^left_foot_link$",
-  right_foot_body_name: str = r"^right_foot_link$",
-  ortho_deadband: float = 0.10,
-  max_delta: float = 0.20,
-  apply_standing_gate: bool = False,
-) -> torch.Tensor:
-  ortho_err = _stance_ortho_score(
-    env,
-    command_name,
-    asset_cfg,
-    left_foot_body_name,
-    right_foot_body_name,
-    ortho_deadband,
-  )
-  prev = _get_float_state_buffer(
-    env,
-    name="stance_ortho_err_prev",
-    num_envs=env.num_envs,
-    device=env.device,
-  )
-  reward_steps = _reward_step_count(env, command_name)
-  active_mask = _reward_active_mask(env, command_name)
-  is_first_step = reward_steps <= 1
-  effective_prev = torch.where(is_first_step, ortho_err, prev)
-  prog = torch.clamp(effective_prev - ortho_err, min=0.0, max=float(max_delta))
-  prog = _apply_standing_gate_if_enabled(prog, env, asset_cfg, apply_standing_gate)
-  prog = prog * _alignment_home_ramp(
-    env,
-    command_name,
-    asset_cfg,
-    left_foot_body_name=left_foot_body_name,
-    right_foot_body_name=right_foot_body_name,
-  )
-  prog = _apply_reward_active_mask(prog, env, command_name)
-  prev[active_mask] = ortho_err[active_mask]
-
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e1_stance_ortho_err_mean"] = torch.mean(ortho_err)
-
-  return prog
-
-
 def stance_width_band_penalty(
   env,
   command_name: str = "set_square",
@@ -2332,24 +2427,6 @@ def body_ang_vel_penalty(
   ang_vel_xy = robot.data.root_link_ang_vel_w[:, :2]
   penalty = torch.sum(torch.square(ang_vel_xy), dim=1)
   return _apply_reward_active_mask(penalty, env)
-
-
-def angular_momentum_penalty(
-  env,
-  sensor_name: str = "robot/root_angmom",
-) -> torch.Tensor:
-  """Penalize whole-body angular momentum magnitude (velocity-style stabilizer)."""
-  try:
-    angmom_sensor = cast(BuiltinSensor, env.scene[sensor_name])
-  except KeyError:
-    return torch.zeros(env.num_envs, device=env.device)
-
-  angmom = angmom_sensor.data
-  angmom_magnitude_sq = torch.sum(torch.square(angmom), dim=-1)
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e1_angular_momentum_mean"] = torch.mean(torch.sqrt(angmom_magnitude_sq))
-  return _apply_reward_active_mask(angmom_magnitude_sq, env)
 
 
 def outside_keeper_area_penalty(

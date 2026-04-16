@@ -31,7 +31,6 @@ GOAL_X_LINE = 7.0
 GOALPOST_X = 7.3
 E1_HOME_POINT_X = 6.70
 E1_HOME_POINT_Y = 0.0
-E1_HOME_POINT_BAND_RADIUS = 0.10
 
 # Legacy fixed ranges retained for compatibility; E2V2 reset now spawns from the
 # mezzaluna using the sampled ball spawn instead of using these directly.
@@ -102,6 +101,10 @@ E2V2_MEZZALUNA_RESET_CURRICULUM_STAGE = os.environ.get(
 E2V2_MEZZALUNA_DEFAULT_LAUNCHER_PRESET_NAME = (
   mdp.E2V2_MEZZALUNA_STAGE1_GROUND_ONLY
 )
+E2V2_MEZZALUNA_LEGACY_PRESET_ALIASES = {
+  "e2v2_mezzaluna_stage1_ground": mdp.E2V2_MEZZALUNA_STAGE2_GROUND_LONG_DRIVEN,
+  "e2v2_mezzaluna_stage2_ground_air": mdp.E2V2_MEZZALUNA_STAGE2_GROUND_LONG_DRIVEN,
+}
 E2_DEFLECTION_TIME_AFTER_LAUNCH_RANGE = (0.08, 0.22)
 E2_DEFLECTION_DV_MAG_RANGE = (0.35, 1.25)
 E2_LAUNCH_MAX_SPEED = 8.5
@@ -110,6 +113,8 @@ E2_MIN_TOWARD_GOAL_SPEED = 0.8
 E2V2_GROUND_NEAR_X_RANGE = (4.8, 5.8)
 E2V2_GROUND_FAR_X_RANGE = (3.2, 4.8)
 E2V2_LOB_X_RANGE = (3.5, 5.3)
+BALL_FOV_ACTIVE = True
+BALL_FOV_HALF_ANGLE_DEG = 50.0
 
 # Goal-plane aperture (used for both detection and visualization).
 GOAL_PLANE_X = GOAL_X_LINE
@@ -481,12 +486,15 @@ def get_e2_field_cfg_with_goal_plane() -> EntityCfg:
   return field_cfg
 
 
+def _canonicalize_e2v2_launcher_preset_name(preset_name: str) -> str:
+  return E2V2_MEZZALUNA_LEGACY_PRESET_ALIASES.get(preset_name, preset_name)
+
+
 def _apply_e2v2_mezzaluna_launcher_preset(
   cfg: mdp.GoalkeeperBallLauncherCfg,
   preset_name: str,
 ) -> mdp.GoalkeeperBallLauncherCfg:
-  legacy_stage1_alias = "e2v2_mezzaluna_stage1_ground"
-  legacy_stage2_alias = "e2v2_mezzaluna_stage2_ground_air"
+  preset_name = _canonicalize_e2v2_launcher_preset_name(preset_name)
   cfg.ground_near_x_range = E2V2_GROUND_NEAR_X_RANGE
   cfg.ground_far_x_range = E2V2_GROUND_FAR_X_RANGE
   cfg.lob_x_range = E2V2_LOB_X_RANGE
@@ -516,11 +524,7 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     )
     cfg.deflection_prob = 0.0
     return cfg
-  if preset_name in (
-    mdp.E2V2_MEZZALUNA_STAGE2_GROUND_LONG_DRIVEN,
-    legacy_stage1_alias,
-    legacy_stage2_alias,
-  ):
+  if preset_name == mdp.E2V2_MEZZALUNA_STAGE2_GROUND_LONG_DRIVEN:
     cfg.active_preset_name = preset_name
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
@@ -722,6 +726,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
   resolved_stage = launcher_curriculum_stage
   resolved_preset_name = launcher_preset_name
   if resolved_stage is None and resolved_preset_name is not None:
+    resolved_preset_name = _canonicalize_e2v2_launcher_preset_name(resolved_preset_name)
     resolved_stage = mdp.get_e2v2_mezzaluna_launcher_curriculum_stage_index(
       resolved_preset_name
     )
@@ -744,6 +749,8 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     resolved_preset_name = mdp.get_e2v2_mezzaluna_launcher_curriculum_preset_name(
       resolved_stage
     )
+  if resolved_preset_name is not None:
+    resolved_preset_name = _canonicalize_e2v2_launcher_preset_name(resolved_preset_name)
   if resolved_preset_name is None:
     resolved_preset_name = E2V2_MEZZALUNA_DEFAULT_LAUNCHER_PRESET_NAME
   if resolved_stage is None:
@@ -794,6 +801,8 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       goal_plane_z_max=GOAL_PLANE_Z_MAX,
       danger_area_bounds=E2_DANGER_AREA_BOUNDS,
       keeper_area_bounds=E2_KEEPER_AREA_BOUNDS,
+      fov_active=BALL_FOV_ACTIVE,
+      ball_fov_half_angle_deg=BALL_FOV_HALF_ANGLE_DEG,
       resampling_time_range=(1.0e9, 1.0e9),
       debug_vis=True,
     )
@@ -819,20 +828,44 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       params={"action_name": "motor_latent"},
     ),
     "target_dir_xy": ObservationTermCfg(
-      func=mdp.target_direction_xy,
+      func=mdp.visible_target_direction_xy,
       params={"command_name": "stand_block"},
     ),
     "robot_pos_rel_goal_line_xy": ObservationTermCfg(
       func=mdp.robot_position_relative_goal_line_xy,
       params={"command_name": "stand_block"},
     ),
-    "ball_pos_rel_xyz": ObservationTermCfg(
-      func=mdp.ball_position_relative_xyz,
+    "desired_point_rel_xy": ObservationTermCfg(
+      func=mdp.visible_desired_point_relative_xy,
       params={"command_name": "stand_block"},
     ),
-    "ball_vel_rel_xyz": ObservationTermCfg(
-      func=mdp.ball_velocity_relative_xyz,
+    "ball_visible": ObservationTermCfg(
+      func=mdp.ball_visible,
       params={"command_name": "stand_block"},
+    ),
+    "visible_ball_pos_rel_xyz": ObservationTermCfg(
+      func=mdp.visible_ball_position_relative_xyz,
+      params={"command_name": "stand_block"},
+    ),
+    "visible_ball_vel_rel_xyz": ObservationTermCfg(
+      func=mdp.visible_ball_velocity_relative_xyz,
+      params={"command_name": "stand_block"},
+    ),
+    "last_seen_ball_pos_rel_xy": ObservationTermCfg(
+      func=mdp.last_seen_ball_position_relative_xy,
+      params={"command_name": "stand_block"},
+    ),
+    "last_seen_ball_vel_rel_xy": ObservationTermCfg(
+      func=mdp.last_seen_ball_velocity_relative_xy,
+      params={"command_name": "stand_block"},
+    ),
+    "last_seen_ball_secs": ObservationTermCfg(
+      func=mdp.last_seen_ball_secs,
+      params={"command_name": "stand_block"},
+    ),
+    "t_goal": ObservationTermCfg(
+      func=mdp.visible_time_to_goal_plane,
+      params={"command_name": "stand_block", "max_time": 2.0},
     ),
   }
 
@@ -861,6 +894,10 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
     ),
     "robot_pos_rel_goal_line_xy": ObservationTermCfg(
       func=mdp.robot_position_relative_goal_line_xy,
+      params={"command_name": "stand_block"},
+    ),
+    "desired_point_rel_xy": ObservationTermCfg(
+      func=mdp.desired_point_relative_xy,
       params={"command_name": "stand_block"},
     ),
     "ball_pos_rel_xyz": ObservationTermCfg(

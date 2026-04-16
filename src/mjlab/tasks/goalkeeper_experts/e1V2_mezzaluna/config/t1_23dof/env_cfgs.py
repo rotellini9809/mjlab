@@ -87,6 +87,8 @@ TARGET_BALL_Z_MAX = 0.35
 # Temporary debug: force constant z to verify ground spawning.
 DEBUG_FORCE_TARGET_BALL_GROUND_Z = False
 DEBUG_TARGET_BALL_GROUND_Z = TARGET_BALL_HEIGHT / 2.0
+BALL_FOV_ACTIVE = True
+BALL_FOV_HALF_ANGLE_DEG = 50.0
 
 # E1 kick sampler (single kick, lateral-biased, anti-shot).
 KICK_DEAD_BALL_PROB = 0.40
@@ -818,6 +820,8 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       stance_right_foot_body_name=STANCE_ORTHO_RIGHT_FOOT_BODY,
       stance_ortho_w_min=STANCE_ORTHO_W_MIN,
       stance_ortho_d_min=STANCE_ORTHO_D_MIN,
+      fov_active=BALL_FOV_ACTIVE,
+      ball_fov_half_angle_deg=BALL_FOV_HALF_ANGLE_DEG,
       viz=mdp.SetSquareCommandCfg.VizCfg(home_point_radius=HOME_POINT_BAND_RADIUS),
       resampling_time_range=(1.0e9, 1.0e9),
       debug_vis=True,
@@ -844,7 +848,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       params={"action_name": "motor_latent"},
     ),
     "target_dir_xy": ObservationTermCfg(
-      func=mdp.target_direction_xy,
+      func=mdp.visible_target_direction_xy,
       params={"command_name": "set_square"},
     ),
     "robot_pos_rel_goal_line_xy": ObservationTermCfg(
@@ -852,16 +856,36 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       params={"command_name": "set_square"},
     ),
     "desired_point_rel_xy": ObservationTermCfg(
-      func=mdp.desired_point_relative_xy,
+      func=mdp.visible_desired_point_relative_xy,
       params={"command_name": "set_square"},
     ),
-    "ball_pos_rel_xyz": ObservationTermCfg(
-      func=mdp.target_position_relative_xyz,
+    "ball_visible": ObservationTermCfg(
+      func=mdp.ball_visible,
       params={"command_name": "set_square"},
     ),
-    "ball_vel_rel_xyz": ObservationTermCfg(
-      func=mdp.ball_velocity_relative_xyz,
+    "visible_ball_pos_rel_xyz": ObservationTermCfg(
+      func=mdp.visible_ball_position_relative_xyz,
       params={"command_name": "set_square"},
+    ),
+    "visible_ball_vel_rel_xyz": ObservationTermCfg(
+      func=mdp.visible_ball_velocity_relative_xyz,
+      params={"command_name": "set_square"},
+    ),
+    "last_seen_ball_pos_rel_xy": ObservationTermCfg(
+      func=mdp.last_seen_ball_position_relative_xy,
+      params={"command_name": "set_square"},
+    ),
+    "last_seen_ball_vel_rel_xy": ObservationTermCfg(
+      func=mdp.last_seen_ball_velocity_relative_xy,
+      params={"command_name": "set_square"},
+    ),
+    "last_seen_ball_secs": ObservationTermCfg(
+      func=mdp.last_seen_ball_secs,
+      params={"command_name": "set_square"},
+    ),
+    "t_goal": ObservationTermCfg(
+      func=mdp.visible_time_to_goal_plane,
+      params={"command_name": "set_square", "max_time": 2.0},
     ),
   }
 
@@ -904,6 +928,10 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       func=mdp.ball_velocity_relative_xyz,
       params={"command_name": "set_square"},
     ),
+    "t_goal": ObservationTermCfg(
+      func=mdp.time_to_goal_plane,
+      params={"command_name": "set_square", "max_time": 2.0},
+    ),
   }
 
   cfg.observations = {
@@ -921,15 +949,10 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
   }
 
-  fallen_weight = -20.0
+  fallen_weight = -60.0
 
   cfg.rewards = {
     "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
-    "angular_momentum": RewardTermCfg(
-      func=mdp.angular_momentum_penalty,
-      weight=-0.005,
-      params={"sensor_name": "robot/root_angmom"},
-    ),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_ang_vel_penalty,
       weight=0.0,
@@ -963,18 +986,6 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },
     ),
-    "stance_center_home_x_progress": RewardTermCfg(
-      func=mdp.stance_center_home_axis_progress_reward,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "axis": "x",
-        "max_delta": 0.12,
-        "apply_standing_gate": True,
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-      },
-    ),
     "stance_center_home_y_abs_pen": RewardTermCfg(
       func=mdp.stance_center_home_axis_abs_penalty,
       weight=-1.10,
@@ -985,58 +996,12 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },
     ),
-    "stance_center_home_y_progress": RewardTermCfg(
-      func=mdp.stance_center_home_axis_progress_reward,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "axis": "y",
-        "max_delta": 0.2,
-        "apply_standing_gate": True,
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-      },
-    ),
-    "stance_center_move_toward_home": RewardTermCfg(
-      func=mdp.stance_center_move_toward_home_reward,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "r_deadband": HOME_POINT_BAND_RADIUS,
-        "v_cap": 0.3,
-        "apply_standing_gate": True,
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-      },
-    ),
     "stance_ortho_to_ball_reward": RewardTermCfg(
       func=mdp.stance_ortho_to_ball_reward,
       weight=0.65,
       params={
         "command_name": "set_square",
         "ortho_deadband": 0.10,
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-      },
-    ),
-    "stance_ortho_abs_pen": RewardTermCfg(
-      func=mdp.stance_ortho_abs_penalty,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "ortho_deadband": 0.10,
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-      },
-    ),
-    "stance_ortho_progress": RewardTermCfg(
-      func=mdp.stance_ortho_progress_reward,
-      weight=0.0,
-      params={
-        "command_name": "set_square",
-        "ortho_deadband": 0.10,
-        "max_delta": 0.2,
-        "apply_standing_gate": True,
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },

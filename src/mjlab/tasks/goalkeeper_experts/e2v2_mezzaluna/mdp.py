@@ -21,6 +21,10 @@ from mjlab.envs.mdp.rewards import (
   action_rate_l2 as _base_action_rate_l2,
   joint_pos_limits as _base_joint_pos_limits,
 )
+from mjlab.tasks.goalkeeper_experts.fov_helpers import (
+  compute_fov_visibility,
+  update_last_seen_ball_state,
+)
 from mjlab.tasks.goalkeeper_experts.launcher import (
   CROSS_FAMILY,
     LAUNCH_FAMILY_NAMES,
@@ -440,6 +444,8 @@ class StandBlockCommandCfg(CommandTermCfg):
 
   # Keep command fixed for full episode.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
+  fov_active: bool = True
+  ball_fov_half_angle_deg: float = 90.0
   debug_vis: bool = False
 
   @dataclass
@@ -1069,6 +1075,161 @@ def target_direction_xy(
   return _normalize_xy(rel_xy)
 
 
+def visible_target_direction_xy(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  target_dir_xy = target_direction_xy(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return target_dir_xy * visible.unsqueeze(1).to(target_dir_xy.dtype)
+
+
+def _ball_visibility_mask(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  eps: float = 1.0e-6,
+) -> torch.Tensor:
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  robot: Entity = env.scene[asset_cfg.name]
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+  rel_xy = ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
+  forward_local = torch.tensor([1.0, 0.0, 0.0], device=env.device).expand(
+    env.num_envs, -1
+  )
+  forward_w = quat_apply(robot.data.root_link_quat_w, forward_local)
+  forward_xy = _normalize_xy(forward_w[:, :2])
+  return compute_fov_visibility(
+    rel_xy,
+    forward_xy,
+    fov_active=bool(cmd.cfg.fov_active),
+    half_angle_deg=float(cmd.cfg.ball_fov_half_angle_deg),
+    eps=float(eps),
+  )
+
+
+def _ball_visibility_obs_context(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+  robot: Entity = env.scene[asset_cfg.name]
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+
+  rel_pos_xyz = ball.data.root_link_pos_w - robot.data.root_link_pos_w
+  rel_vel_xyz = ball.data.root_link_lin_vel_w - robot.data.root_link_lin_vel_w
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+
+  last_seen_pos_xy, last_seen_vel_xy, last_seen_secs = update_last_seen_ball_state(
+    env,
+    visible=visible,
+    rel_pos_xyz=rel_pos_xyz,
+    rel_vel_xyz=rel_vel_xyz,
+    key_prefix=f"e2_ball_visibility::{command_name}",
+    get_float_state_buffer=_get_float_state_buffer,
+    get_bool_state_buffer=_get_bool_state_buffer,
+  )
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e2_ball_visible_mean"] = torch.mean(visible.to(torch.float32))
+    log["Metrics/e2_ball_last_seen_secs_mean"] = torch.mean(last_seen_secs)
+
+  return visible, rel_pos_xyz, rel_vel_xyz, last_seen_pos_xy, last_seen_vel_xy, last_seen_secs
+
+
+def ball_visible(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible, _, _, _, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return visible.to(torch.float32).unsqueeze(1)
+
+
+def visible_ball_position_relative_xyz(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible, rel_pos_xyz, _, _, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return rel_pos_xyz * visible.unsqueeze(1).to(rel_pos_xyz.dtype)
+
+
+def visible_ball_velocity_relative_xyz(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible, _, rel_vel_xyz, _, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return rel_vel_xyz * visible.unsqueeze(1).to(rel_vel_xyz.dtype)
+
+
+def last_seen_ball_position_relative_xy(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  _, _, _, last_seen_pos_xy, _, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return last_seen_pos_xy
+
+
+def last_seen_ball_velocity_relative_xy(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  _, _, _, _, last_seen_vel_xy, _ = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return last_seen_vel_xy
+
+
+def last_seen_ball_secs(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  _, _, _, _, _, last_seen_secs = _ball_visibility_obs_context(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return last_seen_secs.unsqueeze(1)
+
+
 def ball_position_relative_xyz(
   env,
   command_name: str = "stand_block",
@@ -1100,6 +1261,27 @@ def ball_velocity_relative_xyz(
   return ball.data.root_link_lin_vel_w - robot.data.root_link_lin_vel_w
 
 
+def visible_time_to_goal_plane(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  max_time: float = 2.0,
+  min_toward_speed: float = 0.05,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  t_goal = time_to_goal_plane(
+    env,
+    command_name=command_name,
+    max_time=max_time,
+    min_toward_speed=min_toward_speed,
+  )
+  return t_goal * visible.unsqueeze(1).to(t_goal.dtype)
+
+
 def time_to_goal_plane(
   env,
   command_name: str = "stand_block",
@@ -1126,6 +1308,43 @@ def time_to_goal_plane(
   t = torch.where(valid, t, torch.full_like(t, float(max_time)))
   t = torch.clamp(t, min=0.0, max=float(max_time))
   return t.unsqueeze(1)
+
+
+def desired_point_relative_xy(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
+  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
+  target_w_xy = _mezzaluna_point_world_xy_from_ball_xy(
+    env,
+    ball.data.root_link_pos_w[:, :2],
+    center_x=float(cmd.cfg.mezzaluna_center_x),
+    center_y=float(cmd.cfg.mezzaluna_center_y),
+    apex_x=float(cmd.cfg.mezzaluna_apex_x),
+    half_width_y=float(cmd.cfg.mezzaluna_half_width_y),
+  )
+  return target_w_xy - robot.data.root_link_pos_w[:, :2]
+
+
+def visible_desired_point_relative_xy(
+  env,
+  command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  desired_point_xy = desired_point_relative_xy(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  )
+  return desired_point_xy * visible.unsqueeze(1).to(desired_point_xy.dtype)
 
 
 # ---------------- Rewards ----------------
@@ -1320,6 +1539,32 @@ class ClearanceQualityReward:
     return raw
 
 
+def _log_e2_clearance_exit_metrics(
+  env,
+  *,
+  t_contact: torch.Tensor,
+  exit_event: torch.Tensor,
+  in_danger_now: torch.Tensor | None = None,
+  raw: torch.Tensor | None = None,
+) -> None:
+  log = _get_log_dict(env)
+  if log is None:
+    return
+
+  time_s = env.episode_length_buf.to(torch.float) * env.step_dt
+  t_clear = torch.clamp(time_s - t_contact, min=0.0)
+  exit_time_mean = torch.zeros((), device=env.device, dtype=torch.float)
+  if torch.any(exit_event):
+    exit_time_mean = torch.mean(t_clear[exit_event])
+
+  if in_danger_now is not None:
+    log["Metrics/e2_ball_in_danger_mean"] = torch.mean(in_danger_now.float())
+  log["Metrics/e2_clearance_exit_event_mean"] = torch.mean(exit_event.float())
+  log["Metrics/e2_clearance_exit_time_mean"] = exit_time_mean
+  if raw is not None:
+    log["Metrics/e2_clearance_quality_raw_mean"] = torch.mean(raw)
+
+
 class _ConfirmedDangerExitLatchState:
   def __init__(self, env):
     self._prev_in_danger = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
@@ -1387,7 +1632,7 @@ class StabilizeAfterExitReward:
     pitch_band: float = 0.20,
     pitch_sigma: float = 0.30,
   ) -> torch.Tensor:
-    _in_danger_now, _t_contact, _exit_event, post_exit_active = self._exit_latch.update(
+    in_danger_now, t_contact, exit_event, post_exit_active = self._exit_latch.update(
       env,
       command_name=command_name,
       resolution_term_name=resolution_term_name,
@@ -1438,6 +1683,12 @@ class StabilizeAfterExitReward:
     )
     log = _get_log_dict(env)
     if log is not None:
+      _log_e2_clearance_exit_metrics(
+        env,
+        t_contact=t_contact,
+        exit_event=exit_event,
+        in_danger_now=in_danger_now,
+      )
       log["Metrics/e2_stabilize_after_exit_height_score_mean"] = torch.mean(height_score)
       log["Metrics/e2_stabilize_after_exit_stance_width_mean"] = torch.mean(stance_width)
       log["Metrics/e2_stabilize_after_exit_stance_width_pen_mean"] = torch.mean(
@@ -1478,7 +1729,7 @@ class FaceBallAfterExitReward:
     stage2_scale: float = 1.0,
     stage3_scale: float = 0.0,
   ) -> torch.Tensor:
-    _in_danger_now, _t_contact, _exit_event, post_exit_active = self._exit_latch.update(
+    in_danger_now, t_contact, exit_event, post_exit_active = self._exit_latch.update(
       env,
       command_name=command_name,
       resolution_term_name=resolution_term_name,
@@ -1559,6 +1810,12 @@ class FaceBallAfterExitReward:
 
     log = _get_log_dict(env)
     if log is not None:
+      _log_e2_clearance_exit_metrics(
+        env,
+        t_contact=t_contact,
+        exit_event=exit_event,
+        in_danger_now=in_danger_now,
+      )
       log["Metrics/e2_face_ball_after_exit_yaw_err_mean"] = torch.mean(yaw_err)
       log["Metrics/e2_face_ball_after_exit_score_mean"] = torch.mean(facing_score)
       log["Metrics/e2_face_ball_after_exit_raw_mean"] = torch.mean(raw)
