@@ -1310,13 +1310,15 @@ def time_to_goal_plane(
   return t.unsqueeze(1)
 
 
-def _desired_point_world_xy(
+def desired_point_relative_xy(
   env,
   command_name: str = "stand_block",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
 ) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
   cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
-  return _mezzaluna_point_world_xy_from_ball_xy(
+  target_w_xy = _mezzaluna_point_world_xy_from_ball_xy(
     env,
     ball.data.root_link_pos_w[:, :2],
     center_x=float(cmd.cfg.mezzaluna_center_x),
@@ -1324,15 +1326,6 @@ def _desired_point_world_xy(
     apex_x=float(cmd.cfg.mezzaluna_apex_x),
     half_width_y=float(cmd.cfg.mezzaluna_half_width_y),
   )
-
-
-def desired_point_relative_xy(
-  env,
-  command_name: str = "stand_block",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  target_w_xy = _desired_point_world_xy(env, command_name=command_name)
   return target_w_xy - robot.data.root_link_pos_w[:, :2]
 
 
@@ -1381,61 +1374,6 @@ def joint_pos_limits(
     env,
     command_name,
   )
-
-
-def desired_position_progress_reward(
-  env,
-  command_name: str = "stand_block",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  sx: float = 0.6,
-  sy: float = 0.4,
-  sigma: float = 0.75,
-  progress_clip: float = 0.10,
-  alpha_near: float = 0.15,
-  eps: float = 1.0e-6,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  root_xy = robot.data.root_link_pos_w[:, :2]
-  target_xy = _desired_point_world_xy(env, command_name=command_name)
-
-  err_xy = root_xy - target_xy
-  dx = err_xy[:, 0] / max(float(sx), float(eps))
-  dy = err_xy[:, 1] / max(float(sy), float(eps))
-  err = torch.sqrt(torch.square(dx) + torch.square(dy) + float(eps))
-
-  prev_err = _get_float_state_buffer(
-    env,
-    key=f"e2_desired_position_prev_err::{command_name}",
-    fill_value=0.0,
-  )
-  has_prev = _get_bool_state_buffer(
-    env,
-    key=f"e2_desired_position_has_prev::{command_name}",
-  )
-
-  reset_mask = env.episode_length_buf == 0
-  if reset_mask.any():
-    prev_err[reset_mask] = err[reset_mask]
-    has_prev[reset_mask] = False
-
-  progress = torch.where(has_prev, prev_err - err, torch.zeros_like(err))
-  progress = torch.clamp(progress, min=-float(progress_clip), max=float(progress_clip))
-  near = torch.exp(
-    -torch.square(err) / max(float(sigma) * float(sigma), float(eps))
-  )
-  raw = progress + float(alpha_near) * near
-
-  prev_err.copy_(err)
-  has_prev.fill_(True)
-
-  log = _get_log_dict(env)
-  if log is not None:
-    log["Metrics/e2_desired_position_err_mean"] = torch.mean(err)
-    log["Metrics/e2_desired_position_progress_mean"] = torch.mean(progress)
-    log["Metrics/e2_desired_position_near_mean"] = torch.mean(near)
-    log["Metrics/e2_desired_position_reward_raw_mean"] = torch.mean(raw)
-
-  return _apply_reward_active_mask(raw, env, command_name)
 
 
 class DangerReductionOnFirstContactReward:

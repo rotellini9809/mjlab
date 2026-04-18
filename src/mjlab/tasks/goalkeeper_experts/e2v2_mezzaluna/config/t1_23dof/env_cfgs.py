@@ -1040,13 +1040,6 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       weight=-10.0,
       params={"command_name": "stand_block"},
     ),
-    # Keep this moderate: it should shape approach/stability around the target
-    # position without dominating save/clearance outcomes.
-    "desired_position_progress": RewardTermCfg(
-      func=mdp.desired_position_progress_reward,
-      weight=3.0,
-      params={"command_name": "stand_block"},
-    ),
     "fallen": RewardTermCfg(
       func=mdp.fallen_indicator,
       weight=-90.0,

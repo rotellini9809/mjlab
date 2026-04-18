@@ -980,22 +980,13 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       weight=-1.6,
       params={"h_soft": 0.48},
     ),
-    "stance_center_home_x_abs_pen": RewardTermCfg(
-      func=mdp.stance_center_home_axis_abs_penalty,
-      weight=-0.35,
+    # Keep this moderate so target-tracking helps without overwhelming
+    # posture/ball-alignment shaping or terminal task outcomes.
+    "stance_center_target_progress": RewardTermCfg(
+      func=mdp.stance_center_target_progress_reward,
+      weight=3.0,
       params={
         "command_name": "set_square",
-        "axis": "x",
-        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
-        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
-      },
-    ),
-    "stance_center_home_y_abs_pen": RewardTermCfg(
-      func=mdp.stance_center_home_axis_abs_penalty,
-      weight=-1.10,
-      params={
-        "command_name": "set_square",
-        "axis": "y",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },

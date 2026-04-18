@@ -2307,6 +2307,68 @@ def stance_center_home_axis_abs_penalty(
   return _apply_reward_active_mask(err, env, command_name)
 
 
+def stance_center_target_progress_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  left_foot_body_name: str = r"^left_foot_link$",
+  right_foot_body_name: str = r"^right_foot_link$",
+  sx: float = 0.60,
+  sy: float = 0.40,
+  sigma: float = 0.75,
+  progress_clip: float = 0.10,
+  alpha_near: float = 0.15,
+  eps: float = 1.0e-6,
+) -> torch.Tensor:
+  robot: Entity = env.scene[asset_cfg.name]
+  center_xy, _, _ = _stance_center_xy(
+    env,
+    robot,
+    left_foot_body_name,
+    right_foot_body_name,
+  )
+  target_xy = _reward_target_world_xy(env, command_name)
+
+  err_xy = center_xy - target_xy
+  dx = err_xy[:, 0] / max(float(sx), float(eps))
+  dy = err_xy[:, 1] / max(float(sy), float(eps))
+  err = torch.sqrt(torch.square(dx) + torch.square(dy) + float(eps))
+
+  prev_err = _get_float_state_buffer(
+    env,
+    key=f"e1_stance_center_target_prev_err::{command_name}",
+    fill_value=0.0,
+  )
+  has_prev = _get_bool_state_buffer(
+    env,
+    key=f"e1_stance_center_target_has_prev::{command_name}",
+  )
+
+  reset_mask = env.episode_length_buf == 0
+  if reset_mask.any():
+    prev_err[reset_mask] = err[reset_mask]
+    has_prev[reset_mask] = False
+
+  progress = torch.where(has_prev, prev_err - err, torch.zeros_like(err))
+  progress = torch.clamp(progress, min=-float(progress_clip), max=float(progress_clip))
+  near = torch.exp(
+    -torch.square(err) / max(float(sigma) * float(sigma), float(eps))
+  )
+  raw = progress + float(alpha_near) * near
+
+  prev_err.copy_(err)
+  has_prev.fill_(True)
+
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_stance_center_target_err_mean"] = torch.mean(err)
+    log["Metrics/e1_stance_center_target_progress_mean"] = torch.mean(progress)
+    log["Metrics/e1_stance_center_target_near_mean"] = torch.mean(near)
+    log["Metrics/e1_stance_center_target_reward_raw_mean"] = torch.mean(raw)
+
+  return _apply_reward_active_mask(raw, env, command_name)
+
+
 def stance_center_home_x_asymmetric_abs_penalty(
   env,
   command_name: str = "set_square",
