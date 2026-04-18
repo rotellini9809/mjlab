@@ -2361,6 +2361,8 @@ def stance_center_target_progress_reward(
 
   log = _get_log_dict(env)
   if log is not None:
+    log["Metrics/e1_home_x_err_mean"] = torch.mean(torch.abs(err_xy[:, 0]))
+    log["Metrics/e1_home_y_err_mean"] = torch.mean(torch.abs(err_xy[:, 1]))
     log["Metrics/e1_stance_center_target_err_mean"] = torch.mean(err)
     log["Metrics/e1_stance_center_target_progress_mean"] = torch.mean(progress)
     log["Metrics/e1_stance_center_target_near_mean"] = torch.mean(near)
