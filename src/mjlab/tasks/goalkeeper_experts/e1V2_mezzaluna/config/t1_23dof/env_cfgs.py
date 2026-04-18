@@ -315,6 +315,10 @@ def _normalize_e1_curriculum_stage(stage_index: int) -> int | None:
   return None
 
 
+def _is_e1_fov_enabled(curriculum_stage: int) -> bool:
+  return bool(BALL_FOV_ACTIVE) and int(curriculum_stage) > 1
+
+
 def _get_e1_reset_curriculum_stage_env() -> str:
   return os.environ.get("MJLAB_E1_RESET_CURRICULUM_STAGE", "").strip()
 
@@ -820,7 +824,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       stance_right_foot_body_name=STANCE_ORTHO_RIGHT_FOOT_BODY,
       stance_ortho_w_min=STANCE_ORTHO_W_MIN,
       stance_ortho_d_min=STANCE_ORTHO_D_MIN,
-      fov_active=BALL_FOV_ACTIVE,
+      fov_active=_is_e1_fov_enabled(curriculum_stage),
       ball_fov_half_angle_deg=BALL_FOV_HALF_ANGLE_DEG,
       viz=mdp.SetSquareCommandCfg.VizCfg(home_point_radius=HOME_POINT_BAND_RADIUS),
       resampling_time_range=(1.0e9, 1.0e9),

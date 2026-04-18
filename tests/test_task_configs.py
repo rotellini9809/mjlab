@@ -4,6 +4,9 @@ import pytest
 
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg
+from mjlab.tasks.goalkeeper_experts.e1V2_mezzaluna.config.t1_23dof.env_cfgs import (
+  booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg,
+)
 from mjlab.tasks.registry import list_tasks, load_env_cfg
 
 
@@ -142,3 +145,17 @@ def test_play_mode_disables_push_robot(all_task_ids: list[str]) -> None:
     assert "push_robot" not in cfg.events, (
       f"Play mode task {task_id} has push_robot event, expected it to be removed"
     )
+
+
+def test_e1v2_stage1_disables_fov(monkeypatch: pytest.MonkeyPatch) -> None:
+  """E1V2 curriculum stage 1 should disable FOV gating."""
+  monkeypatch.setenv("MJLAB_E1_RESET_CURRICULUM_STAGE", "1")
+  cfg = booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg()
+  assert not cfg.commands["set_square"].fov_active
+
+
+def test_e1v2_stage2_enables_fov(monkeypatch: pytest.MonkeyPatch) -> None:
+  """E1V2 curriculum stage 2 should keep FOV gating enabled."""
+  monkeypatch.setenv("MJLAB_E1_RESET_CURRICULUM_STAGE", "2")
+  cfg = booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg()
+  assert cfg.commands["set_square"].fov_active
