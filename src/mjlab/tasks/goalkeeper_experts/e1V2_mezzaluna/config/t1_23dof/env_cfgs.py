@@ -980,11 +980,20 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       weight=-1.6,
       params={"h_soft": 0.48},
     ),
-    # Keep this moderate so target-tracking helps without overwhelming
-    # posture/ball-alignment shaping or terminal task outcomes.
+    # Chosen near the old combined x/y penalty scale so the unified XY term
+    # remains important without overpowering posture and ball-alignment rewards.
+    "stance_center_target_xy_abs_pen": RewardTermCfg(
+      func=mdp.stance_center_target_xy_abs_penalty,
+      weight=-0.45,
+      params={
+        "command_name": "set_square",
+        "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
+        "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
+      },
+    ),
     "stance_center_target_progress": RewardTermCfg(
       func=mdp.stance_center_target_progress_reward,
-      weight=3.0,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
