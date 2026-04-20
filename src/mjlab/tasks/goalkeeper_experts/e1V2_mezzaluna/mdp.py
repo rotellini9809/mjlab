@@ -62,6 +62,25 @@ def _sample_union_range(
   return samples
 
 
+def _split_intervals_by_y_side(
+  intervals: tuple[tuple[float, float], ...],
+) -> tuple[tuple[tuple[float, float], ...], tuple[tuple[float, float], ...]]:
+  neg_intervals: list[tuple[float, float]] = []
+  pos_intervals: list[tuple[float, float]] = []
+  for lo, hi in intervals:
+    lo_f = float(lo)
+    hi_f = float(hi)
+    if lo_f < 0.0:
+      neg_hi = min(hi_f, 0.0)
+      if neg_hi > lo_f:
+        neg_intervals.append((lo_f, neg_hi))
+    if hi_f > 0.0:
+      pos_lo = max(lo_f, 0.0)
+      if hi_f > pos_lo:
+        pos_intervals.append((pos_lo, hi_f))
+  return tuple(neg_intervals), tuple(pos_intervals)
+
+
 def _normalize_xy(vec_xy: torch.Tensor, eps: float = 1.0e-6) -> torch.Tensor:
   norm = torch.linalg.norm(vec_xy, dim=1, keepdim=True).clamp_min(eps)
   return vec_xy / norm
@@ -651,6 +670,8 @@ class SetSquareCommandCfg(CommandTermCfg):
   )
   sideline_throw_speed_range: tuple[float, float] = (0.4, 1.6)
   sideline_throw_angle_noise_deg: float = 5.0
+  corner_keeper_spawn_yaw_ball_bias: float = 0.65
+  corner_keeper_spawn_yaw_offset_scale: float = 0.35
   corner_throw_spawn_x_range: tuple[float, float] = (5.8, 6.7)
   corner_throw_spawn_y_range: IntervalUnionCfg = IntervalUnionCfg(
     intervals=((-4.1, -3.5), (3.5, 4.1))
@@ -911,10 +932,10 @@ class SetSquareCommand(CommandTerm):
     if env_ids.numel() == 0:
       return
 
-    spawn_x, spawn_y = self._sample_keeper_spawn_xy(env_ids)
     self._reset_ball_pose(env_ids)
-    self._reset_robot_pose(env_ids, spawn_x, spawn_y)
     self._sample_ball_launcher(env_ids)
+    spawn_x, spawn_y = self._sample_keeper_spawn_xy(env_ids)
+    self._reset_robot_pose(env_ids, spawn_x, spawn_y)
 
     # Stage-1 decoder command input. For E1 we keep it deterministic zero.
     self._command[env_ids] = 0.0
@@ -1018,6 +1039,33 @@ class SetSquareCommand(CommandTerm):
       self.device,
     )
 
+    corner_mask = self._launcher_mode[env_ids] == 4
+    if corner_mask.any():
+      corner_ids = env_ids[corner_mask]
+      corner_local_idx = corner_mask.nonzero(as_tuple=False).flatten()
+      corner_origins = self._env.scene.env_origins[corner_ids]
+      local_ball_y = self._target_pos_w[corner_ids, 1] - corner_origins[:, 1]
+      from_positive_y_side = local_ball_y >= 0.0
+      neg_intervals, pos_intervals = _split_intervals_by_y_side(
+        stage_cfg.keeper_spawn_y_range.intervals
+      )
+      if len(neg_intervals) > 0 and (~from_positive_y_side).any():
+        spawn_y[corner_local_idx[~from_positive_y_side]] = (
+          _sample_union_range(
+            neg_intervals,
+            int((~from_positive_y_side).sum().item()),
+            self.device,
+          )
+        )
+      if len(pos_intervals) > 0 and from_positive_y_side.any():
+        spawn_y[corner_local_idx[from_positive_y_side]] = (
+          _sample_union_range(
+            pos_intervals,
+            int(from_positive_y_side.sum().item()),
+            self.device,
+          )
+        )
+
     origins = self._env.scene.env_origins[env_ids]
     spawn_pos_w = default_root_state[env_ids, :3].clone()
     spawn_pos_w[:, 0] = origins[:, 0] + spawn_x
@@ -1028,6 +1076,8 @@ class SetSquareCommand(CommandTerm):
   def _sample_spawn_yaw(
     self,
     env_ids: torch.Tensor,
+    spawn_x: torch.Tensor,
+    spawn_y: torch.Tensor,
   ) -> torch.Tensor:
     stage_cfg = self.stage_cfg
     yaw_lo, yaw_hi = stage_cfg.spawn_yaw_offset_range
@@ -1035,11 +1085,56 @@ class SetSquareCommand(CommandTerm):
       yaw_offset = torch.full((len(env_ids),), float(yaw_lo), device=self.device)
     else:
       yaw_offset = _sample_uniform_range(yaw_lo, yaw_hi, len(env_ids), self.device)
-    return torch.full(
+    yaw = torch.full(
       (len(env_ids),),
       float(self.cfg.nominal_keeper_facing_yaw),
       device=self.device,
     ) + yaw_offset
+    corner_mask = self._launcher_mode[env_ids] == 4
+    if corner_mask.any():
+      corner_local_idx = corner_mask.nonzero(as_tuple=False).flatten()
+      jitter_scale = max(float(self.cfg.corner_keeper_spawn_yaw_offset_scale), 0.0)
+      corner_yaw_lo = float(yaw_lo) * jitter_scale
+      corner_yaw_hi = float(yaw_hi) * jitter_scale
+      if abs(corner_yaw_hi - corner_yaw_lo) <= 1.0e-9:
+        corner_yaw_offset = torch.full(
+          (len(corner_local_idx),),
+          float(corner_yaw_lo),
+          device=self.device,
+        )
+      else:
+        corner_yaw_offset = _sample_uniform_range(
+          corner_yaw_lo,
+          corner_yaw_hi,
+          len(corner_local_idx),
+          self.device,
+        )
+      corner_base_yaw = float(self.cfg.nominal_keeper_facing_yaw) + corner_yaw_offset
+
+      spawn_pos_w_xy = self._env.scene.env_origins[env_ids, :2] + torch.stack(
+        (spawn_x, spawn_y),
+        dim=1,
+      )
+      ball_pos_w_xy = self._target_pos_w[env_ids, :2]
+      ball_yaw = torch.atan2(
+        ball_pos_w_xy[:, 1] - spawn_pos_w_xy[:, 1],
+        ball_pos_w_xy[:, 0] - spawn_pos_w_xy[:, 0],
+      )
+      yaw_to_ball_delta = _wrap_angle_pi(
+        ball_yaw[corner_local_idx] - corner_base_yaw
+      )
+      yaw_ball_bias = torch.clamp(
+        torch.tensor(
+          float(self.cfg.corner_keeper_spawn_yaw_ball_bias),
+          device=self.device,
+        ),
+        min=0.0,
+        max=1.0,
+      )
+      yaw[corner_local_idx] = _wrap_angle_pi(
+        corner_base_yaw + yaw_ball_bias * yaw_to_ball_delta
+      )
+    return yaw
 
   def _reset_robot_pose(
     self,
@@ -1099,7 +1194,7 @@ class SetSquareCommand(CommandTerm):
 
     base_quat = root_state[:, 3:7].clone()
     base_yaw = _yaw_from_quat_wxyz(base_quat)
-    yaw = self._sample_spawn_yaw(env_ids)
+    yaw = self._sample_spawn_yaw(env_ids, spawn_x, spawn_y)
     yaw_offset = yaw - base_yaw
     yaw_q = quat_from_euler_xyz(
       torch.zeros_like(yaw),
@@ -1138,7 +1233,7 @@ class SetSquareCommand(CommandTerm):
 
     ready_quat = torch.tensor(READY_ROOT_QUAT, dtype=torch.float32, device=self.device)
     ready_yaw = _yaw_from_quat_wxyz(ready_quat.unsqueeze(0)).squeeze(0)
-    yaw = self._sample_spawn_yaw(env_ids)
+    yaw = self._sample_spawn_yaw(env_ids, spawn_x, spawn_y)
     yaw_offset = yaw - ready_yaw
     yaw_q = quat_from_euler_xyz(
       torch.zeros_like(yaw),

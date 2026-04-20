@@ -316,7 +316,8 @@ def _normalize_e1_curriculum_stage(stage_index: int) -> int | None:
 
 
 def _is_e1_fov_enabled(curriculum_stage: int) -> bool:
-  return bool(BALL_FOV_ACTIVE) and int(curriculum_stage) > 1
+  del curriculum_stage
+  return bool(BALL_FOV_ACTIVE)
 
 
 def _get_e1_reset_curriculum_stage_env() -> str:
@@ -793,6 +794,8 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       sideline_throw_spawn_y_range=mdp.IntervalUnionCfg(intervals=SIDELINE_THROW_SPAWN_Y_INTERVALS),
       sideline_throw_speed_range=SIDELINE_THROW_SPEED_RANGE,
       sideline_throw_angle_noise_deg=SIDELINE_THROW_ANGLE_NOISE_DEG,
+      corner_keeper_spawn_yaw_ball_bias=0.65,
+      corner_keeper_spawn_yaw_offset_scale=0.35,
       corner_throw_spawn_x_range=CORNER_THROW_SPAWN_X_RANGE,
       corner_throw_spawn_y_range=mdp.IntervalUnionCfg(intervals=CORNER_THROW_SPAWN_Y_INTERVALS),
       corner_throw_speed_range=CORNER_THROW_SPEED_RANGE,
@@ -1002,7 +1005,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "stance_ortho_to_ball_reward": RewardTermCfg(
       func=mdp.stance_ortho_to_ball_reward,
-      weight=0.65,
+      weight=2.0,
       params={
         "command_name": "set_square",
         "ortho_deadband": 0.10,
