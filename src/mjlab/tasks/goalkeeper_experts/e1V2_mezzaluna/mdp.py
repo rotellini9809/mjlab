@@ -164,20 +164,6 @@ def _clamp_yaw_relative_to_reference(
   return _wrap_angle_pi(reference_yaw + delta)
 
 
-def _outside_area_violation(
-  pos_xy: torch.Tensor,
-  bounds: tuple[float, float, float, float],
-) -> torch.Tensor:
-  x_min, x_max, y_min, y_max = bounds
-  x = pos_xy[:, 0]
-  y = pos_xy[:, 1]
-  x_low = (x_min - x).clamp_min(0.0)
-  x_high = (x - x_max).clamp_min(0.0)
-  y_low = (y_min - y).clamp_min(0.0)
-  y_high = (y - y_max).clamp_min(0.0)
-  return x_low + x_high + y_low + y_high
-
-
 def _world_to_env_local_xy(env, pos_w_xy: torch.Tensor) -> torch.Tensor:
   return pos_w_xy - env.scene.env_origins[:, :2]
 
@@ -580,10 +566,25 @@ def _stance_ortho_score(
   stance_vec_xy = right_xy - left_xy
   stance_norm = torch.linalg.norm(stance_vec_xy, dim=1, keepdim=True).clamp_min(float(eps))
   stance_dir_xy = stance_vec_xy / stance_norm
+  stance_normal_xy = torch.stack(
+    (-stance_dir_xy[:, 1], stance_dir_xy[:, 0]),
+    dim=1,
+  )
   ball_vec_xy = ball.data.root_link_pos_w[:, :2] - center_xy
   ball_norm = torch.linalg.norm(ball_vec_xy, dim=1, keepdim=True).clamp_min(float(eps))
   ball_dir_xy = ball_vec_xy / ball_norm
   torso_yaw = _yaw_from_quat_wxyz(robot.data.root_link_quat_w)
+  torso_forward_xy = torch.stack(
+    (torch.cos(torso_yaw), torch.sin(torso_yaw)),
+    dim=1,
+  )
+  normal_sign = torch.sign(torch.sum(stance_normal_xy * torso_forward_xy, dim=1))
+  normal_sign = torch.where(
+    normal_sign == 0.0,
+    torch.ones_like(normal_sign),
+    normal_sign,
+  )
+  stance_forward_normal_xy = stance_normal_xy * normal_sign.unsqueeze(1)
   ball_facing_yaw = torch.atan2(ball_dir_xy[:, 1], ball_dir_xy[:, 0])
   capped_ball_yaw = _clamp_yaw_relative_to_reference(
     ball_facing_yaw,
@@ -594,8 +595,8 @@ def _stance_ortho_score(
     (torch.cos(capped_ball_yaw), torch.sin(capped_ball_yaw)),
     dim=1,
   )
-  dot = torch.sum(stance_dir_xy * capped_ball_dir_xy, dim=1).clamp(-1.0, 1.0)
-  return torch.relu(torch.abs(dot) - float(ortho_deadband))
+  dot = torch.sum(stance_forward_normal_xy * capped_ball_dir_xy, dim=1).clamp(-1.0, 1.0)
+  return torch.relu(1.0 - dot - float(ortho_deadband)).clamp(max=1.0)
 
 
 def get_target_ball_cfg() -> EntityCfg:
@@ -637,9 +638,6 @@ class SetSquareCommandCfg(CommandTermCfg):
   keeper_spawn_x_range: tuple[float, float]
   keeper_spawn_y_range: tuple[float, float]
 
-  # Safe keeper area bounds: (x_min, x_max, y_min, y_max).
-  keeper_area_bounds: tuple[float, float, float, float]
-  hard_area_margin: float = 0.8
   mezzaluna_center_x: float = 7.0
   mezzaluna_center_y: float = 0.0
   mezzaluna_apex_x: float = 6.15
@@ -799,8 +797,8 @@ class SetSquareCommand(CommandTerm):
     self.metrics["torso_height"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["target_distance_xy"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["stance_width"] = torch.zeros(env.num_envs, device=self.device)
-    self.metrics["outside_keeper_area"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["ball_speed_xy"] = torch.zeros(env.num_envs, device=self.device)
+    self.metrics["ball_visible"] = torch.zeros(env.num_envs, device=self.device)
     self.metrics["curriculum_stage_num"] = torch.zeros(
       env.num_envs, device=self.device
     )
@@ -816,16 +814,6 @@ class SetSquareCommand(CommandTerm):
   @property
   def target_pos_w(self) -> torch.Tensor:
     return self._target_pos_w
-
-  @property
-  def keeper_area_bounds(self) -> tuple[float, float, float, float]:
-    return self.cfg.keeper_area_bounds
-
-  @property
-  def hard_keeper_area_bounds(self) -> tuple[float, float, float, float]:
-    x_min, x_max, y_min, y_max = self.cfg.keeper_area_bounds
-    m = self.cfg.hard_area_margin
-    return (x_min - m, x_max + m, y_min - m, y_max + m)
 
   @property
   def curriculum_stage(self) -> int:
@@ -878,8 +866,7 @@ class SetSquareCommand(CommandTerm):
     ball_dist = float(self.metrics["target_distance_xy"][env_idx].item())
     stance_width = float(self.metrics["stance_width"][env_idx].item())
     ball_speed = float(self.metrics["ball_speed_xy"][env_idx].item())
-    outside = float(self.metrics["outside_keeper_area"][env_idx].item())
-
+    ball_visible_now = bool(self.metrics["ball_visible"][env_idx].item() > 0.5)
     self._status_markdown.content = (
       f"**Stage:** {self.curriculum_stage}\n\n"
       f"**Mode:** {mode_name}\n\n"
@@ -890,7 +877,7 @@ class SetSquareCommand(CommandTerm):
       f"**Ball dist XY:** {ball_dist:.2f} m\n\n"
       f"**Stance width:** {stance_width:.3f} m\n\n"
       f"**Ball speed XY:** {ball_speed:.2f} m/s\n\n"
-      f"**Outside area:** {'yes' if outside > 0 else 'no'}"
+      f"**Ball visible:** {'yes' if ball_visible_now else 'no'}"
     )
 
   def _update_metrics(self) -> None:
@@ -914,12 +901,13 @@ class SetSquareCommand(CommandTerm):
     )
     self.metrics["stance_width"] = torch.linalg.norm(right_xy - left_xy, dim=1)
 
-    trunk_xy_local = _world_to_env_local_xy(self._env, trunk_xy)
-    outside = _outside_area_violation(trunk_xy_local, self.cfg.keeper_area_bounds)
-    self.metrics["outside_keeper_area"] = outside
     self.metrics["ball_speed_xy"] = torch.linalg.norm(
       self._ball.data.root_link_lin_vel_w[:, :2], dim=1
     )
+    self.metrics["ball_visible"] = _ball_visibility_mask(
+      self._env,
+      command_name="set_square",
+    ).to(torch.float32)
     stage_value = float(self.curriculum_stage)
     self.metrics["curriculum_stage_num"].fill_(stage_value)
     log = _get_log_dict(self._env)
@@ -1888,7 +1876,8 @@ class SetSquareCommand(CommandTerm):
 
     stance_vec_xy = right_foot[:2] - left_foot[:2]
     stance_width = torch.linalg.norm(stance_vec_xy)
-    ball_vec_xy = target_pos[:2] - root_pos[:2]
+    cue_origin = 0.5 * (left_foot + right_foot)
+    ball_vec_xy = target_pos[:2] - cue_origin[:2]
     ball_dist = torch.linalg.norm(ball_vec_xy)
 
     if float(stance_width.item()) <= 1.0e-6 or float(ball_dist.item()) <= 1.0e-6:
@@ -1897,21 +1886,29 @@ class SetSquareCommand(CommandTerm):
     stance_dir_xy = stance_vec_xy / stance_width.clamp_min(1.0e-6)
     ball_dir_xy = ball_vec_xy / ball_dist.clamp_min(1.0e-6)
     stance_ortho_dir_xy = torch.stack([-stance_dir_xy[1], stance_dir_xy[0]])
-    if torch.dot(stance_ortho_dir_xy, ball_dir_xy) < 0.0:
+    torso_forward_xy = torch.stack([torch.cos(yaw), torch.sin(yaw)])
+    if torch.dot(stance_ortho_dir_xy, torso_forward_xy) < 0.0:
       stance_ortho_dir_xy = -stance_ortho_dir_xy
 
-    dot_sb = torch.dot(stance_dir_xy, ball_dir_xy).clamp(-1.0, 1.0)
-    stance_ortho = 1.0 - torch.square(dot_sb)
+    ball_facing_yaw = torch.atan2(ball_dir_xy[1], ball_dir_xy[0])
+    capped_ball_yaw = _clamp_yaw_relative_to_reference(
+      ball_facing_yaw.unsqueeze(0),
+      yaw.unsqueeze(0),
+      0.5 * math.pi,
+    ).squeeze(0)
+    capped_ball_dir_xy = torch.stack([torch.cos(capped_ball_yaw), torch.sin(capped_ball_yaw)])
+
+    dot_sb = torch.dot(stance_ortho_dir_xy, capped_ball_dir_xy).clamp(-1.0, 1.0)
+    stance_ortho = torch.clamp((dot_sb + 1.0) * 0.5, min=0.0, max=1.0)
     gate_on = (
       float(stance_width.item()) > float(self.cfg.stance_ortho_w_min)
       and float(ball_dist.item()) > float(self.cfg.stance_ortho_d_min)
     )
 
-    cue_origin = 0.5 * (left_foot + right_foot)
     cue_origin[2] += float(self.cfg.viz.stance_z_offset)
     axis_len = float(self.cfg.viz.stance_axis_length)
     ball_end = cue_origin.clone()
-    ball_end[:2] += ball_dir_xy * axis_len
+    ball_end[:2] += capped_ball_dir_xy * axis_len
     stance_ortho_end = cue_origin.clone()
     stance_ortho_end[:2] += stance_ortho_dir_xy * axis_len
 
@@ -2045,6 +2042,22 @@ def ball_visible(
     asset_cfg=asset_cfg,
   )
   return visible.to(torch.float32).unsqueeze(1)
+
+
+def ball_in_fov_reward(
+  env,
+  command_name: str = "set_square",
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+  visible = _ball_visibility_mask(
+    env,
+    command_name=command_name,
+    asset_cfg=asset_cfg,
+  ).to(torch.float32)
+  log = _get_log_dict(env)
+  if log is not None:
+    log["Metrics/e1_ball_in_fov_reward_mean"] = torch.mean(visible)
+  return _apply_reward_active_mask(visible, env, command_name)
 
 
 def visible_ball_position_relative_xyz(
@@ -2301,10 +2314,11 @@ def stance_ortho_to_ball_reward(
   right_foot_body_name: str = r"^right_foot_link$",
   ortho_deadband: float = 0.10,
 ) -> torch.Tensor:
-  """Reward stance axis orthogonality to ball direction in XY plane.
+  """Reward the robot-facing stance normal for pointing toward the ball.
 
-  stance axis: left->right foot direction
-  target: dot(stance_dir, ball_dir) ~= 0
+  The left/right foot line has two perpendicular normals. Use the one aligned
+  with torso forward, so the policy cannot satisfy this term while presenting
+  the back side of the stance toward the ball.
   """
   ortho_err = _stance_ortho_score(
     env,
@@ -2620,18 +2634,6 @@ def body_ang_vel_penalty(
   return _apply_reward_active_mask(penalty, env)
 
 
-def outside_keeper_area_penalty(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
-  penalty = _outside_area_violation(pos_xy_local, command.keeper_area_bounds)
-  return _apply_reward_active_mask(penalty, env, command_name)
-
-
 def fallen_indicator(
   env,
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
@@ -2643,21 +2645,6 @@ def fallen_indicator(
   torso_roll_deg = torch.abs(torch.rad2deg(_roll_from_quat_wxyz(robot.data.root_link_quat_w)))
   fallen = (height < min_height) | (torso_roll_deg > float(max_roll_deg))
   return _apply_reward_active_mask(fallen.float(), env)
-
-
-def outside_keeper_area_hard(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  pos_xy_local = _world_to_env_local_xy(env, robot.data.root_link_pos_w[:, :2])
-  violation = _outside_area_violation(
-    pos_xy_local,
-    command.hard_keeper_area_bounds,
-  )
-  return violation > 0.0
 
 
 class FallTermination:

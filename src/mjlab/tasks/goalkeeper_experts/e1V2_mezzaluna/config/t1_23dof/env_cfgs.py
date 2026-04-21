@@ -68,10 +68,6 @@ READY_JOINT_POS = [
   -0.040193840861320496,   # Right_Ankle_Roll
 ]
 
-# Safe keeper area bounds (x_min, x_max, y_min, y_max).
-KEEPER_AREA_BOUNDS = (GOAL_X_LINE - 1, GOAL_X_LINE + 0.5, -2, 2)
-KEEPER_AREA_HARD_MARGIN = 0.3
-
 # Target ball spawn in absolute world XY.
 TARGET_SPAWN_X_RANGE = (-1.0, 4.0)
 TARGET_SPAWN_Y_RANGE = (-3.8, 3.8)
@@ -220,7 +216,7 @@ E1_MEZZALUNA_SEGMENTS = 40
 E1_MEZZALUNA_APEX_GOAL_OFFSET_M = 0.15
 E1_MEZZALUNA_CENTER_X = GOAL_X_LINE - 0.20
 E1_MEZZALUNA_CENTER_Y = 0.0
-E1_MEZZALUNA_APEX_X = KEEPER_AREA_BOUNDS[0] + E1_MEZZALUNA_APEX_GOAL_OFFSET_M - 0.20
+E1_MEZZALUNA_APEX_X = GOAL_X_LINE - 1 + E1_MEZZALUNA_APEX_GOAL_OFFSET_M - 0.20
 E1_MEZZALUNA_HALF_WIDTH_Y = E1_GOAL_OPENING_HALF_WIDTH + 0.10
 BALL_CURB_CONTACT_SENSOR_NAME = "ball_curb_contact"
 LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME = "left_foot_ground_contact"
@@ -771,8 +767,6 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       command_dim=MOTOR_COMMAND_DIM,
       keeper_spawn_x_range=KEEPER_SPAWN_X_RANGE,
       keeper_spawn_y_range=KEEPER_SPAWN_Y_RANGE,
-      keeper_area_bounds=KEEPER_AREA_BOUNDS,
-      hard_area_margin=KEEPER_AREA_HARD_MARGIN,
       mezzaluna_center_x=E1_MEZZALUNA_CENTER_X,
       mezzaluna_center_y=E1_MEZZALUNA_CENTER_Y,
       mezzaluna_apex_x=E1_MEZZALUNA_APEX_X,
@@ -956,7 +950,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
   }
 
-  fallen_weight = -30.0
+  fallen_weight = -40.0
 
   cfg.rewards = {
     "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
@@ -1012,6 +1006,13 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
         "right_foot_body_name": STANCE_ORTHO_RIGHT_FOOT_BODY,
       },
+    ),
+    # Small shaping term: keep the ball inside the robot FOV without overpowering
+    # posture, stance, or target-position rewards.
+    "ball_in_fov": RewardTermCfg(
+      func=mdp.ball_in_fov_reward,
+      weight=0.25,
+      params={"command_name": "set_square"},
     ),
     "stance_width_band_pen": RewardTermCfg(
       func=mdp.stance_width_band_penalty,
