@@ -956,13 +956,13 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
   }
 
-  fallen_weight = -20.0
+  fallen_weight = -30.0
 
   cfg.rewards = {
     "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_ang_vel_penalty,
-      weight=0.0,
+      weight=-0.01,
       params={},
     ),
     "fallen": RewardTermCfg(
@@ -996,7 +996,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "stance_center_target_progress": RewardTermCfg(
       func=mdp.stance_center_target_progress_reward,
-      weight=0.0,
+      weight=3.0,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -1015,7 +1015,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "stance_width_band_pen": RewardTermCfg(
       func=mdp.stance_width_band_penalty,
-      weight=-0.3,
+      weight=0.0,  # restore previous active weight with: weight=-0.3
       params={
         "command_name": "set_square",
         "w_min": 0.23,
@@ -1048,7 +1048,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "waist_ready_twist_abs_pen": RewardTermCfg(
       func=mdp.waist_ready_twist_abs_penalty,
-      weight=-0.10,
+      weight=0.0,  # restore previous active weight with: weight=-0.10
       params={
         "command_name": "set_square",
         "k": 2.5,
