@@ -538,8 +538,6 @@ def _alignment_home_ramp(
   log = _get_log_dict(env)
   if log is not None:
     log["Metrics/e1_align_home_ramp_mean"] = torch.mean(align_mult)
-    log["Metrics/e1_home_x_err_for_align_mean"] = torch.mean(home_x_err)
-    log["Metrics/e1_home_y_err_for_align_mean"] = torch.mean(home_y_err)
 
   return align_mult
 
@@ -2389,33 +2387,6 @@ def low_height_soft_penalty(
   return _apply_reward_active_mask(penalty, env)
 
 
-def stance_center_home_axis_abs_penalty(
-  env,
-  command_name: str = "set_square",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  axis: str = "y",
-  left_foot_body_name: str = r"^left_foot_link$",
-  right_foot_body_name: str = r"^right_foot_link$",
-) -> torch.Tensor:
-  axis_idx = 0 if axis.lower() == "x" else 1
-  robot: Entity = env.scene[asset_cfg.name]
-  center_xy, _, _ = _stance_center_xy(
-    env,
-    robot,
-    left_foot_body_name,
-    right_foot_body_name,
-  )
-  home_xy = _reward_target_world_xy(env, command_name)
-  err = torch.abs(home_xy[:, axis_idx] - center_xy[:, axis_idx])
-  log = _get_log_dict(env)
-  if log is not None:
-    if axis_idx == 0:
-      log["Metrics/e1_home_x_err_mean"] = torch.mean(err)
-    else:
-      log["Metrics/e1_home_y_err_mean"] = torch.mean(err)
-  return _apply_reward_active_mask(err, env, command_name)
-
-
 def stance_center_target_xy_abs_penalty(
   env,
   command_name: str = "set_square",
@@ -2445,8 +2416,6 @@ def stance_center_target_xy_abs_penalty(
     log["Metrics/e1_home_x_err_mean"] = torch.mean(torch.abs(err_xy[:, 0]))
     log["Metrics/e1_home_y_err_mean"] = torch.mean(torch.abs(err_xy[:, 1]))
     log["Metrics/e1_home_xy_err_mean"] = torch.mean(err)
-    log["Metrics/e1_stance_center_target_err_mean"] = torch.mean(err)
-    log["Metrics/e1_stance_center_target_abs_pen_mean"] = torch.mean(err)
 
   return _apply_reward_active_mask(err, env, command_name)
 
