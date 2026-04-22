@@ -950,7 +950,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
   }
 
-  fallen_weight = -30.0
+  fallen_weight = -20.0
 
   cfg.rewards = {
     "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
@@ -999,7 +999,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "stance_ortho_to_ball_reward": RewardTermCfg(
       func=mdp.stance_ortho_to_ball_reward,
-      weight=2.0,
+      weight=1.5,
       params={
         "command_name": "set_square",
         "ortho_deadband": 0.10,
