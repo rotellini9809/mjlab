@@ -950,10 +950,11 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
   }
 
-  fallen_weight = -20.0
+  action_rate_weight = -0.002 if int(curriculum_stage) == 1 else -0.004
+  fallen_weight = -20.0 if int(curriculum_stage) == 1 else -30.0
 
   cfg.rewards = {
-    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.004),
+    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=action_rate_weight),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_ang_vel_penalty,
       weight=-0.01,
@@ -990,7 +991,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     ),
     "stance_center_target_progress": RewardTermCfg(
       func=mdp.stance_center_target_progress_reward,
-      weight=3.0,
+      weight=0.0,
       params={
         "command_name": "set_square",
         "left_foot_body_name": STANCE_ORTHO_LEFT_FOOT_BODY,
@@ -1011,7 +1012,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
     # posture, stance, or target-position rewards.
     "ball_in_fov": RewardTermCfg(
       func=mdp.ball_in_fov_reward,
-      weight=0.25,
+      weight=0.0,
       params={"command_name": "set_square"},
     ),
     "stance_width_band_pen": RewardTermCfg(
