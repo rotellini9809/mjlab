@@ -198,6 +198,7 @@ E1_WALL_THICKNESS = 0.16
 E1_WALL_HEIGHT = 0.07
 E1_GOAL_OPENING_HALF_WIDTH = 1.55
 E1_WALL_GOALPOST_CORNER_CLEARANCE = 0.25
+E1_SHORT_SIDE_GOAL_END_INSET_Y = 0.20
 E1_WALL_RGBA = (0.92, 0.18, 0.18, 0.45)
 E1_WALL_FRICTION = (1.2, 0.02, 0.002)
 E1_WALL_SOLREF = (0.02, 1.5)
@@ -492,7 +493,7 @@ def _add_e1_test_walls(
     wall.contype = 0
     wall.conaffinity = 1
 
-  # Long sides (unchanged, continuous walls).
+  # Long sides remain continuous.
   long_side_wall_y = FIELD_HALF_WIDTH_Y
   _add_wall(
     "e1_wall_long_pos_y",
@@ -506,8 +507,10 @@ def _add_e1_test_walls(
   )
 
   # Short sides split in two per side, leaving opening for goalpost.
+  # Make the curb pieces next to the opening a bit shorter near the posts.
   short_side_opening_half_width = (
     E1_GOAL_OPENING_HALF_WIDTH + E1_WALL_GOALPOST_CORNER_CLEARANCE
+    + E1_SHORT_SIDE_GOAL_END_INSET_Y
   )
   short_side_segment_half_y = (FIELD_HALF_WIDTH_Y - short_side_opening_half_width) / 2.0
   if short_side_segment_half_y <= 0.0:
@@ -825,7 +828,7 @@ def booster_t1_23_gk_expert_e1V2_mezzaluna_env_cfg(
       ball_fov_half_angle_deg=BALL_FOV_HALF_ANGLE_DEG,
       viz=mdp.SetSquareCommandCfg.VizCfg(home_point_radius=HOME_POINT_BAND_RADIUS),
       resampling_time_range=(1.0e9, 1.0e9),
-      debug_vis=True,
+      debug_vis=not play,
     )
   }
 

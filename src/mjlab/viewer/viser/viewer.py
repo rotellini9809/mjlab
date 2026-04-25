@@ -13,7 +13,6 @@ from threading import Lock
 import viser
 from typing_extensions import override
 
-from mjlab.sensor.raycast_sensor import RayCastSensor
 from mjlab.sim.sim import Simulation
 from mjlab.viewer.base import (
   BaseViewer,
@@ -23,8 +22,8 @@ from mjlab.viewer.base import (
 )
 from mjlab.viewer.viser.overlays import (
   ViserCameraOverlays,
+  ViserCommandCueOverlays,
   ViserContactOverlays,
-  ViserDebugOverlays,
   ViserTermOverlays,
 )
 from mjlab.viewer.viser.scene import ViserMujocoScene
@@ -50,11 +49,10 @@ class ViserPlayViewer(BaseViewer):
     super().__init__(env, policy, frame_rate, verbosity)
     self._term_overlays: ViserTermOverlays | None = None
     self._camera_overlays: ViserCameraOverlays | None = None
-    self._debug_overlays: ViserDebugOverlays | None = None
+    self._command_cue_overlays: ViserCommandCueOverlays | None = None
     self._contact_overlays: ViserContactOverlays | None = None
     self._sim_lock = Lock()
     self._camera_update_last_ms: float = 0.0
-    self._debug_queue_last_ms: float = 0.0
     self._scene_submit_enqueue_last_ms: float = 0.0
     self._scene_update_last_ms: float = 0.0
     self._timing_last_log_time: float = 0.0
@@ -71,7 +69,7 @@ class ViserPlayViewer(BaseViewer):
     self._counter = 0
     self._pending_update_reasons: set[UpdateReason] = set()
 
-    # Create ViserMujocoScene for all 3D visualization (with debug visualization enabled).
+    # Create ViserMujocoScene for all 3D visualization.
     self._scene = ViserMujocoScene.create(
       server=self._server,
       mj_model=sim.mj_model,
@@ -79,9 +77,8 @@ class ViserPlayViewer(BaseViewer):
     )
 
     self._scene.env_idx = self.cfg.env_idx
-    self._scene.debug_visualization_enabled = (
-      True  # Enable debug visualization by default
-    )
+    # Keep scene-side debug batching enabled for task-provided Viser overlays.
+    self._scene.debug_visualization_enabled = True
 
     # Create tab group.
     tabs = self._server.gui.add_tab_group()
@@ -142,17 +139,12 @@ class ViserPlayViewer(BaseViewer):
         with self._server.gui.add_folder("Commands"):
           env.command_manager.create_gui(self._server, lambda: self._scene.env_idx)
 
-      # Add standard visualization options from ViserMujocoScene.
-      def _debug_viz_extra() -> None:
-        env.command_manager.create_debug_vis_gui(self._server)
-        self._create_sensor_debug_vis_gui()
-
       with self._server.gui.add_folder("Scene"):
         self._scene.create_visualization_gui(
           camera_distance=self.cfg.distance,
           camera_azimuth=self.cfg.azimuth,
           camera_elevation=self.cfg.elevation,
-          debug_viz_extra_gui=_debug_viz_extra,
+          show_debug_viz_control=False,
         )
 
       self._camera_overlays = ViserCameraOverlays(self._server, self.env, sim.mj_model)
@@ -166,7 +158,7 @@ class ViserPlayViewer(BaseViewer):
       self._server, self.env, self._scene, self.frame_time
     )
     self._term_overlays.setup_tabs(tabs)
-    self._debug_overlays = ViserDebugOverlays(self.env, self._scene)
+    self._command_cue_overlays = ViserCommandCueOverlays(self.env, self._scene)
     self._contact_overlays = ViserContactOverlays(self._scene)
 
     # Groups tab (geoms and sites).
@@ -196,8 +188,8 @@ class ViserPlayViewer(BaseViewer):
       self._pending_update_reasons.add(UpdateReason.ENV_SWITCH)
       if self._term_overlays:
         self._term_overlays.on_env_switch()
-      if self._debug_overlays:
-        self._debug_overlays.on_env_switch()
+      if self._command_cue_overlays:
+        self._command_cue_overlays.on_env_switch()
       if self._contact_overlays:
         self._contact_overlays.on_env_switch()
 
@@ -214,40 +206,6 @@ class ViserPlayViewer(BaseViewer):
         sim.data, self._scene.env_idx, self._scene._scene_offset
       )
     self._camera_update_last_ms = (time.perf_counter() - t0) * 1000.0
-
-  def _create_sensor_debug_vis_gui(self) -> None:
-    """Add per-sensor debug visualization checkboxes."""
-    env = self.env.unwrapped
-    vis_sensors = [
-      s
-      for s in env.scene.sensors.values()
-      if isinstance(s, RayCastSensor) and s.cfg.debug_vis
-    ]
-    if not vis_sensors:
-      return
-    for sensor in vis_sensors:
-      cb = self._server.gui.add_checkbox(
-        sensor.cfg.name,
-        initial_value=sensor._debug_vis_enabled,
-      )
-
-      def _on_update(_ev, _s=sensor, _cb=cb) -> None:
-        _s._debug_vis_enabled = _cb.value
-        self._scene.needs_update = True
-
-      cb.on_update(_on_update)
-
-  def _queue_debug_visualizers(self) -> None:
-    """Queue environment-specific debug draw calls into the scene.
-
-    Acquires ``_sim_lock`` so the clear+requeue is atomic with respect
-    to the background thread that reads the queues in ``scene.update``.
-    """
-    t0 = time.perf_counter()
-    if self._debug_overlays:
-      with self._sim_lock:
-        self._debug_overlays.queue()
-    self._debug_queue_last_ms = (time.perf_counter() - t0) * 1000.0
 
   def _submit_scene_update_if_needed(
     self, sim: Simulation, has_pending_updates: bool
@@ -278,6 +236,12 @@ class ViserPlayViewer(BaseViewer):
     self._pending_update_reasons.clear()
     self._scene.needs_update = False
 
+  def _queue_command_cues(self) -> None:
+    if self._command_cue_overlays is None:
+      return
+    with self._sim_lock:
+      self._command_cue_overlays.queue()
+
   def _maybe_log_debug_timings(self) -> None:
     """Log lightweight Viser pipeline timing in debug mode."""
     if self.verbosity < VerbosityLevel.DEBUG:
@@ -290,7 +254,6 @@ class ViserPlayViewer(BaseViewer):
       (
         "[DEBUG] Viser timings: "
         f"camera={self._camera_update_last_ms:.2f}ms, "
-        f"debug={self._debug_queue_last_ms:.2f}ms, "
         f"submit_enqueue={self._scene_submit_enqueue_last_ms:.2f}ms, "
         f"scene_update={self._scene_update_last_ms:.2f}ms"
       ),
@@ -325,14 +288,11 @@ class ViserPlayViewer(BaseViewer):
     self._update_env_dependent_plots()
     has_pending_updates = bool(self._pending_update_reasons) or self._scene.needs_update
     self._update_camera_feeds(sim, has_pending_updates)
-    # Queue debug visualizers only when a scene update will actually be
-    # submitted.  Clearing the queues on skipped ticks creates a race
-    # with the background thread that causes debug overlays to blink.
     will_submit = self._should_submit_scene_update(
       self._counter, self._is_paused, has_pending_updates
     )
     if will_submit:
-      self._queue_debug_visualizers()
+      self._queue_command_cues()
     self._submit_scene_update_if_needed(sim, has_pending_updates)
     self._maybe_log_debug_timings()
 

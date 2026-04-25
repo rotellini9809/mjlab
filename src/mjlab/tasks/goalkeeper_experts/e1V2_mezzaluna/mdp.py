@@ -172,16 +172,39 @@ def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
   return pos_w_xyz - env.scene.env_origins
 
 
+def _get_cached_const_vector(
+  env,
+  *,
+  cache_name: str,
+  values: tuple[float, ...],
+  dtype: torch.dtype = torch.float32,
+) -> torch.Tensor:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_attr = "_e1_const_vector_cache"
+  cache = getattr(env_obj, cache_attr, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_attr, cache)
+
+  key = (cache_name, values, str(dtype), env.device)
+  vec = cache.get(key)
+  if vec is None:
+    vec = torch.tensor(values, device=env.device, dtype=dtype)
+    cache[key] = vec
+  return vec
+
+
 def _goal_line_center_world_xy(
   env,
   command_name: str,
 ) -> torch.Tensor:
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  return env.scene.env_origins[:, :2] + torch.tensor(
-    [command.cfg.goal_line_x, command.cfg.goal_line_y_center],
-    device=env.device,
-    dtype=torch.float32,
+  offset_xy = _get_cached_const_vector(
+    env,
+    cache_name="goal_line_center_xy",
+    values=(float(command.cfg.goal_line_x), float(command.cfg.goal_line_y_center)),
   )
+  return env.scene.env_origins[:, :2] + offset_xy
 
 
 def _resolve_body_index_pair_cached(
@@ -298,6 +321,30 @@ def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
   return log
 
 
+def _get_visibility_cache_bucket(
+  env,
+) -> dict[tuple[str, str, str], object]:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e1_ball_visibility_cache"
+  cache = getattr(env_obj, cache_name, None)
+  episode_length_buf = env.episode_length_buf
+  cached_episode_length_buf = None if not isinstance(cache, dict) else cache.get("_episode_length_buf")
+  if (
+    not isinstance(cache, dict)
+    or cache.get("_common_step_counter") != int(getattr(env, "common_step_counter", -1))
+    or not isinstance(cached_episode_length_buf, torch.Tensor)
+    or cached_episode_length_buf.shape != episode_length_buf.shape
+    or cached_episode_length_buf.device != episode_length_buf.device
+    or not torch.equal(cached_episode_length_buf, episode_length_buf)
+  ):
+    cache = {
+      "_common_step_counter": int(getattr(env, "common_step_counter", -1)),
+      "_episode_length_buf": episode_length_buf.clone(),
+    }
+    setattr(env_obj, cache_name, cache)
+  return cache
+
+
 def _posture_score_components(
   projected_gravity_b: torch.Tensor,
   roll_band: float,
@@ -389,11 +436,12 @@ def _home_point_world_xy(
   command_name: str,
 ) -> torch.Tensor:
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
-  return env.scene.env_origins[:, :2] + torch.tensor(
-    [command.cfg.home_point_x, command.cfg.home_point_y],
-    device=env.device,
-    dtype=torch.float32,
+  offset_xy = _get_cached_const_vector(
+    env,
+    cache_name="home_point_xy",
+    values=(float(command.cfg.home_point_x), float(command.cfg.home_point_y)),
   )
+  return env.scene.env_origins[:, :2] + offset_xy
 
 
 def _mezzaluna_point_world_xy(
@@ -403,11 +451,15 @@ def _mezzaluna_point_world_xy(
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[command.cfg.ball_entity_name]
 
-  center_xy = env.scene.env_origins[:, :2] + torch.tensor(
-    [command.cfg.mezzaluna_center_x, command.cfg.mezzaluna_center_y],
-    device=env.device,
-    dtype=torch.float32,
+  center_offset_xy = _get_cached_const_vector(
+    env,
+    cache_name="mezzaluna_center_xy",
+    values=(
+      float(command.cfg.mezzaluna_center_x),
+      float(command.cfg.mezzaluna_center_y),
+    ),
   )
+  center_xy = env.scene.env_origins[:, :2] + center_offset_xy
   ball_xy = ball.data.root_link_pos_w[:, :2]
   dir_xy = ball_xy - center_xy
 
@@ -1627,7 +1679,12 @@ class SetSquareCommand(CommandTerm):
     safe_fallback = torch.where(
       fallback_norm > 1.0e-6,
       fallback_xy / fallback_norm,
-      torch.tensor([0.0, 1.0], device=self.device, dtype=vec_xy.dtype).expand_as(vec_xy),
+      _get_cached_const_vector(
+        self._env,
+        cache_name="normalize_xy_fallback",
+        values=(0.0, 1.0),
+        dtype=vec_xy.dtype,
+      ).expand_as(vec_xy),
     )
     norm = torch.linalg.norm(vec_xy, dim=1, keepdim=True)
     return torch.where(norm > 1.0e-6, vec_xy / norm, safe_fallback)
@@ -1847,6 +1904,24 @@ class SetSquareCommand(CommandTerm):
       label="mezzaluna_point",
     )
 
+    self._queue_stance_ortho_visual_cue(visualizer)
+
+  def queue_viser_overlays(self, visualizer) -> None:
+    self._queue_stance_ortho_visual_cue(visualizer)
+
+  def _queue_stance_ortho_visual_cue(self, visualizer) -> None:
+    batch = visualizer.env_idx
+    if batch >= self.num_envs:
+      return
+
+    target_pos = self._target_pos_w[batch]
+    q = self._robot.data.root_link_quat_w[batch]
+    qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+    yaw = torch.atan2(
+      2.0 * (qw * qz + qx * qy),
+      1.0 - 2.0 * (qy * qy + qz * qz),
+    )
+
     # Stance orthogonality cue (for stance_ortho_to_ball reward).
     try:
       left_idx, right_idx = _resolve_body_index_pair_cached(
@@ -1907,6 +1982,10 @@ class SetSquareCommand(CommandTerm):
     axis_len = float(self.cfg.viz.stance_axis_length)
     ball_end = cue_origin.clone()
     ball_end[:2] += capped_ball_dir_xy * axis_len
+    stance_target_origin = cue_origin.clone()
+    stance_target_origin[2] += 0.015
+    stance_target_end = stance_target_origin.clone()
+    stance_target_end[:2] += stance_ortho_dir_xy * axis_len
     stance_ortho_end = cue_origin.clone()
     stance_ortho_end[:2] += stance_ortho_dir_xy * axis_len
 
@@ -1916,6 +1995,13 @@ class SetSquareCommand(CommandTerm):
       color=self.cfg.viz.ball_dir_color,
       width=float(self.cfg.viz.stance_axis_width),
       label="stance_ball_dir",
+    )
+    visualizer.add_arrow(
+      stance_target_origin.cpu().numpy(),
+      stance_target_end.cpu().numpy(),
+      color=self.cfg.viz.stance_target_color,
+      width=float(self.cfg.viz.stance_axis_width),
+      label="stance_target_ortho",
     )
 
     if gate_on:
@@ -1979,19 +2065,28 @@ def _ball_visibility_mask(
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   eps: float = 1.0e-6,
 ) -> torch.Tensor:
+  cache = _get_visibility_cache_bucket(env)
+  cache_key = ("mask", command_name, asset_cfg.name)
+  cached = cache.get(cache_key)
+  if cached is not None:
+    assert isinstance(cached, torch.Tensor)
+    return cached
+
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   robot: Entity = env.scene[asset_cfg.name]
   ball: Entity = env.scene[command.cfg.ball_entity_name]
   rel_xy = ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
   torso_yaw = _yaw_from_quat_wxyz(robot.data.root_link_quat_w)
   forward_xy = torch.stack([torch.cos(torso_yaw), torch.sin(torso_yaw)], dim=1)
-  return compute_fov_visibility(
+  visible = compute_fov_visibility(
     rel_xy,
     forward_xy,
     fov_active=bool(command.cfg.fov_active),
     half_angle_deg=float(command.cfg.ball_fov_half_angle_deg),
     eps=float(eps),
   )
+  cache[cache_key] = visible
+  return visible
 
 
 def _ball_visibility_obs_context(
@@ -1999,6 +2094,13 @@ def _ball_visibility_obs_context(
   command_name: str = "set_square",
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+  cache = _get_visibility_cache_bucket(env)
+  cache_key = ("context", command_name, asset_cfg.name)
+  cached = cache.get(cache_key)
+  if cached is not None:
+    assert isinstance(cached, tuple)
+    return cached
+
   robot: Entity = env.scene[asset_cfg.name]
   command = cast(SetSquareCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[command.cfg.ball_entity_name]
@@ -2026,7 +2128,17 @@ def _ball_visibility_obs_context(
     log["Metrics/e1_ball_visible_mean"] = torch.mean(visible.to(torch.float32))
     log["Metrics/e1_ball_last_seen_secs_mean"] = torch.mean(last_seen_secs)
 
-  return visible, rel_pos_xyz, rel_vel_xyz, last_seen_pos_xy, last_seen_vel_xy, last_seen_secs
+  context = (
+    visible,
+    rel_pos_xyz,
+    rel_vel_xyz,
+    last_seen_pos_xy,
+    last_seen_vel_xy,
+    last_seen_secs,
+  )
+  cache[cache_key] = context
+  cache[("mask", command_name, asset_cfg.name)] = visible
+  return context
 
 
 def ball_visible(

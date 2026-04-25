@@ -210,3 +210,28 @@ class ViserContactOverlays:
     """Request a scene refresh when switching environments with contacts enabled."""
     if self.is_enabled():
       self.scene.needs_update = True
+
+
+@dataclass
+class ViserCommandCueOverlays:
+  """Manage lightweight task-provided Viser-only cue overlays."""
+
+  env: _EnvProtocol
+  scene: _SceneProtocol
+
+  def on_env_switch(self) -> None:
+    """Clear cue meshes when switching environments."""
+    self.scene.clear_debug_all()
+
+  def queue(self) -> None:
+    """Queue command-term overlays exposed via an optional hook."""
+    self.scene.clear()
+    command_manager = getattr(self.env.unwrapped, "command_manager", None)
+    if command_manager is None:
+      return
+
+    for term_name in command_manager.active_terms:
+      term = command_manager.get_term(term_name)
+      queue_fn = getattr(term, "queue_viser_overlays", None)
+      if callable(queue_fn):
+        queue_fn(self.scene)

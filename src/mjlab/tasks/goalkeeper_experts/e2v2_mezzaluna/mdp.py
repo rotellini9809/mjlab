@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
@@ -122,16 +123,39 @@ def _world_to_env_local_xyz(env, pos_w_xyz: torch.Tensor) -> torch.Tensor:
   return pos_w_xyz - env.scene.env_origins
 
 
+def _get_cached_const_vector(
+  env,
+  *,
+  cache_name: str,
+  values: tuple[float, ...],
+  dtype: torch.dtype = torch.float32,
+) -> torch.Tensor:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_attr = "_e2_const_vector_cache"
+  cache = getattr(env_obj, cache_attr, None)
+  if cache is None:
+    cache = {}
+    setattr(env_obj, cache_attr, cache)
+
+  key = (cache_name, values, str(dtype), env.device)
+  vec = cache.get(key)
+  if vec is None:
+    vec = torch.tensor(values, device=env.device, dtype=dtype)
+    cache[key] = vec
+  return vec
+
+
 def _goal_line_center_world_xy(
   env,
   command_name: str,
 ) -> torch.Tensor:
   cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
-  return env.scene.env_origins[:, :2] + torch.tensor(
-    [cmd.cfg.goal_plane_x, cmd.cfg.goal_plane_y_center],
-    device=env.device,
-    dtype=torch.float32,
+  offset_xy = _get_cached_const_vector(
+    env,
+    cache_name="goal_line_center_xy",
+    values=(float(cmd.cfg.goal_plane_x), float(cmd.cfg.goal_plane_y_center)),
   )
+  return env.scene.env_origins[:, :2] + offset_xy
 
 
 def _mezzaluna_point_world_xy_from_ball_xy(
@@ -142,11 +166,12 @@ def _mezzaluna_point_world_xy_from_ball_xy(
   apex_x: float,
   half_width_y: float,
 ) -> torch.Tensor:
-  center_xy = env.scene.env_origins[:, :2] + torch.tensor(
-    [center_x, center_y],
-    device=env.device,
-    dtype=torch.float32,
+  center_offset_xy = _get_cached_const_vector(
+    env,
+    cache_name="mezzaluna_center_xy",
+    values=(float(center_x), float(center_y)),
   )
+  center_xy = env.scene.env_origins[:, :2] + center_offset_xy
   dir_xy = ball_xy_w - center_xy
 
   a = max(float(center_x) - float(apex_x), 1.0e-6)
@@ -230,6 +255,30 @@ def _get_log_dict(env) -> dict[str, torch.Tensor] | None:
     log = {}
     extras["log"] = log
   return log
+
+
+def _get_visibility_cache_bucket(
+  env,
+) -> dict[tuple[str, str, str], object]:
+  env_obj = getattr(env, "unwrapped", env)
+  cache_name = "_e2_ball_visibility_cache"
+  cache = getattr(env_obj, cache_name, None)
+  episode_length_buf = env.episode_length_buf
+  cached_episode_length_buf = None if not isinstance(cache, dict) else cache.get("_episode_length_buf")
+  if (
+    not isinstance(cache, dict)
+    or cache.get("_common_step_counter") != int(getattr(env, "common_step_counter", -1))
+    or not isinstance(cached_episode_length_buf, torch.Tensor)
+    or cached_episode_length_buf.shape != episode_length_buf.shape
+    or cached_episode_length_buf.device != episode_length_buf.device
+    or not torch.equal(cached_episode_length_buf, episode_length_buf)
+  ):
+    cache = {
+      "_common_step_counter": int(getattr(env, "common_step_counter", -1)),
+      "_episode_length_buf": episode_length_buf.clone(),
+    }
+    setattr(env_obj, cache_name, cache)
+  return cache
 
 
 def _get_bool_state_buffer(
@@ -1099,22 +1148,35 @@ def _ball_visibility_mask(
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
   eps: float = 1.0e-6,
 ) -> torch.Tensor:
+  cache = _get_visibility_cache_bucket(env)
+  cache_key = ("mask", command_name, asset_cfg.name)
+  cached = cache.get(cache_key)
+  if cached is not None:
+    assert isinstance(cached, torch.Tensor)
+    return cached
+
   cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
   robot: Entity = env.scene[asset_cfg.name]
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
   rel_xy = ball.data.root_link_pos_w[:, :2] - robot.data.root_link_pos_w[:, :2]
-  forward_local = torch.tensor([1.0, 0.0, 0.0], device=env.device).expand(
+  forward_local = _get_cached_const_vector(
+    env,
+    cache_name="forward_local_xyz",
+    values=(1.0, 0.0, 0.0),
+  ).expand(
     env.num_envs, -1
   )
   forward_w = quat_apply(robot.data.root_link_quat_w, forward_local)
   forward_xy = _normalize_xy(forward_w[:, :2])
-  return compute_fov_visibility(
+  visible = compute_fov_visibility(
     rel_xy,
     forward_xy,
     fov_active=bool(cmd.cfg.fov_active),
     half_angle_deg=float(cmd.cfg.ball_fov_half_angle_deg),
     eps=float(eps),
   )
+  cache[cache_key] = visible
+  return visible
 
 
 def _ball_visibility_obs_context(
@@ -1122,6 +1184,13 @@ def _ball_visibility_obs_context(
   command_name: str = "stand_block",
   asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+  cache = _get_visibility_cache_bucket(env)
+  cache_key = ("context", command_name, asset_cfg.name)
+  cached = cache.get(cache_key)
+  if cached is not None:
+    assert isinstance(cached, tuple)
+    return cached
+
   robot: Entity = env.scene[asset_cfg.name]
   cmd = cast(StandBlockCommand, env.command_manager.get_term(command_name))
   ball: Entity = env.scene[cmd.cfg.ball_entity_name]
@@ -1149,7 +1218,17 @@ def _ball_visibility_obs_context(
     log["Metrics/e2_ball_visible_mean"] = torch.mean(visible.to(torch.float32))
     log["Metrics/e2_ball_last_seen_secs_mean"] = torch.mean(last_seen_secs)
 
-  return visible, rel_pos_xyz, rel_vel_xyz, last_seen_pos_xy, last_seen_vel_xy, last_seen_secs
+  context = (
+    visible,
+    rel_pos_xyz,
+    rel_vel_xyz,
+    last_seen_pos_xy,
+    last_seen_vel_xy,
+    last_seen_secs,
+  )
+  cache[cache_key] = context
+  cache[("mask", command_name, asset_cfg.name)] = visible
+  return context
 
 
 def ball_visible(
@@ -1756,7 +1835,7 @@ class FaceBallAfterExitReward:
     latched_steps = _get_long_state_buffer(env, self._key_steps)
 
     latch_horizon_steps = max(
-      int(torch.ceil(torch.tensor(0.3 / float(env.step_dt))).item()),
+      math.ceil(0.3 / float(env.step_dt)),
       1,
     )
 
@@ -1780,7 +1859,11 @@ class FaceBallAfterExitReward:
 
     target_active = ball_in_play_area | use_latched_target
 
-    forward_local = torch.tensor([1.0, 0.0, 0.0], device=env.device).expand(
+    forward_local = _get_cached_const_vector(
+      env,
+      cache_name="forward_local_xyz",
+      values=(1.0, 0.0, 0.0),
+    ).expand(
       env.num_envs, -1
     )
     waist_quat_w = robot.data.body_link_quat_w[:, waist_idx, :]
@@ -1792,8 +1875,8 @@ class FaceBallAfterExitReward:
     if target_active.any():
       yaw_err[target_active] = torch.acos(cos_err[target_active])
 
-    deadband_rad = float(torch.deg2rad(torch.tensor(deadband_deg)).item())
-    sigma_rad = max(float(torch.deg2rad(torch.tensor(sigma_deg)).item()), 1.0e-6)
+    deadband_rad = math.radians(float(deadband_deg))
+    sigma_rad = max(math.radians(float(sigma_deg)), 1.0e-6)
     shaped_err = torch.relu(yaw_err - deadband_rad)
     facing_score = torch.exp(-torch.square(shaped_err) / (sigma_rad * sigma_rad))
     facing_score = target_active.to(facing_score.dtype) * facing_score

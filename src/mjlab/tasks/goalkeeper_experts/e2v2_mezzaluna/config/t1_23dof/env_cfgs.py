@@ -134,7 +134,8 @@ MEZZALUNA_Z = 0.006
 MEZZALUNA_SEGMENTS = 40
 
 # E2 ball danger area used by clearance-quality shaping.
-E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 2.3, GOAL_X_LINE + 0.3, -2.5, 2.5)
+# Slightly enlarged so the visual cue and exit region are a bit more forgiving.
+E2_DANGER_AREA_BOUNDS = (GOAL_X_LINE - 2.4, GOAL_X_LINE + 0.4, -2.7, 2.7)
 E2_DANGER_AREA_OVERLAY_HALF_THICKNESS = 0.0015
 E2_DANGER_AREA_OVERLAY_Z = 0.003
 E2_DANGER_AREA_OVERLAY_RGBA = (0.95, 0.18, 0.18, 0.22)
@@ -529,6 +530,8 @@ def _apply_e2v2_mezzaluna_launcher_preset(
     cfg.delay_range = (0.10, 0.22)
     cfg.t_goal_band = (0.34, 1.02)
     cfg.enabled_families = (True, True, False, False, True)
+    # Restore the original stage-2 family mix while keeping the long-driven
+    # geometry/timing closer to stage 1 than before.
     cfg.family_weights = (0.40, 0.20, 0.0, 0.0, 0.40)
     cfg.ground_near_depth_prob = 0.45
     cfg.ground_center_y_range = (-0.70, 0.70)
@@ -547,26 +550,27 @@ def _apply_e2v2_mezzaluna_launcher_preset(
       (0.38, 0.50, 0.76),
       (0.28, 0.34, 0.54),
     )
-    cfg.long_driven_x_range = (2.7, 5.1)
-    cfg.long_driven_center_y_range = (-0.80, 0.80)
-    cfg.long_driven_left_y_range = (0.80, 4.0)
-    cfg.long_driven_right_y_range = (-4.0, -0.80)
-    cfg.long_driven_channel_probs = (0.48, 0.26, 0.26)
+    # Preserve the stage-1 long-driven geometry and pace, then broaden it slightly.
+    cfg.long_driven_x_range = (3.1, 5.0)
+    cfg.long_driven_center_y_range = (-0.65, 0.65)
+    cfg.long_driven_left_y_range = (0.75, 1.80)
+    cfg.long_driven_right_y_range = (-1.80, -0.75)
+    cfg.long_driven_channel_probs = (0.58, 0.21, 0.21)
     cfg.long_driven_time_tiers = (
-      (0.30, 0.66, 0.96),
-      (0.42, 0.46, 0.70),
-      (0.28, 0.34, 0.52),
+      (0.25, 0.68, 0.95),
+      (0.45, 0.53, 0.74),
+      (0.30, 0.40, 0.56),
     )
-    cfg.long_driven_target_mode_probs = (0.18, 0.07, 0.75)
-    cfg.long_driven_target_nearpost_abs_y_range = (0.72, 1.10)
-    cfg.long_driven_target_farpost_abs_y_range = (0.92, 1.18)
-    cfg.long_driven_target_center_y_range = (-0.14, 0.14)
-    cfg.long_driven_target_z_range = (0.44, 0.88)
+    cfg.long_driven_target_mode_probs = (0.30, 0.25, 0.45)
+    cfg.long_driven_target_nearpost_abs_y_range = (0.75, 1.18)
+    cfg.long_driven_target_farpost_abs_y_range = (0.95, 1.28)
+    cfg.long_driven_target_center_y_range = (-0.28, 0.28)
+    cfg.long_driven_target_z_range = (0.74, 1.22)
     cfg.long_driven_target_z_tiers = (
-      (0.72, 0.44, 0.66),
-      (0.28, 0.58, 0.88),
+      (0.72, 0.74, 1.04),
+      (0.28, 0.98, 1.22),
     )
-    cfg.long_driven_min_toward_goal_speed = 1.9
+    cfg.long_driven_min_toward_goal_speed = 2.0
     cfg.deflection_prob = 0.0
     return cfg
   if preset_name == mdp.E2V2_MEZZALUNA_STAGE3_LONG_DRIVEN_ONLY:
@@ -804,7 +808,7 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
       fov_active=BALL_FOV_ACTIVE,
       ball_fov_half_angle_deg=BALL_FOV_HALF_ANGLE_DEG,
       resampling_time_range=(1.0e9, 1.0e9),
-      debug_vis=True,
+      debug_vis=not play,
     )
   }
 
@@ -954,19 +958,6 @@ def booster_t1_23_gk_expert_e2v2_mezzaluna_env_cfg(
         "command_name": "stand_block",
         "only_on_first_contact": True,
         "clip_speed": 2.0,
-      },
-    ),
-    "danger_reduction_on_first_contact_reward": RewardTermCfg(
-      func=mdp.DangerReductionOnFirstContactReward,
-      weight=4.0,
-      params={
-        "command_name": "stand_block",
-        "resolution_term_name": "contact_resolution_window",
-        "v_ref": 6.0,
-        "min_forward_speed": 1.0,
-        "projection_margin_y": 0.35,
-        "projection_margin_z": 0.25,
-        "post_contact_delay_steps": 2,
       },
     ),
     "arm_high_throw_deflect_reward": RewardTermCfg(

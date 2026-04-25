@@ -141,7 +141,7 @@ class NativeMujocoViewer(BaseViewer):
     self._yrange: dict[str, tuple[float, float]] = {}  # Per-term y-range.
     self._scale: dict[str, float] = {}  # Per-term display scale factor.
     self._show_plots: bool = False
-    self._show_debug_vis: bool = True
+    self._show_debug_vis: bool = False
     self._show_all_envs: bool = False
     self._plot_cfg = plot_cfg or PlotCfg()
     self._figures_dirty: bool = False
