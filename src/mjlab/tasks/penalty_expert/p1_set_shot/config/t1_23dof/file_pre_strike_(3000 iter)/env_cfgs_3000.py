@@ -381,7 +381,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     TARGET_MODE = "random_binary"        # allowed: "fixed", "random_binary"
     FIXED_TARGET_CORNER = "left" # used only when TARGET_MODE == "fixed"
     # aim_z is the target Z on the goal line.
-    AIM_Z = 1.45
+    AIM_Z = 0.35
 
     cfg.commands = {
         "set_shot": mdp.SetShotCommandCfg(
@@ -574,6 +574,37 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     }
 
     cfg.rewards = {
+
+
+        "right_foot_swing_intent_debug": RewardTermCfg(
+            func=mdp.right_foot_swing_intent_debug_reward,
+            weight=1.0,
+            params={
+                "command_name": "set_shot",
+                "max_swing_speed": 6.0,
+            },
+        ),
+        #strike rewards
+        "right_only_strike": RewardTermCfg(
+            func=mdp.supported_right_only_strike_bonus,
+            weight=2.0,
+            params={
+                "command_name": "set_shot",
+                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "left_ground_sensor_name": P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
+                "left_ball_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
+                "target_dx": -0.02,
+                "dx_tol": 0.16,
+                "target_abs_dy": 0.11,
+                "dy_tol": 0.12,
+                "max_left_speed": 0.50,
+                "min_height": 0.53,
+                "max_tilt": 0.60,
+                "min_speed": 2.0,
+            },
+        ),
+
         "strike_event": RewardTermCfg(
             func=mdp.strike_event_reward,
             weight=12.0,
@@ -589,19 +620,32 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         ),
 
         "impact_foot_speed": RewardTermCfg(
-            func=mdp.right_foot_impact_speed_target_reward,
-            weight=4.0,
+            func=mdp.right_foot_impact_speed_once_reward,
+            weight=8.0,
             params={
                 "command_name": "set_shot",
                 "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
-                "target_speed": 4.7,
-                "sigma": 0.6,
+                "max_speed": 7.5,
             },
         ),
-        "ball_speed_to_left_aim_3d": RewardTermCfg(
-            func=mdp.ball_speed_to_aim_reward_3d_after_strike,
-            weight=4.0,
-            params={"command_name": "set_shot"},
+
+        "clean_strike": RewardTermCfg(
+            func=mdp.clean_strike_reward,
+            weight=10.0,
+            params={
+                "command_name": "set_shot",
+                "max_speed": 6.5,
+                "up_penalty": 0.25,
+            },
+        ),
+
+        "ball_speed_to_goal": RewardTermCfg(
+            func=mdp.ball_speed_to_goal_after_strike_reward,
+            weight=6.0,
+            params={
+                "command_name": "set_shot",
+                "max_speed": 5.5,
+            },
         ),
 
         "goal_scored": RewardTermCfg(
@@ -618,37 +662,8 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
             },
         ),
 
-        # 10) kick-phase left support penalties
 
-        "post_strike_left_support_move": RewardTermCfg(
-            func=mdp.post_strike_left_support_move_penalty,
-            weight=-3.0,
-            params={
-                "command_name": "set_shot",
-                "deadzone": 0.02,
-                "max_dist": 0.15,
-                "lock_steps": 12,
-            },
-        ),
-        "post_strike_left_support_speed": RewardTermCfg(
-            func=mdp.post_strike_left_support_speed_penalty,
-            weight=-1.5,
-            params={
-                "command_name": "set_shot",
-                "max_speed": 0.45,
-                "lock_steps": 12,
-            },
-        ),
-        "post_strike_left_support_lost_ground": RewardTermCfg(
-            func=mdp.post_strike_left_support_lost_ground_penalty,
-            weight=-2.0,
-            params={
-                "command_name": "set_shot",
-                "left_ground_sensor_name": P1_LEFT_FOOT_GROUND_CONTACT_SENSOR_NAME,
-                "lock_steps": 12,
-            },
-        ),
-        # 11) final general terms
+       # 11) final general terms
         "upright": RewardTermCfg(
             func=mdp.upright_stability_reward,
             weight=0.55,
@@ -665,15 +680,15 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
         "low_height_soft_penalty": RewardTermCfg(
             func=mdp.striker_low_height_soft_penalty,
-            weight=-2.2,
+            weight=-1.8,
             params={
-                "h_soft": 0.60,
+                "h_soft": 0.58,
             },
         ),
 
         "double_knee_crouch": RewardTermCfg(
             func=mdp.double_knee_crouch_penalty,
-            weight=-10.0,
+            weight=-1.5,
             params={
                 "command_name": "set_shot",
                 "near_ball_dist": 0.70,
@@ -713,7 +728,6 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
                 "z_margin": 0.0,
             },
         ),
-
          "foot_contact_switch": RewardTermCfg(
             func=mdp.foot_contact_switch_bonus_p1,
             weight=0.2,
@@ -741,32 +755,13 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
                 "dy_sigma": 0.08,
                 "max_left_speed": 0.28,
                 "min_right_speed": 2.2,
-                "max_right_speed": 5.5,
-            },
-        ),
-        "right_knee_straight_at_strike": RewardTermCfg(
-            func=mdp.right_knee_straight_at_strike_reward,
-            weight=6.0,
-            params={
-                "command_name": "set_shot",
-                "sigma_rad": 0.20,
-            },
-        ),
-        "bad_posture_at_strike": RewardTermCfg(
-            func=mdp.bad_posture_at_strike_penalty,
-            weight=-20.0,
-            params={
-                "command_name": "set_shot",
-                "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
-                "right_sensor_name": P1_RIGHT_FOOT_BALL_CONTACT_SENSOR_NAME,
-                "min_height": 0.56,
-                "max_tilt": 0.55,
+                "max_right_speed": 8.0,
             },
         ),
 
         "underbar_launch": RewardTermCfg(
             func=mdp.ball_launch_angle_underbar_reward,
-            weight=10.0,
+            weight=0.0,
             params={
                 "command_name": "set_shot",
                 "target_angle_deg": 24.0,
@@ -775,62 +770,30 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
                 "max_speed_3d": 9.0,
             },
         ),
-        "ball_power_lift": RewardTermCfg(
-            func=mdp.ball_power_lift_reward_after_strike,
-            weight=6.5,
-            params={
-                "command_name": "set_shot",
-                "max_speed_3d": 9.0,
-                "min_vx": 0.20,
-                "min_vz": 0.12,
-            },
-        ),
-        "ball_ground_touch_before_goal": RewardTermCfg(
-            func=mdp.ball_ground_touch_before_goal_penalty,
-            weight=-6.0,
-            params={
-                "command_name": "set_shot",
-                "ground_z": 0.115,
-                "min_x_progress": 0.50,
-            },
-        ),
-        "ball_bounce_before_goal": RewardTermCfg(
-            func=mdp.ball_bounce_before_goal_penalty,
-            weight=-4.0,
-            params={
-                "command_name": "set_shot",
-                "ground_z": 0.12,
-                "min_x_after_strike": 0.45,
-                "require_forward_vx": 0.35,
-            },
-        ),
+
 
 ########### DIREZIONE TIRO #############
 
         "underbar_goal": RewardTermCfg(
             func=mdp.underbar_goal_reward,
-            weight=8.0,
+            weight=0.0,
             params={
                 "command_name": "set_shot",
                 "sigma_z": 0.18,
             },
         ),
-
-
-
         "goal_target_from_command": RewardTermCfg(
             func=mdp.goal_target_from_command_reward,
-            weight=14.0,
+            weight=20.0,
             params={
                 "command_name": "set_shot",
                 "sigma_y": 0.35,
                 "sigma_z": 0.18,
             },
         ),
-
-                "lateral_goal": RewardTermCfg(
+        "lateral_goal": RewardTermCfg(
             func=mdp.lateral_goal_reward,
-            weight=12.0,
+            weight=18.0,
             params={
                 "command_name": "set_shot",
                 "sigma_y": 0.15,
@@ -862,8 +825,8 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
             },
         ),
 
-    }
-    )
+
+    })
 
 
     cfg.sim.mujoco.timestep = SIM_TIMESTEP_S
@@ -879,3 +842,4 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         cfg.observations["actor"].enable_corruption = False
         cfg.events.pop("push_robot", None)  # se esiste nel base
     return cfg
+

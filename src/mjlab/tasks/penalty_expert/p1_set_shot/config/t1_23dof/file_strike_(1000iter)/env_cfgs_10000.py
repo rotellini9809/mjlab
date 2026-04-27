@@ -673,7 +673,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
         "double_knee_crouch": RewardTermCfg(
             func=mdp.double_knee_crouch_penalty,
-            weight=-10.0,
+            weight=-2.0,
             params={
                 "command_name": "set_shot",
                 "near_ball_dist": 0.70,
@@ -754,7 +754,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         ),
         "bad_posture_at_strike": RewardTermCfg(
             func=mdp.bad_posture_at_strike_penalty,
-            weight=-20.0,
+            weight=-6.0,
             params={
                 "command_name": "set_shot",
                 "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,

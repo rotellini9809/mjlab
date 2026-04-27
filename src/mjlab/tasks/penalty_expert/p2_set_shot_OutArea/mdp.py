@@ -357,6 +357,7 @@ class SetShotCommand(CommandTerm):
     if spawn_mode == "shot_line":
       # Use the sampled reset position (written in _reset_ball_pose) to avoid stale sim reads.
       ball_xy = self._ball_spawn_xy_w[env_ids, :2]
+      aim_xy = self._aim_pos_w[env_ids, :2]
 
       long_jitter = _sample_uniform_range(
         -float(self.cfg.striker_longitudinal_jitter),
@@ -371,20 +372,25 @@ class SetShotCommand(CommandTerm):
         self.device,
       )
 
-      spawn_xy = torch.zeros_like(ball_xy)
-      spawn_xy[:, 0] = (
-        ball_xy[:, 0]
-        - float(self.cfg.striker_distance_behind_ball)
-        + long_jitter
+      shot_dir, side_dir = _shot_frame_basis(ball_xy, aim_xy)
+      setup_side = float(getattr(self.cfg, "setup_side_sign", 1.0))
+
+      spawn_xy = (
+        ball_xy
+        - float(self.cfg.striker_distance_behind_ball) * shot_dir
+        + setup_side * float(self.cfg.striker_lateral_offset) * side_dir
+        + long_jitter.unsqueeze(1) * shot_dir
+        + setup_side * lat_jitter.unsqueeze(1) * side_dir
       )
-      spawn_xy[:, 1] = (
-        ball_xy[:, 1]
-        + float(self.cfg.striker_lateral_offset)
-        + lat_jitter
-      )
+
       root_state[:, 0:2] = spawn_xy
 
-      yaw_total = yaw
+      # Face the sampled shot target from the actual spawn position
+      face_vec = aim_xy - spawn_xy
+      face_dir = _normalize_xy(face_vec)
+
+      yaw_base = torch.atan2(face_dir[:, 1], face_dir[:, 0])
+      yaw_total = yaw_base + yaw
       yaw_q = quat_from_euler_xyz(
         torch.zeros_like(yaw_total),
         torch.zeros_like(yaw_total),
@@ -603,6 +609,29 @@ def yaw_alignment_reward(env, command_name: str = "set_shot", asset_cfg: SceneEn
   cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
   yaw_error = _compute_yaw_error(robot, cmd.aim_pos_w)
   return torch.exp(-k * torch.square(yaw_error))
+
+
+def pre_strike_yaw_alignment_reward(
+    env,
+    command_name: str = "set_shot",
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+    k: float = 3.0,
+    min_height: float = 0.53,
+    max_tilt: float = 0.60,
+) -> torch.Tensor:
+    gate_pre = (1.0 - has_struck(env, command_name)).to(torch.float32)
+    posture_gate = posture_priority_gate_latched(
+        env,
+        asset_cfg=asset_cfg,
+        min_height=min_height,
+        max_tilt=max_tilt,
+    )
+    return gate_pre * posture_gate * yaw_alignment_reward(
+        env,
+        command_name=command_name,
+        asset_cfg=asset_cfg,
+        k=k,
+    )
 
 
 def _default_root_height(robot: Entity) -> torch.Tensor:
@@ -847,15 +876,18 @@ def initialize_kick_phase_state(
   # Build a physically coherent kick-ready pose without IK in the SHOT FRAME:
   # - left support near the ball
   # - right foot slightly behind the ball (kick preload)
-  # - root facing shot_dir, zero root/joint velocities
+  # - root facing shot target, zero root/joint velocities
   ball_xy = ball.data.root_link_pos_w[env_ids, :2]
   aim_xy = cmd.aim_pos_w[env_ids, :2]
   shot_dir, side_dir = _shot_frame_basis(ball_xy, aim_xy)
 
-  desired_left_xy = torch.zeros_like(ball_xy)
-  desired_left_xy[:, 0] = ball_xy[:, 0] + float(target_dx)
-  desired_left_xy[:, 1] = ball_xy[:, 1] + float(target_abs_dy)
-  desired_left_xy = desired_left_xy.to(torch.float32)
+  setup_side = float(getattr(cmd.cfg, "setup_side_sign", 1.0))
+
+  desired_left_xy = (
+    ball_xy
+    + float(target_dx) * shot_dir
+    + setup_side * float(target_abs_dy) * side_dir
+  ).to(torch.float32)
 
   if (
     hasattr(robot.data, "body_link_pos_w")
@@ -874,10 +906,11 @@ def initialize_kick_phase_state(
 
       right_target_dx = float(target_dx) - 0.10
       right_target_abs_dy = max(float(target_abs_dy) - 0.03, 0.05)
-      desired_right_xy = torch.zeros_like(ball_xy)
-      desired_right_xy[:, 0] = ball_xy[:, 0] + right_target_dx
-      desired_right_xy[:, 1] = ball_xy[:, 1] - right_target_abs_dy
-      desired_right_xy = desired_right_xy.to(torch.float32)
+      desired_right_xy = (
+        ball_xy
+        + right_target_dx * shot_dir
+        - setup_side * right_target_abs_dy * side_dir
+      ).to(torch.float32)
 
       # Single rigid root shift that approximately satisfies both feet targets.
       delta_left = desired_left_xy - current_left_xy
@@ -885,8 +918,10 @@ def initialize_kick_phase_state(
       delta_xy = 0.6 * delta_left + 0.4 * delta_right
       current_root_state[:, 0:2] += delta_xy
 
-      # Keep fixed world-frame orientation (with optional small jitter only in regular reset path).
-      yaw = torch.zeros((env_ids.numel(),), device=env.device)
+      face_vec = aim_xy - current_root_state[:, 0:2]
+      face_dir = _normalize_xy(face_vec)
+
+      yaw = torch.atan2(face_dir[:, 1], face_dir[:, 0])
       yaw_quat = quat_from_euler_xyz(
         torch.zeros((env_ids.numel(),), device=env.device),
         torch.zeros((env_ids.numel(),), device=env.device),
@@ -2891,7 +2926,7 @@ def lateral_goal_reward(
     target_y = aim_local[:, 1]
     sigma_y_safe = max(float(sigma_y), 1.0e-6)
     y_score = torch.exp(-0.5 * torch.square((y - target_y) / sigma_y_safe))
-    return  y_score  # put event.to(torch.float32) * y_score only in the kick fase
+    return  event * y_score  # put event.to(torch.float32) * y_score only in the kick fase
 
 
 def post_strike_upright_reward_strong(

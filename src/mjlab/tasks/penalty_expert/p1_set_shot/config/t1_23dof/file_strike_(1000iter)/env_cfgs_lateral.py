@@ -376,12 +376,12 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     # IMPORTANT:
     # visual_left/right_corner_y are GOAL-LINE Y targets (x = GOAL_X_LINE).
     # The command can use fixed or random_binary corner selection with explicit semantics.
-    VISUAL_LEFT_CORNER_Y = 1.0
-    VISUAL_RIGHT_CORNER_Y = -1.0
-    TARGET_MODE = "random_binary"        # allowed: "fixed", "random_binary"
+    VISUAL_LEFT_CORNER_Y = 1.20
+    VISUAL_RIGHT_CORNER_Y = -1.20
+    TARGET_MODE = "fixed"        # allowed: "fixed", "random_binary"
     FIXED_TARGET_CORNER = "left" # used only when TARGET_MODE == "fixed"
     # aim_z is the target Z on the goal line.
-    AIM_Z = 1.45
+    AIM_Z = 1.35
 
     cfg.commands = {
         "set_shot": mdp.SetShotCommandCfg(
@@ -605,16 +605,10 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         ),
 
         "goal_scored": RewardTermCfg(
-            func=mdp.goal_scored_shaped_target_reward,
-            weight=12.0,
+            func=mdp.goal_scored_event_reward,
+            weight=14.0,
             params={
                 "command_name": "set_shot",
-                "sigma_y": 0.20,
-                "sigma_z": 0.18,
-                "base_goal": 0.10,
-                "weight_y": 0.20,
-                "weight_z": 0.15,
-                "weight_yz": 0.65,
             },
         ),
 
@@ -673,7 +667,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
         "double_knee_crouch": RewardTermCfg(
             func=mdp.double_knee_crouch_penalty,
-            weight=-10.0,
+            weight=-2.0,
             params={
                 "command_name": "set_shot",
                 "near_ball_dist": 0.70,
@@ -754,7 +748,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         ),
         "bad_posture_at_strike": RewardTermCfg(
             func=mdp.bad_posture_at_strike_penalty,
-            weight=-20.0,
+            weight=-6.0,
             params={
                 "command_name": "set_shot",
                 "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,
@@ -809,18 +803,28 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
         "underbar_goal": RewardTermCfg(
             func=mdp.underbar_goal_reward,
-            weight=8.0,
+            weight=12.0,
             params={
                 "command_name": "set_shot",
+                "target_z": 1.35,
                 "sigma_z": 0.18,
             },
         ),
 
+        "low_or_center_goal": RewardTermCfg(
+            func=mdp.goal_low_or_center_penalty,
+            weight=-2.0,
+            params={
+                "command_name": "set_shot",
+                "z_min": 1.10,
+                "y_side_min": 0.80,
+            },
+        ),
 
 
         "goal_target_from_command": RewardTermCfg(
             func=mdp.goal_target_from_command_reward,
-            weight=14.0,
+            weight=20.0,
             params={
                 "command_name": "set_shot",
                 "sigma_y": 0.35,
@@ -830,7 +834,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
                 "lateral_goal": RewardTermCfg(
             func=mdp.lateral_goal_reward,
-            weight=12.0,
+            weight=18.0,
             params={
                 "command_name": "set_shot",
                 "sigma_y": 0.15,

@@ -1,0 +1,1 @@
+"""Configuration package for Penalty Expert P2: Set & Shoot Out Area."""
