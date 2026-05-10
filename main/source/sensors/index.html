@@ -59,7 +59,7 @@
     <link rel="prev" title="Actuators" href="../actuators.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -467,7 +469,11 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contactsensor">ContactSensor</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#primary-and-secondary">Primary and secondary</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reduction">Reduction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#output-shape">Output shape</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reduction">Reduction</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-set-num-slots-1">When to set <code class="docutils literal notranslate"><span class="pre">num_slots</span> <span class="pre">&gt;</span> <span class="pre">1</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fields">Fields</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#air-time-tracking">Air time tracking</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#history-decimation-safe-contacts">History (decimation safe contacts)</a></li>
@@ -531,8 +537,8 @@ independent of any entity entirely. This is why sensors live in
 <span class="c1"># Access at runtime.</span>
 <span class="n">imu</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">scene</span><span class="p">[</span><span class="s2">&quot;robot/imu_acc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>        <span class="c1"># [B, 3] acceleration</span>
 <span class="n">feet</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">scene</span><span class="p">[</span><span class="s2">&quot;feet_contact&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>         <span class="c1"># ContactData</span>
-<span class="n">feet</span><span class="o">.</span><span class="n">found</span>                                    <span class="c1"># [B, N] contact count</span>
-<span class="n">feet</span><span class="o">.</span><span class="n">force</span>                                    <span class="c1"># [B, N, 3] contact force</span>
+<span class="n">feet</span><span class="o">.</span><span class="n">found</span>                                    <span class="c1"># [B, P] contact count per foot</span>
+<span class="n">feet</span><span class="o">.</span><span class="n">force</span>                                    <span class="c1"># [B, P, 3] contact force per foot</span>
 </pre></div>
 </div>
 <p>mjlab provides four sensor types: <code class="docutils literal notranslate"><span class="pre">BuiltinSensor</span></code> for native MuJoCo
@@ -666,11 +672,57 @@ names within the entity.</p>
 </pre></div>
 </div>
 </section>
+<section id="output-shape">
+<h3>Output shape<a class="headerlink" href="#output-shape" title="Link to this heading">#</a></h3>
+<p>A pattern like <code class="docutils literal notranslate"><span class="pre">r&quot;.*_foot$&quot;</span></code> resolves to <code class="docutils literal notranslate"><span class="pre">P</span></code> primary elements (e.g.
+four feet on a quadruped). Each primary becomes one column on the
+per-contact axis of the output tensors:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 35.0%" />
+<col style="width: 25.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field group</p></th>
+<th class="head"><p>Shape</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Per-contact
+(<code class="docutils literal notranslate"><span class="pre">found</span></code>, <code class="docutils literal notranslate"><span class="pre">force</span></code>, <code class="docutils literal notranslate"><span class="pre">torque</span></code>, <code class="docutils literal notranslate"><span class="pre">dist</span></code>, <code class="docutils literal notranslate"><span class="pre">pos</span></code>, <code class="docutils literal notranslate"><span class="pre">normal</span></code>,
+<code class="docutils literal notranslate"><span class="pre">tangent</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">P</span> <span class="pre">*</span> <span class="pre">num_slots,</span> <span class="pre">...]</span></code></p></td>
+<td><p>Primary-major: indices
+<code class="docutils literal notranslate"><span class="pre">[i</span> <span class="pre">*</span> <span class="pre">num_slots</span> <span class="pre">:</span> <span class="pre">(i</span> <span class="pre">+</span> <span class="pre">1)</span> <span class="pre">*</span> <span class="pre">num_slots]</span></code> belong to primary <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Per-primary
+(<code class="docutils literal notranslate"><span class="pre">current_air_time</span></code>, <code class="docutils literal notranslate"><span class="pre">last_air_time</span></code>,
+<code class="docutils literal notranslate"><span class="pre">current_contact_time</span></code>, <code class="docutils literal notranslate"><span class="pre">last_contact_time</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">P]</span></code></p></td>
+<td><p>Air-time fields are accumulated per primary, reducing across
+slots (any slot in contact counts as the primary in contact).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>With the default <code class="docutils literal notranslate"><span class="pre">num_slots=1</span></code> the two shape families coincide
+(<code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">==</span> <span class="pre">P</span></code>), which is why most code can treat both as <code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">P,</span> <span class="pre">...]</span></code>.</p>
+<p>Use <code class="xref py py-attr docutils literal notranslate"><span class="pre">mjlab.sensor.contact_sensor.ContactSensor.primary_names</span></code> to
+recover the index-to-name mapping after pattern expansion:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sensor</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">scene</span><span class="p">[</span><span class="s2">&quot;feet_contact&quot;</span><span class="p">]</span>
+<span class="n">sensor</span><span class="o">.</span><span class="n">primary_names</span>                <span class="c1"># [&quot;FR_foot&quot;, &quot;FL_foot&quot;, &quot;RR_foot&quot;, &quot;RL_foot&quot;]</span>
+<span class="n">sensor</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">current_air_time</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># air time for FR_foot</span>
+</pre></div>
+</div>
+</section>
 <section id="reduction">
 <h3>Reduction<a class="headerlink" href="#reduction" title="Link to this heading">#</a></h3>
-<p>A single foot geom can have many simultaneous contacts with the ground.
-Policies typically need one representative contact per element, not the
-raw list. The <code class="docutils literal notranslate"><span class="pre">reduce</span></code> mode selects which contacts to keep.</p>
+<p>A single primary element can have many simultaneous contacts with the
+secondary (e.g. a flat foot resting on rough terrain has multiple
+contact points). The <code class="docutils literal notranslate"><span class="pre">reduce</span></code> mode collapses those raw contacts down
+to <code class="docutils literal notranslate"><span class="pre">num_slots</span></code> representative contacts:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
 <col style="width: 20.0%" />
@@ -683,27 +735,55 @@ raw list. The <code class="docutils literal notranslate"><span class="pre">reduc
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code></p></td>
-<td><p>Fast, non-deterministic selection</p></td>
+<td><p>Fast, non-deterministic selection of up to <code class="docutils literal notranslate"><span class="pre">num_slots</span></code> contacts.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;mindist&quot;</span></code></p></td>
-<td><p>Closest contacts by penetration depth</p></td>
+<td><p>Keep the deepest <code class="docutils literal notranslate"><span class="pre">num_slots</span></code> contacts.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;maxforce&quot;</span></code></p></td>
-<td><p>Strongest contacts by force magnitude</p></td>
+<td><p>Keep the strongest <code class="docutils literal notranslate"><span class="pre">num_slots</span></code> contacts by force magnitude.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;netforce&quot;</span></code></p></td>
-<td><p>Sums all contacts into a single synthetic contact at the
-force-weighted centroid with the net wrench</p></td>
+<td><p>Sum all contacts into a single net wrench at the force-weighted
+centroid. Always emits one slot per primary regardless of
+<code class="docutils literal notranslate"><span class="pre">num_slots</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">num_slots</span></code> controls how many contacts are retained per primary
-element after reduction. The default is 1, which gives one
-representative contact per primary match. The output shape is
-<code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">N</span> <span class="pre">*</span> <span class="pre">num_slots,</span> <span class="pre">...]</span></code> where <code class="docutils literal notranslate"><span class="pre">N</span></code> is the number of primary
-matches. With <code class="docutils literal notranslate"><span class="pre">reduce=&quot;netforce&quot;</span></code>, the output is always one contact
-per primary regardless of <code class="docutils literal notranslate"><span class="pre">num_slots</span></code>.</p>
+<section id="when-to-set-num-slots-1">
+<h4>When to set <code class="docutils literal notranslate"><span class="pre">num_slots</span> <span class="pre">&gt;</span> <span class="pre">1</span></code><a class="headerlink" href="#when-to-set-num-slots-1" title="Link to this heading">#</a></h4>
+<p>Almost all configurations leave <code class="docutils literal notranslate"><span class="pre">num_slots</span></code> at its default of <code class="docutils literal notranslate"><span class="pre">1</span></code>,
+because pattern expansion already produces one column per element of
+interest (one per foot, one per finger, one per body link). Increase
+<code class="docutils literal notranslate"><span class="pre">num_slots</span></code> only when a single primary may have several physically
+distinct contact points that you want to inspect separately, for
+example:</p>
+<ul class="simple">
+<li><p>Computing a center of pressure on a flat foot from its corner
+contacts.</p></li>
+<li><p>Reasoning about grasp quality from multiple fingertip-to-object
+contact points.</p></li>
+<li><p>Detecting tipping by watching whether one corner of a contact patch
+loses contact.</p></li>
+</ul>
+<p>In those cases pair <code class="docutils literal notranslate"><span class="pre">num_slots</span></code> with <code class="docutils literal notranslate"><span class="pre">reduce</span></code> in
+<code class="docutils literal notranslate"><span class="pre">{&quot;mindist&quot;,</span> <span class="pre">&quot;maxforce&quot;,</span> <span class="pre">&quot;none&quot;}</span></code>. With <code class="docutils literal notranslate"><span class="pre">reduce=&quot;netforce&quot;</span></code> it has
+no effect.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">num_slots</span></code> is a ceiling on what the sensor will store, not a
+guarantee that MuJoCo will produce that many contacts. The collision
+detector caps the number of contact points generated for each
+geom-pair according to the geom types involved. For example a
+sphere-vs-plane pair produces at most one contact, and a box-vs-box
+pair produces at most four. Setting <code class="docutils literal notranslate"><span class="pre">num_slots=8</span></code> on a sphere
+primary against a plane secondary therefore leaves seven slots
+permanently zero. Check
+<a class="reference external" href="https://mujoco.readthedocs.io/en/stable/computation/index.html#collision-detection">MuJoCo’s collision documentation</a>
+for the per-pair limits.</p>
+</div>
+</section>
 </section>
 <section id="fields">
 <h3>Fields<a class="headerlink" href="#fields" title="Link to this heading">#</a></h3>
@@ -711,20 +791,32 @@ per primary regardless of <code class="docutils literal notranslate"><span class
 requested fields are allocated; the rest are <code class="docutils literal notranslate"><span class="pre">None</span></code> on the output
 dataclass. Available fields are <code class="docutils literal notranslate"><span class="pre">&quot;found&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;force&quot;</span></code>,
 <code class="docutils literal notranslate"><span class="pre">&quot;torque&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;dist&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;pos&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;normal&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;tangent&quot;</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">torque</span></code> and the friction-tangent component of <code class="docutils literal notranslate"><span class="pre">force</span></code> are zero
+unless the contact pair has friction enabled, which requires
+<code class="docutils literal notranslate"><span class="pre">condim</span> <span class="pre">&gt;=</span> <span class="pre">3</span></code> on at least one geom in the pair. With <code class="docutils literal notranslate"><span class="pre">condim=1</span></code>
+(frictionless), the contact only produces a normal force. This is a
+physics property of the contact, not a sensor limitation.</p>
+</div>
 </section>
 <section id="air-time-tracking">
 <h3>Air time tracking<a class="headerlink" href="#air-time-tracking" title="Link to this heading">#</a></h3>
 <p>Locomotion tasks often need to know when feet land and take off for
-gait rewards. Setting <code class="docutils literal notranslate"><span class="pre">track_air_time=True</span></code> enables per-element
+gait rewards. Setting <code class="docutils literal notranslate"><span class="pre">track_air_time=True</span></code> enables per-primary
 timing. The sensor maintains four additional tensors on
-<code class="docutils literal notranslate"><span class="pre">ContactData</span></code>: <code class="docutils literal notranslate"><span class="pre">current_air_time</span></code>, <code class="docutils literal notranslate"><span class="pre">last_air_time</span></code>,
-<code class="docutils literal notranslate"><span class="pre">current_contact_time</span></code>, and <code class="docutils literal notranslate"><span class="pre">last_contact_time</span></code>. Two helper
-methods provide edge detection for transition events.</p>
+<code class="docutils literal notranslate"><span class="pre">ContactData</span></code>, each shaped <code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">P]</span></code>: <code class="docutils literal notranslate"><span class="pre">current_air_time</span></code>,
+<code class="docutils literal notranslate"><span class="pre">last_air_time</span></code>, <code class="docutils literal notranslate"><span class="pre">current_contact_time</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">last_contact_time</span></code>. Two helper methods provide edge detection for
+transition events:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sensor</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">scene</span><span class="p">[</span><span class="s2">&quot;feet_air&quot;</span><span class="p">]</span>
-<span class="n">first_contact</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">compute_first_contact</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>  <span class="c1"># Just landed</span>
-<span class="n">first_air</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">compute_first_air</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>           <span class="c1"># Just took off</span>
+<span class="n">first_contact</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">compute_first_contact</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>  <span class="c1"># [B, P], True for primaries that just landed</span>
+<span class="n">first_air</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">compute_first_air</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>           <span class="c1"># [B, P], True for primaries that just took off</span>
 </pre></div>
 </div>
+<p>Air time is per primary even when <code class="docutils literal notranslate"><span class="pre">num_slots</span> <span class="pre">&gt;</span> <span class="pre">1</span></code>: the sensor reduces
+<code class="docutils literal notranslate"><span class="pre">found</span></code> across slots so that any slot in contact counts as the
+primary being in contact.</p>
 </section>
 <section id="history-decimation-safe-contacts">
 <span id="contact-sensor-history"></span><h3>History (decimation safe contacts)<a class="headerlink" href="#history-decimation-safe-contacts" title="Link to this heading">#</a></h3>
@@ -887,7 +979,11 @@ reference implementations for custom sensor development.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contactsensor">ContactSensor</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#primary-and-secondary">Primary and secondary</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reduction">Reduction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#output-shape">Output shape</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reduction">Reduction</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-set-num-slots-1">When to set <code class="docutils literal notranslate"><span class="pre">num_slots</span> <span class="pre">&gt;</span> <span class="pre">1</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fields">Fields</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#air-time-tracking">Air time tracking</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#history-decimation-safe-contacts">History (decimation safe contacts)</a></li>
@@ -930,7 +1026,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

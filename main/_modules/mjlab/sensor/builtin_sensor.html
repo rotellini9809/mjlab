@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -188,6 +188,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../source/entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/actuators.html">Actuators</a></li>
@@ -211,6 +212,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -611,11 +613,14 @@ document.write(`
   <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;When this value is positive, it limits the absolute value of the sensor output.&quot;&quot;&quot;</span>
 
-  <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="c1"># Auto-prefix sensor name if it references an entity.</span>
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">prefixed_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The sensor name with entity prefix if applicable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">entity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+      <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
 
+  <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor_type</span> <span class="ow">in</span> <span class="n">_SENSORS_REQUIRING_SITE</span><span class="p">:</span>
       <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -694,7 +699,7 @@ document.write(`
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">cfg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">name</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">prefixed_name</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="p">:</span> <span class="n">BuiltinSensorCfg</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">cfg</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="k">assert</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Must provide either cfg or name&quot;</span>
@@ -721,23 +726,23 @@ document.write(`
 
     <span class="c1"># Check for duplicate sensors.</span>
     <span class="k">for</span> <span class="n">sensor</span> <span class="ow">in</span> <span class="n">scene_spec</span><span class="o">.</span><span class="n">sensors</span><span class="p">:</span>
-      <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">prefixed_name</span><span class="p">:</span>
         <span class="n">is_entity_scoped</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">entity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">is_entity_scoped</span><span class="p">:</span>
           <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Sensor &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; is defined in both entity XML and scene config. &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Remove the sensor definition from the entity XML file, or remove the &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;BuiltinSensorCfg from scene.sensors.&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Sensor &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">prefixed_name</span><span class="si">}</span><span class="s2">&#39; is defined in both entity XML and &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;scene config. Remove the sensor definition from the entity XML file, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;or remove the BuiltinSensorCfg from scene.sensors.&quot;</span>
           <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
           <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Sensor &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; already exists in the scene. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Sensor &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">prefixed_name</span><span class="si">}</span><span class="s2">&#39; already exists in the scene. &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;Rename this sensor to avoid conflicts.&quot;</span>
           <span class="p">)</span>
 
     <span class="c1"># Add sensor to spec.</span>
     <span class="n">scene_spec</span><span class="o">.</span><span class="n">add_sensor</span><span class="p">(</span>
-      <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">prefixed_name</span><span class="p">,</span>
       <span class="nb">type</span><span class="o">=</span><span class="n">_SENSOR_TYPE_MAP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">sensor_type</span><span class="p">],</span>
       <span class="n">objtype</span><span class="o">=</span><span class="p">(</span>
         <span class="n">_OBJECT_TYPE_MAP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">type</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
@@ -815,7 +820,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

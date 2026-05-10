@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -188,6 +188,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../source/entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/actuators.html">Actuators</a></li>
@@ -211,6 +212,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -398,9 +400,17 @@ document.write(`
                 <article class="bd-article">
                   
   <h1>Source code for mjlab.actuator.builtin_group</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="sd">&quot;&quot;&quot;Batch ctrl writes for builtin actuators.</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="sd">Builtin actuators have identity compute(): they just pass the target through to ctrl.</span>
+<span class="sd">Instead of looping over each actuator individually, this module reads the target tensor</span>
+<span class="sd">and writes ctrl in one batched operation per actuator type. Delayed builtins go through</span>
+<span class="sd">a shared DelayBuffer first.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -412,6 +422,7 @@ document.write(`
   <span class="n">BuiltinPositionActuator</span><span class="p">,</span>
   <span class="n">BuiltinVelocityActuator</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.utils.buffers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelayBuffer</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
   <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Actuator</span>
@@ -438,22 +449,33 @@ document.write(`
 <span class="p">}</span>
 
 
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_FusedDelayGroup</span><span class="p">:</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;A fused group of delayed builtin actuators sharing delay config.&quot;&quot;&quot;</span>
+
+  <span class="n">target_attr</span><span class="p">:</span> <span class="nb">str</span>
+  <span class="n">target_ids</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+  <span class="n">ctrl_ids</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+  <span class="n">min_lag</span><span class="p">:</span> <span class="nb">int</span>
+  <span class="n">max_lag</span><span class="p">:</span> <span class="nb">int</span>
+  <span class="n">hold_prob</span><span class="p">:</span> <span class="nb">float</span>
+  <span class="n">update_period</span><span class="p">:</span> <span class="nb">int</span>
+  <span class="n">per_env_phase</span><span class="p">:</span> <span class="nb">bool</span>
+  <span class="n">absorbed_actuators</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Actuator</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+  <span class="n">delay_buffer</span><span class="p">:</span> <span class="n">DelayBuffer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="BuiltinActuatorGroup">
 <a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.BuiltinActuatorGroup">[docs]</a>
-<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">BuiltinActuatorGroup</span><span class="p">:</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Groups builtin actuators for batch processing.</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Groups builtin actuators for batch processing.&quot;&quot;&quot;</span>
 
-<span class="sd">  Builtin actuators (position, velocity, motor) just pass through target values</span>
-<span class="sd">  from entity data to control signals. This class pre-computes the mappings and</span>
-<span class="sd">  enables direct writes without per-actuator overhead.</span>
-<span class="sd">  &quot;&quot;&quot;</span>
-
-  <span class="c1"># Map from (BuiltinActuator type, transmission_type) to (target_ids, ctrl_ids).</span>
   <span class="n">_index_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
     <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">BuiltinActuatorType</span><span class="p">],</span> <span class="n">TransmissionType</span><span class="p">],</span>
     <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
   <span class="p">]</span>
+  <span class="n">_delayed_groups</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_FusedDelayGroup</span><span class="p">]</span>
 
 <div class="viewcode-block" id="BuiltinActuatorGroup.process">
 <a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.BuiltinActuatorGroup.process">[docs]</a>
@@ -461,62 +483,125 @@ document.write(`
   <span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span>
     <span class="n">actuators</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Actuator</span><span class="p">],</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">BuiltinActuatorGroup</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Actuator</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register builtin actuators and pre-compute their mappings.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Classify actuators into builtin groups and custom actuators.</span>
+
+<span class="sd">    Non-delayed builtins go into direct index groups. Delayed builtins with matching</span>
+<span class="sd">    delay config are fused into shared delay buffer groups. Everything else is returned</span>
+<span class="sd">    as custom actuators.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">      actuators: List of initialized actuators to process.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">      A tuple containing:</span>
-<span class="sd">        - BuiltinActuatorGroup with pre-computed mappings.</span>
-<span class="sd">        - List of custom (non-builtin) actuators.</span>
+<span class="sd">      A tuple of (builtin group, custom actuators).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
     <span class="n">builtin_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
       <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">BuiltinActuatorType</span><span class="p">],</span> <span class="n">TransmissionType</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Actuator</span><span class="p">]</span>
     <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">delayed_grouped</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Actuator</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">custom_actuators</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Actuator</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="c1"># Group actuators by (type, transmission_type).</span>
     <span class="k">for</span> <span class="n">act</span> <span class="ow">in</span> <span class="n">actuators</span><span class="p">:</span>
-      <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">act</span><span class="p">,</span> <span class="n">BuiltinActuatorType</span><span class="p">):</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">act</span><span class="p">,</span> <span class="n">BuiltinActuatorType</span><span class="p">):</span>
+        <span class="n">custom_actuators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">act</span><span class="p">)</span>
+        <span class="k">continue</span>
+
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">act</span><span class="o">.</span><span class="n">has_delay</span><span class="p">:</span>
         <span class="n">key</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">BuiltinActuatorType</span><span class="p">],</span> <span class="n">TransmissionType</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
           <span class="nb">type</span><span class="p">(</span><span class="n">act</span><span class="p">),</span>
           <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">transmission_type</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">builtin_groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">act</span><span class="p">)</span>
-      <span class="k">else</span><span class="p">:</span>
-        <span class="n">custom_actuators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">act</span><span class="p">)</span>
+        <span class="k">continue</span>
 
-    <span class="c1"># Return stacked indices for each (actuator_type, transmission_type) group.</span>
+      <span class="c1"># Delayed builtin: fuse into shared delay buffer group.</span>
+      <span class="n">delay_key</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">type</span><span class="p">(</span><span class="n">act</span><span class="p">),</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">transmission_type</span><span class="p">,</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_min_lag</span><span class="p">,</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_max_lag</span><span class="p">,</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_hold_prob</span><span class="p">,</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_update_period</span><span class="p">,</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_per_env_phase</span><span class="p">,</span>
+      <span class="p">)</span>
+      <span class="n">delayed_grouped</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">delay_key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">act</span><span class="p">)</span>
+
+    <span class="c1"># Build non-delayed index groups.</span>
     <span class="n">index_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
       <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">BuiltinActuatorType</span><span class="p">],</span> <span class="n">TransmissionType</span><span class="p">],</span>
       <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
     <span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
       <span class="n">key</span><span class="p">:</span> <span class="p">(</span>
-        <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">act</span><span class="o">.</span><span class="n">target_ids</span> <span class="k">for</span> <span class="n">act</span> <span class="ow">in</span> <span class="n">acts</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
-        <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">act</span><span class="o">.</span><span class="n">ctrl_ids</span> <span class="k">for</span> <span class="n">act</span> <span class="ow">in</span> <span class="n">acts</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="o">.</span><span class="n">target_ids</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">acts</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="o">.</span><span class="n">ctrl_ids</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">acts</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
       <span class="p">)</span>
       <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">acts</span> <span class="ow">in</span> <span class="n">builtin_groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
     <span class="p">}</span>
-    <span class="k">return</span> <span class="n">BuiltinActuatorGroup</span><span class="p">(</span><span class="n">index_groups</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">custom_actuators</span><span class="p">)</span></div>
+
+    <span class="c1"># Build delayed fused groups.</span>
+    <span class="n">delayed_groups</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_FusedDelayGroup</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">base_type</span><span class="p">,</span> <span class="n">transmission_type</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">),</span> <span class="n">acts</span> <span class="ow">in</span> <span class="n">delayed_grouped</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">target_attr</span> <span class="o">=</span> <span class="n">_TARGET_TENSOR_MAP</span><span class="p">[(</span><span class="n">base_type</span><span class="p">,</span> <span class="n">transmission_type</span><span class="p">)]</span>
+      <span class="n">target_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="o">.</span><span class="n">target_ids</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">acts</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+      <span class="n">ctrl_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="o">.</span><span class="n">ctrl_ids</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">acts</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+      <span class="n">cfg</span> <span class="o">=</span> <span class="n">acts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cfg</span>
+      <span class="n">delayed_groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="n">_FusedDelayGroup</span><span class="p">(</span>
+          <span class="n">target_attr</span><span class="o">=</span><span class="n">target_attr</span><span class="p">,</span>
+          <span class="n">target_ids</span><span class="o">=</span><span class="n">target_ids</span><span class="p">,</span>
+          <span class="n">ctrl_ids</span><span class="o">=</span><span class="n">ctrl_ids</span><span class="p">,</span>
+          <span class="n">min_lag</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_min_lag</span><span class="p">,</span>
+          <span class="n">max_lag</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_max_lag</span><span class="p">,</span>
+          <span class="n">hold_prob</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_hold_prob</span><span class="p">,</span>
+          <span class="n">update_period</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_update_period</span><span class="p">,</span>
+          <span class="n">per_env_phase</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_per_env_phase</span><span class="p">,</span>
+          <span class="n">absorbed_actuators</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">acts</span><span class="p">),</span>
+        <span class="p">)</span>
+      <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">BuiltinActuatorGroup</span><span class="p">(</span><span class="n">index_groups</span><span class="p">,</span> <span class="n">delayed_groups</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">custom_actuators</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BuiltinActuatorGroup.initialize">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.BuiltinActuatorGroup.initialize">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_envs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create fused delay buffers for delayed builtin groups.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delayed_groups</span><span class="p">:</span>
+      <span class="n">group</span><span class="o">.</span><span class="n">delay_buffer</span> <span class="o">=</span> <span class="n">DelayBuffer</span><span class="p">(</span>
+        <span class="n">min_lag</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">min_lag</span><span class="p">,</span>
+        <span class="n">max_lag</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">max_lag</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="n">num_envs</span><span class="p">,</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">hold_prob</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">hold_prob</span><span class="p">,</span>
+        <span class="n">update_period</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">update_period</span><span class="p">,</span>
+        <span class="n">per_env_phase</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">per_env_phase</span><span class="p">,</span>
+      <span class="p">)</span>
+      <span class="c1"># Alias the fused buffer into each absorbed actuator so that per-actuator reset</span>
+      <span class="c1"># and set_lags operate on the shared buffer.</span>
+      <span class="k">for</span> <span class="n">act</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">absorbed_actuators</span><span class="p">:</span>
+        <span class="n">act</span><span class="o">.</span><span class="n">_delay_buffer</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">delay_buffer</span></div>
 
 
 <div class="viewcode-block" id="BuiltinActuatorGroup.apply_controls">
 <a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.BuiltinActuatorGroup.apply_controls">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="nf">apply_controls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">EntityData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write builtin actuator controls directly to simulation data.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">      data: Entity data containing targets and control arrays.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write builtin actuator controls to simulation data.&quot;&quot;&quot;</span>
+    <span class="c1"># Non-delayed: direct write.</span>
     <span class="k">for</span> <span class="p">(</span><span class="n">actuator_type</span><span class="p">,</span> <span class="n">transmission_type</span><span class="p">),</span> <span class="p">(</span>
       <span class="n">target_ids</span><span class="p">,</span>
       <span class="n">ctrl_ids</span><span class="p">,</span>
     <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_index_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
       <span class="n">attr_name</span> <span class="o">=</span> <span class="n">_TARGET_TENSOR_MAP</span><span class="p">[(</span><span class="n">actuator_type</span><span class="p">,</span> <span class="n">transmission_type</span><span class="p">)]</span>
       <span class="n">target_tensor</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
-      <span class="n">data</span><span class="o">.</span><span class="n">write_ctrl</span><span class="p">(</span><span class="n">target_tensor</span><span class="p">[:,</span> <span class="n">target_ids</span><span class="p">],</span> <span class="n">ctrl_ids</span><span class="p">)</span></div>
+      <span class="n">data</span><span class="o">.</span><span class="n">write_ctrl</span><span class="p">(</span><span class="n">target_tensor</span><span class="p">[:,</span> <span class="n">target_ids</span><span class="p">],</span> <span class="n">ctrl_ids</span><span class="p">)</span>
+
+    <span class="c1"># Delayed: append to buffer, compute delayed value, write.</span>
+    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delayed_groups</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">group</span><span class="o">.</span><span class="n">delay_buffer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+      <span class="n">target_tensor</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">group</span><span class="o">.</span><span class="n">target_attr</span><span class="p">)</span>
+      <span class="n">targets</span> <span class="o">=</span> <span class="n">target_tensor</span><span class="p">[:,</span> <span class="n">group</span><span class="o">.</span><span class="n">target_ids</span><span class="p">]</span>
+      <span class="n">group</span><span class="o">.</span><span class="n">delay_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+      <span class="n">data</span><span class="o">.</span><span class="n">write_ctrl</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">delay_buffer</span><span class="o">.</span><span class="n">compute</span><span class="p">(),</span> <span class="n">group</span><span class="o">.</span><span class="n">ctrl_ids</span><span class="p">)</span></div>
 </div>
 
 </pre></div>
@@ -566,7 +651,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

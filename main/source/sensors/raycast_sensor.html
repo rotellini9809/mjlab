@@ -59,7 +59,7 @@
     <link rel="prev" title="Sensors" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -471,6 +473,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#geom-group-filtering">Geom group filtering</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output">Output</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#terrainheightsensor">TerrainHeightSensor</a></li>
 </ul>
             </nav>
         </div>
@@ -744,6 +747,34 @@ runtime.</p>
 </pre></div>
 </div>
 </section>
+<section id="terrainheightsensor">
+<h2>TerrainHeightSensor<a class="headerlink" href="#terrainheightsensor" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">TerrainHeightSensor</span></code> is a thin <code class="docutils literal notranslate"><span class="pre">RayCastSensor</span></code> subclass that adds
+per-frame vertical clearance to the sensor data. It computes
+<code class="docutils literal notranslate"><span class="pre">frame_z</span> <span class="pre">-</span> <span class="pre">hit_z</span></code> for each ray, replaces misses with <code class="docutils literal notranslate"><span class="pre">max_distance</span></code>,
+and reduces across rays per frame.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.sensor</span><span class="w"> </span><span class="kn">import</span> <span class="n">TerrainHeightSensorCfg</span><span class="p">,</span> <span class="n">RingPatternCfg</span><span class="p">,</span> <span class="n">ObjRef</span>
+
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">TerrainHeightSensorCfg</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;foot_height&quot;</span><span class="p">,</span>
+    <span class="n">frame</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">ObjRef</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;left_foot&quot;</span><span class="p">,</span> <span class="n">entity</span><span class="o">=</span><span class="s2">&quot;robot&quot;</span><span class="p">),</span>
+        <span class="n">ObjRef</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;right_foot&quot;</span><span class="p">,</span> <span class="n">entity</span><span class="o">=</span><span class="s2">&quot;robot&quot;</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">pattern</span><span class="o">=</span><span class="n">RingPatternCfg</span><span class="o">.</span><span class="n">single_ring</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">max_distance</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">include_geom_groups</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,),</span>
+<span class="p">)</span>
+
+<span class="c1"># At runtime:</span>
+<span class="n">sensor</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">scene</span><span class="p">[</span><span class="s2">&quot;foot_height&quot;</span><span class="p">]</span>
+<span class="n">sensor</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">heights</span>    <span class="c1"># [B, F] vertical clearance per foot</span>
+<span class="n">sensor</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">distances</span>  <span class="c1"># [B, N] raw ray distances (inherited)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">reduction</span></code> config field controls how rays are aggregated within
+each frame: <code class="docutils literal notranslate"><span class="pre">&quot;min&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;max&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;mean&quot;</span></code>.</p>
+</section>
 </section>
 
 
@@ -801,6 +832,7 @@ runtime.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#geom-group-filtering">Geom group filtering</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output">Output</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#terrainheightsensor">TerrainHeightSensor</a></li>
 </ul>
   </nav></div>
 
@@ -834,7 +866,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

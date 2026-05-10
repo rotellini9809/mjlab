@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Architecture Overview &#8212; mjlab Documentation</title>
+    <title>Recorders &#8212; mjlab Documentation</title>
   
   
   
@@ -51,12 +51,12 @@
     <script src="../_static/copybutton.js?v=f281be69"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'source/architecture_overview';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'source/recorders';</script>
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Entity" href="entity/index.html" />
-    <link rel="prev" title="Contributing" href="contributing.html" />
+    <link rel="next" title="Training with RSL-RL" href="training/rsl_rl.html" />
+    <link rel="prev" title="Metrics" href="metrics.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
     <meta name="docbuild:last-update" content="May 10, 2026"/>
@@ -169,7 +169,7 @@
 <div class="sidebar-version-switcher">
   <label class="sidebar-version-label" for="version-select">Version</label>
   <select id="version-select" class="sidebar-version-select" onchange="location = this.value;">
-    <option value="architecture_overview.html" selected>main</option>
+    <option value="recorders.html" selected>main</option>
   </select>
 </div>
 </div>
@@ -185,8 +185,8 @@
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Concepts</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Architecture Overview</a></li>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="entity/entity_data.html">Entity Data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
@@ -202,7 +202,7 @@
 <li class="toctree-l1"><a class="reference internal" href="terrain.html">Terrain</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">The Manager Layer</span></p>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="environment_config.html">Environment Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="observations.html">Observations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="actions.html">Actions</a></li>
@@ -213,7 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="recorders.html">Recorders</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -322,7 +322,7 @@
       
       
       
-      <li><a href="https://github.com/mujocolab/mjlab/edit/main/docs/source/architecture_overview.rst" target="_blank"
+      <li><a href="https://github.com/mujocolab/mjlab/edit/main/docs/source/recorders.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -339,7 +339,7 @@
       
       
       
-      <li><a href="https://github.com/mujocolab/mjlab/issues/new?title=Issue%20on%20page%20%2Fsource/architecture_overview.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/mujocolab/mjlab/issues/new?title=Issue%20on%20page%20%2Fsource/recorders.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -369,7 +369,7 @@
       
       
       
-      <li><a href="../_sources/source/architecture_overview.rst" target="_blank"
+      <li><a href="../_sources/source/recorders.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -453,7 +453,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Architecture Overview</h1>
+    <h1>Recorders</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -463,9 +463,9 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-simulation-layer">The simulation layer</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-manager-layer">The manager layer</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-environment-lifecycle">The environment lifecycle</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lifecycle-hooks">Lifecycle hooks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-a-recorder-term">Writing a recorder term</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#registration">Registration</a></li>
 </ul>
             </nav>
         </div>
@@ -477,177 +477,110 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="architecture-overview">
-<span id="id1"></span><h1>Architecture Overview<a class="headerlink" href="#architecture-overview" title="Link to this heading">#</a></h1>
-<p>mjlab is organized into two layers: a <strong>simulation layer</strong> that models
-the robot and world, and a <strong>manager layer</strong> that defines the
-reinforcement learning problem on top of it. Understanding this separation
-is the fastest way to build a mental map of the system.</p>
-<figure class="align-center" id="id2">
-<a class="reference internal image-reference" href="../_images/architecture_diagram.png"><img alt="mjlab architecture diagram" src="../_images/architecture_diagram.png" style="width: 60%;" />
-</a>
-<figcaption>
-<p><span class="caption-text">Entities are composed into an MjSpec, compiled, and transferred to
-MuJoCo Warp for GPU simulation. The ManagerBasedRlEnv orchestrates the
-MDP; RSL-RL handles training.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
-</figcaption>
-</figure>
-<section id="the-simulation-layer">
-<h2>The simulation layer<a class="headerlink" href="#the-simulation-layer" title="Link to this heading">#</a></h2>
-<p><strong>Scene pipeline.</strong>
-mjlab constructs scenes by composing entity descriptions into a single
-<a class="reference external" href="https://mujoco.readthedocs.io/en/stable/programming/modeledit.html">MjSpec</a>.
-Each entity starts from an
-<a class="reference external" href="https://mujoco.readthedocs.io/en/latest/modeling.html">MJCF</a> file
-loaded via <code class="docutils literal notranslate"><span class="pre">MjSpec.from_file()</span></code>. Users who define everything in XML can
-use this directly. For more control, Python dataclasses can extend or
-override properties on the loaded spec: actuators, collision rules,
-materials, sensors, and initial state. This hybrid approach lets users
-start from existing MuJoCo models and layer on task-specific configuration
-without modifying the original XML. The composed specification is compiled
-into an <code class="docutils literal notranslate"><span class="pre">MjModel</span></code> on the CPU, then transferred to the GPU via
-<a class="reference external" href="https://mujoco.readthedocs.io/en/stable/mjwarp/index.html">MuJoCo Warp</a>,
-which is built on <a class="reference external" href="https://nvidia.github.io/warp/">NVIDIA Warp</a>.</p>
-<p><strong>MuJoCo Warp.</strong>
-MuJoCo Warp is a GPU-accelerated backend for MuJoCo. It preserves
-MuJoCo’s <code class="docutils literal notranslate"><span class="pre">MjModel</span></code>/<code class="docutils literal notranslate"><span class="pre">MjData</span></code> paradigm but adds a leading <em>world</em>
-dimension: a single <code class="docutils literal notranslate"><span class="pre">MjData</span></code> object holds the state of N independent
-simulation instances in parallel, enabling thousands of environments to
-be stepped simultaneously. Model parameters are shared across all worlds
-by default, and individual fields can be expanded to vary per-world when
-domain randomization requires it. mjlab captures the simulation step as a
-<a class="reference external" href="https://developer.nvidia.com/blog/cuda-graphs">CUDA graph</a>: the kernel
-execution sequence is recorded once and replayed on subsequent calls,
-eliminating CPU-side dispatch overhead.</p>
+  <section id="recorders">
+<span id="id1"></span><h1>Recorders<a class="headerlink" href="#recorders" title="Link to this heading">#</a></h1>
+<p>The recorder manager provides lifecycle hooks for logging data during
+rollouts. Unlike rewards, recorders have no effect on the optimization
+loop. They exist purely to let you capture observations, actions, or any
+other environment state without modifying mjlab internals.</p>
+<p>Each recorder term is a class that you implement. mjlab calls its methods
+at the right moments and leaves all I/O decisions to you. If the <code class="docutils literal notranslate"><span class="pre">recorders</span></code>
+dictionary on <code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code> is empty, the environment substitutes a
+lightweight no-op manager with zero overhead.</p>
+<section id="lifecycle-hooks">
+<h2>Lifecycle hooks<a class="headerlink" href="#lifecycle-hooks" title="Link to this heading">#</a></h2>
+<p>The manager exposes three hooks per term:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">record_pre_reset(env_ids)</span></code></dt><dd><p>Called inside <code class="docutils literal notranslate"><span class="pre">env.step()</span></code> before terminated environments are reset.
+<code class="docutils literal notranslate"><span class="pre">obs_buf</span></code> holds the observation from the end of the <em>previous</em> step
+(the input the agent used to choose the terminal action, not the
+post-action terminal state). <code class="docutils literal notranslate"><span class="pre">action_manager.action</span></code> holds the
+terminal action and is still valid here; it will be zeroed for these
+environments by <code class="docutils literal notranslate"><span class="pre">_reset_idx</span></code> immediately after. <code class="docutils literal notranslate"><span class="pre">reward_buf</span></code> holds
+the terminal reward. This is the right place to record the terminal
+transition <code class="docutils literal notranslate"><span class="pre">(obs_t,</span> <span class="pre">action_t,</span> <span class="pre">reward_t,</span> <span class="pre">done=True)</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">record_post_reset(env_ids)</span></code></dt><dd><p>Called after a reset completes and fresh observations are available.
+Fires at the end of <code class="docutils literal notranslate"><span class="pre">env.reset()</span></code> (all environments) and within
+<code class="docutils literal notranslate"><span class="pre">env.step()</span></code> after each batch of terminated environments is reset.
+<code class="docutils literal notranslate"><span class="pre">obs_buf[env_ids]</span></code> holds the initial observation of the new episode;
+<code class="docutils literal notranslate"><span class="pre">action_manager.action[env_ids]</span></code> is zero. Use this to initialize
+per-episode state or record the first observation.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">record_post_step()</span></code></dt><dd><p>Called at the end of every <code class="docutils literal notranslate"><span class="pre">env.step()</span></code> with fresh observations.
+For environments that reset during this step, <code class="docutils literal notranslate"><span class="pre">action_manager.action</span></code>
+has been zeroed and <code class="docutils literal notranslate"><span class="pre">obs_buf</span></code> holds the initial state of the new
+episode rather than the post-action terminal observation. Use
+<code class="docutils literal notranslate"><span class="pre">record_pre_reset</span></code> for those environments’ terminal transitions and
+<code class="docutils literal notranslate"><span class="pre">self._env.reset_buf</span></code> to identify which environments reset.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">close()</span></code></dt><dd><p>Called when the environment closes. Release file handles and flush
+buffers here.</p>
+</dd>
+</dl>
+</section>
+<section id="writing-a-recorder-term">
+<h2>Writing a recorder term<a class="headerlink" href="#writing-a-recorder-term" title="Link to this heading">#</a></h2>
+<p>Subclass <a class="reference internal" href="api/managers.html#mjlab.managers.RecorderTerm" title="mjlab.managers.RecorderTerm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a> and override whichever
+hooks you need. The environment is available as <code class="docutils literal notranslate"><span class="pre">self._env</span></code>, giving
+access to <code class="docutils literal notranslate"><span class="pre">self._env.obs_buf</span></code>, <code class="docutils literal notranslate"><span class="pre">self._env.action_manager.action</span></code>, and
+all other managers.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.managers</span><span class="w"> </span><span class="kn">import</span> <span class="n">RecorderTerm</span><span class="p">,</span> <span class="n">RecorderTermCfg</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CsvRecorder</span><span class="p">(</span><span class="n">RecorderTerm</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">],</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_pre_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_ids</span><span class="p">):</span>
+        <span class="c1"># Terminal transition: action is still intact here.</span>
+        <span class="c1"># It will be zeroed by _reset_idx immediately after this returns.</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">obs_buf</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">][</span><span class="n">env_ids</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">act</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">action_manager</span><span class="o">.</span><span class="n">action</span><span class="p">[</span><span class="n">env_ids</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">act</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">+</span> <span class="n">a</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_post_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Skip envs that just reset: their terminal pair was written</span>
+        <span class="c1"># in record_pre_reset and their action is now zeroed.</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">reset_buf</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">obs_buf</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">][</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">act</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">action_manager</span><span class="o">.</span><span class="n">action</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">act</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">+</span> <span class="n">a</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The term receives the full <code class="docutils literal notranslate"><span class="pre">cfg</span></code> object so it can read any values you
+put in <code class="docutils literal notranslate"><span class="pre">cfg.params</span></code>.</p>
+</section>
+<section id="registration">
+<h2>Registration<a class="headerlink" href="#registration" title="Link to this heading">#</a></h2>
+<p>Add the term to the <code class="docutils literal notranslate"><span class="pre">recorders</span></code> dictionary on your environment config:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.managers</span><span class="w"> </span><span class="kn">import</span> <span class="n">RecorderTermCfg</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyEnvCfg</span><span class="p">(</span><span class="n">SomeTaskEnvCfg</span><span class="p">):</span>
+    <span class="n">recorders</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;csv&quot;</span><span class="p">:</span> <span class="n">RecorderTermCfg</span><span class="p">(</span>
+            <span class="n">func</span><span class="o">=</span><span class="n">CsvRecorder</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;rollout.csv&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+    <span class="p">})</span>
+</pre></div>
+</div>
+<p>Multiple terms can be registered under different keys and run together.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>CUDA graph capture is a one-time cost at environment startup. Per-episode
-resets and domain randomization events run as regular Python between graph
-replays and do not break the capture.</p>
+<p><code class="docutils literal notranslate"><span class="pre">func</span></code> must be a <a class="reference internal" href="api/managers.html#mjlab.managers.RecorderTerm" title="mjlab.managers.RecorderTerm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a> subclass.
+Function-based terms are not supported because recorder terms are
+stateful.</p>
 </div>
-<p><strong>Components.</strong>
-The simulation layer provides four core components, each with its own
-documentation page:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="entity/index.html#entity"><span class="std std-ref">Entity</span></a>: a robot, a manipulated object, or a static object such
-as <a class="reference internal" href="terrain.html#terrain"><span class="std std-ref">terrain</span></a>, defined by an MJCF description plus
-optional Python configuration for actuators, collision rules, and
-initial state.</p></li>
-<li><p><a class="reference internal" href="actuators.html#actuators"><span class="std std-ref">Actuators</span></a>: how entities are controlled. Users can wrap actuators
-already defined in MJCF or create new ones from Python configuration.</p></li>
-<li><p><a class="reference internal" href="sensors/index.html#sensors"><span class="std std-ref">Sensors</span></a>: how the world is observed. Includes MuJoCo-native
-sensors as well as custom sensors like RGB-D cameras and raycasters.</p></li>
-<li><p><a class="reference internal" href="scene.html#scene"><span class="std std-ref">Scene</span></a>: scene composition and environment placement.</p></li>
-</ul>
-</section>
-<section id="the-manager-layer">
-<h2>The manager layer<a class="headerlink" href="#the-manager-layer" title="Link to this heading">#</a></h2>
-<p>On top of the simulation layer, mjlab adopts the manager-based environment
-design introduced by Isaac Lab. Users define their environment by composing
-small, self-contained <em>terms</em> (reward functions, observation computations,
-domain randomization events) and register them with the appropriate manager.
-Each manager handles the lifecycle of its terms: calling them at the right
-point in the simulation loop, aggregating their outputs, and exposing
-diagnostics.</p>
-<p>Terms can be plain functions for stateless computations, or classes that
-inherit from <code class="docutils literal notranslate"><span class="pre">ManagerTermBase</span></code> when they need to cache expensive setup
-(such as resolving regex patterns to joint indices at initialization) or
-maintain per-episode state through a <code class="docutils literal notranslate"><span class="pre">reset()</span></code> hook.</p>
-<p>Environments are configured through <code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code>, a plain
-dataclass that holds term configuration dictionaries for each manager.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.envs</span><span class="w"> </span><span class="kn">import</span> <span class="n">ManagerBasedRlEnvCfg</span>
-
-<span class="n">cfg</span> <span class="o">=</span> <span class="n">ManagerBasedRlEnvCfg</span><span class="p">(</span>
-    <span class="n">decimation</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>           <span class="c1"># 4 physics steps per policy step</span>
-    <span class="n">episode_length_s</span><span class="o">=</span><span class="mf">20.0</span><span class="p">,</span>
-    <span class="n">scene</span><span class="o">=...</span><span class="p">,</span>              <span class="c1"># SceneCfg: terrain, entities, sensors</span>
-    <span class="n">sim</span><span class="o">=...</span><span class="p">,</span>                <span class="c1"># SimulationCfg: timestep, solver, integrator</span>
-    <span class="n">observations</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>     <span class="c1"># ObservationManager terms</span>
-    <span class="n">actions</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>          <span class="c1"># ActionManager terms</span>
-    <span class="n">rewards</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>          <span class="c1"># RewardManager terms</span>
-    <span class="n">terminations</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>     <span class="c1"># TerminationManager terms</span>
-    <span class="n">events</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>           <span class="c1"># EventManager terms (resets, DR)</span>
-    <span class="n">commands</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>         <span class="c1"># CommandManager terms (velocity targets, etc.)</span>
-    <span class="n">curriculum</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>       <span class="c1"># CurriculumManager terms</span>
-    <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>          <span class="c1"># MetricsManager terms</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-<p class="rubric">The eight managers</p>
-<ul class="simple">
-<li><p><strong>ObservationManager</strong>: assembles observation groups with configurable
-processing (clipping, noise, delay, history). Supports asymmetric
-actor-critic. See <a class="reference internal" href="observations.html#observations"><span class="std std-ref">Observations</span></a>.</p></li>
-<li><p><strong>ActionManager</strong>: routes the policy’s output tensor to entity actuators,
-handling scaling and offset. See <a class="reference internal" href="actions.html#actions"><span class="std std-ref">Actions</span></a>.</p></li>
-<li><p><strong>RewardManager</strong>: computes a weighted sum of reward terms, scaled by step
-duration for frequency invariance. See <a class="reference internal" href="rewards.html#rewards"><span class="std std-ref">Rewards</span></a>.</p></li>
-<li><p><strong>TerminationManager</strong>: evaluates stop conditions, distinguishing terminal
-resets from timeouts. See <a class="reference internal" href="terminations.html#terminations"><span class="std std-ref">Terminations</span></a>.</p></li>
-<li><p><strong>EventManager</strong>: fires terms at lifecycle points (startup, reset,
-interval). Domain randomization is implemented through event terms.
-See <a class="reference internal" href="events.html#events"><span class="std std-ref">Events</span></a> and <a class="reference internal" href="randomization.html#domain-randomization"><span class="std std-ref">Domain Randomization</span></a>.</p></li>
-<li><p><strong>CommandManager</strong>: generates and resamples goal signals (velocity
-targets, pose targets). See <a class="reference internal" href="commands.html#commands"><span class="std std-ref">Commands</span></a>.</p></li>
-<li><p><strong>CurriculumManager</strong>: adjusts training conditions based on policy
-performance. See <a class="reference internal" href="curriculum.html#curriculum"><span class="std std-ref">Curriculum</span></a>.</p></li>
-<li><p><strong>MetricsManager</strong>: logs custom per-step values as episode averages.
-See <a class="reference internal" href="metrics.html#metrics"><span class="std std-ref">Metrics</span></a>.</p></li>
-</ul>
-<p>For the full configuration reference covering all managers, see
-<a class="reference internal" href="environment_config.html#environment-config"><span class="std std-ref">Environment Configuration</span></a>.</p>
-</section>
-<section id="the-environment-lifecycle">
-<h2>The environment lifecycle<a class="headerlink" href="#the-environment-lifecycle" title="Link to this heading">#</a></h2>
-<p>Each environment instance passes through four phases.</p>
-<ol class="arabic simple">
-<li><p><strong>Build.</strong> <code class="docutils literal notranslate"><span class="pre">Scene</span></code> composes entity MJCF files via <code class="docutils literal notranslate"><span class="pre">MjSpec</span></code> and
-compiles <code class="docutils literal notranslate"><span class="pre">MjModel</span></code> on the CPU. <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> uploads the model to the
-GPU via MuJoCo Warp, allocating a single <code class="docutils literal notranslate"><span class="pre">MjData</span></code> with N parallel
-worlds. CUDA graphs for <code class="docutils literal notranslate"><span class="pre">step</span></code>, <code class="docutils literal notranslate"><span class="pre">forward</span></code>, <code class="docutils literal notranslate"><span class="pre">reset</span></code>, and <code class="docutils literal notranslate"><span class="pre">sense</span></code>
-are captured.</p></li>
-<li><p><strong>Initialize.</strong> Managers are constructed from the term configuration
-dictionaries. Regex patterns are matched to joint, body, and geom
-indices. Observation history and delay buffers are allocated. Model
-fields required by domain randomization terms are expanded from shared
-to per-world storage, and CUDA graphs are rebuilt to reflect the new
-layout. Startup events are fired once.</p></li>
-<li><p><strong>Reset.</strong> Called at the start of training and whenever an environment
-terminates or times out. The <code class="docutils literal notranslate"><span class="pre">EventManager</span></code> fires <code class="docutils literal notranslate"><span class="pre">reset</span></code> terms,
-which return the scene to an initial state with optional randomization.
-Command targets are resampled. Observation history buffers are cleared.</p></li>
-<li><p><strong>Step.</strong> The policy action is processed by the <code class="docutils literal notranslate"><span class="pre">ActionManager</span></code>. The
-physics simulation advances <code class="docutils literal notranslate"><span class="pre">decimation</span></code> times, with actuator commands
-applied and entity state updated each sub-step. After the decimation
-loop, the <code class="docutils literal notranslate"><span class="pre">TerminationManager</span></code> checks stop conditions, the
-<code class="docutils literal notranslate"><span class="pre">RewardManager</span></code> computes the reward signal, and any terminated
-environments are reset. A single <code class="docutils literal notranslate"><span class="pre">forward()</span></code> call refreshes derived
-quantities for all environments. The <code class="docutils literal notranslate"><span class="pre">CommandManager</span></code> advances or
-resamples goals. Interval events fire if scheduled. Sensors update. The
-<code class="docutils literal notranslate"><span class="pre">ObservationManager</span></code> assembles the observation for the next policy
-query.</p></li>
-</ol>
-<p>The step sequence in order:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>action_manager.process_action(action)
-for _ in range(decimation):
-    action_manager.apply_action()
-    sim.step()
-    scene.update()
-termination_manager.compute()
-reward_manager.compute()
-metrics_manager.compute()
-[reset terminated envs]
-sim.forward()
-command_manager.compute()
-event_manager.apply(mode=&quot;interval&quot;)
-sim.sense()
-observation_manager.compute()
-</pre></div>
-</div>
-<p>With this mental model in place, the Concepts pages cover each simulation
-layer component in detail, and The Manager Layer pages walk through each
-manager’s configuration and built-in terms. If you are coming from Isaac
-Lab, <a class="reference internal" href="migration_isaac_lab.html#migration-isaac-lab"><span class="std std-ref">Migrating from Isaac Lab</span></a> describes the key API differences.</p>
 </section>
 </section>
 
@@ -663,20 +596,20 @@ Lab, <a class="reference internal" href="migration_isaac_lab.html#migration-isaa
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="contributing.html"
+       href="metrics.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Contributing</p>
+        <p class="prev-next-title">Metrics</p>
       </div>
     </a>
     <a class="right-next"
-       href="entity/index.html"
+       href="training/rsl_rl.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Entity</p>
+        <p class="prev-next-title">Training with RSL-RL</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -696,9 +629,9 @@ Lab, <a class="reference internal" href="migration_isaac_lab.html#migration-isaa
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-simulation-layer">The simulation layer</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-manager-layer">The manager layer</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-environment-lifecycle">The environment lifecycle</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lifecycle-hooks">Lifecycle hooks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-a-recorder-term">Writing a recorder term</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#registration">Registration</a></li>
 </ul>
   </nav></div>
 

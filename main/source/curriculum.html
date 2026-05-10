@@ -59,7 +59,7 @@
     <link rel="prev" title="Domain Randomization" href="randomization.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="actuators.html">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -463,6 +465,7 @@ document.write(`
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-curriculum-functions">Built-in curriculum functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reward-curriculum">Reward curriculum</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#termination-curriculum">Termination curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#terrain-curriculum">Terrain curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-custom-curriculum-functions">Writing custom curriculum functions</a></li>
 </ul>
@@ -529,6 +532,11 @@ apply once that threshold is exceeded.</p></td>
 training step thresholds. Replaces the older <code class="docutils literal notranslate"><span class="pre">reward_weight</span></code>
 function and also supports modifying reward function parameters.</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">termination_curriculum</span></code></p></td>
+<td><p>Adjusts a termination term’s params according to training step
+thresholds. Useful for gradually tightening termination
+conditions (e.g. energy limits) as training progresses.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -583,6 +591,34 @@ example, tightening a tracking tolerance as training progresses:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">24000</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;max_vel&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}}</span>
 </pre></div>
 </div>
+</section>
+<section id="termination-curriculum">
+<h2>Termination curriculum<a class="headerlink" href="#termination-curriculum" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">termination_curriculum</span></code> schedules changes to a termination term’s
+parameters as training progresses. This is useful for gradually
+tightening termination conditions once the policy has learned basic
+behaviors.</p>
+<p><strong>Tightening an energy limit</strong></p>
+<p>Start with a permissive energy threshold and reduce it over training:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.managers.curriculum_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">CurriculumTermCfg</span>
+
+<span class="n">curriculum</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;energy_threshold&quot;</span><span class="p">:</span> <span class="n">CurriculumTermCfg</span><span class="p">(</span>
+        <span class="n">func</span><span class="o">=</span><span class="n">mdp</span><span class="o">.</span><span class="n">termination_curriculum</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;termination_name&quot;</span><span class="p">:</span> <span class="s2">&quot;energy&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;stages&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">12000</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">1000.0</span><span class="p">}},</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">24000</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">700.0</span><span class="p">}},</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">36000</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">400.0</span><span class="p">}},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">time_out</span></code> field on <code class="docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code> can also be toggled
+via stages if needed, though this is uncommon in practice.</p>
 </section>
 <section id="terrain-curriculum">
 <h2>Terrain curriculum<a class="headerlink" href="#terrain-curriculum" title="Link to this heading">#</a></h2>
@@ -658,6 +694,7 @@ level. See <a class="reference internal" href="environment_config.html#env-confi
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-curriculum-functions">Built-in curriculum functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reward-curriculum">Reward curriculum</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#termination-curriculum">Termination curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#terrain-curriculum">Terrain curriculum</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-custom-curriculum-functions">Writing custom curriculum functions</a></li>
 </ul>
@@ -693,7 +730,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

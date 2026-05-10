@@ -56,10 +56,10 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Sensors" href="sensors/index.html" />
-    <link rel="prev" title="Entity Data" href="entity/entity_data.html" />
+    <link rel="prev" title="Heterogeneous Worlds" href="entity/per_world_mesh.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -467,7 +469,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-actuators">Built-in actuators</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#explicit-actuators">Explicit actuators</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#xml-actuators">XML actuators</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#delayed-actuator">Delayed actuator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#actuator-delays">Actuator delays</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#authoring-actuator-configs">Authoring actuator configs</a></li>
@@ -514,17 +516,14 @@ starting point.</p>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>Wrap any actuator in <code class="docutils literal notranslate"><span class="pre">DelayedActuatorCfg</span></code> to model communication
+<p>Add delay fields directly on any actuator config to model communication
 latency.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelayedActuatorCfg</span><span class="p">,</span> <span class="n">BuiltinPositionActuatorCfg</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">BuiltinPositionActuatorCfg</span>
 
-<span class="n">DelayedActuatorCfg</span><span class="p">(</span>
-    <span class="n">base_cfg</span><span class="o">=</span><span class="n">BuiltinPositionActuatorCfg</span><span class="p">(</span>
-        <span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;.*&quot;</span><span class="p">,),</span>
-        <span class="n">stiffness</span><span class="o">=</span><span class="mf">80.0</span><span class="p">,</span>
-        <span class="n">damping</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
-    <span class="p">),</span>
-    <span class="n">delay_target</span><span class="o">=</span><span class="s2">&quot;position&quot;</span><span class="p">,</span>
+<span class="n">BuiltinPositionActuatorCfg</span><span class="p">(</span>
+    <span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;.*&quot;</span><span class="p">,),</span>
+    <span class="n">stiffness</span><span class="o">=</span><span class="mf">80.0</span><span class="p">,</span>
+    <span class="n">damping</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
     <span class="n">delay_min_lag</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>  <span class="c1"># Minimum 2 physics steps</span>
     <span class="n">delay_max_lag</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>  <span class="c1"># Maximum 5 physics steps</span>
 <span class="p">)</span>
@@ -652,10 +651,10 @@ velocity-based torque limits.</p>
 config finds existing actuators by matching their <code class="docutils literal notranslate"><span class="pre">target</span></code> joint name
 against the <code class="docutils literal notranslate"><span class="pre">target_names_expr</span></code> patterns. Each joint must have exactly one
 matching actuator.</p>
-<p><strong>XmlPositionActuator</strong>: Wraps existing <code class="docutils literal notranslate"><span class="pre">&lt;position&gt;</span></code> actuators</p>
-<p><strong>XmlVelocityActuator</strong>: Wraps existing <code class="docutils literal notranslate"><span class="pre">&lt;velocity&gt;</span></code> actuators</p>
-<p><strong>XmlMotorActuator</strong>: Wraps existing <code class="docutils literal notranslate"><span class="pre">&lt;motor&gt;</span></code> actuators</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">XmlPositionActuatorCfg</span>
+<p><strong>XmlActuator</strong>: Wraps any actuator already defined in the XML. The
+actuator type (position, velocity, motor, muscle) is auto detected from
+the XML element, or you can set <code class="docutils literal notranslate"><span class="pre">command_field</span></code> explicitly.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">XmlActuatorCfg</span>
 
 <span class="c1"># Robot XML already has:</span>
 <span class="c1"># &lt;actuator&gt;</span>
@@ -664,52 +663,42 @@ matching actuator.</p>
 
 <span class="c1"># Wrap existing XML actuators.</span>
 <span class="n">actuators</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">XmlPositionActuatorCfg</span><span class="p">(</span><span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;hip_joint&quot;</span><span class="p">,)),</span>
+    <span class="n">XmlActuatorCfg</span><span class="p">(</span><span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;hip_joint&quot;</span><span class="p">,)),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 </section>
-<section id="delayed-actuator">
-<h3>Delayed actuator<a class="headerlink" href="#delayed-actuator" title="Link to this heading">#</a></h3>
-<p>Generic wrapper that adds command delays to any actuator. Useful for
-modeling actuator latency and communication delays. The delay operates on
-command targets before they reach the actuator’s control law.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelayedActuatorCfg</span><span class="p">,</span> <span class="n">IdealPdActuatorCfg</span>
+<section id="actuator-delays">
+<h3>Actuator delays<a class="headerlink" href="#actuator-delays" title="Link to this heading">#</a></h3>
+<p>Any actuator config supports inline delay fields for modeling command
+latency. On a real robot, the onboard PD loop runs at KHz with direct
+encoder access, but the position target from the policy arrives late due
+to inference time and communication bus cycles. Actuator
+delay models this: the command target is delayed, but the control law
+still sees fresh joint state.</p>
+<p>This is distinct from observation delay, which models sensor pipeline
+latency (stale state going into the policy). Together they cover both
+legs of the round trip: sensor to policy to motor.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdealPdActuatorCfg</span>
 
 <span class="c1"># Add 2-5 step delay to position commands.</span>
 <span class="n">actuators</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">DelayedActuatorCfg</span><span class="p">(</span>
-        <span class="n">base_cfg</span><span class="o">=</span><span class="n">IdealPdActuatorCfg</span><span class="p">(</span>
-            <span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;.*&quot;</span><span class="p">,),</span>
-            <span class="n">stiffness</span><span class="o">=</span><span class="mf">80.0</span><span class="p">,</span>
-            <span class="n">damping</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">delay_target</span><span class="o">=</span><span class="s2">&quot;position&quot;</span><span class="p">,</span>     <span class="c1"># Delay position commands</span>
+    <span class="n">IdealPdActuatorCfg</span><span class="p">(</span>
+        <span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;.*&quot;</span><span class="p">,),</span>
+        <span class="n">stiffness</span><span class="o">=</span><span class="mf">80.0</span><span class="p">,</span>
+        <span class="n">damping</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
         <span class="n">delay_min_lag</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="n">delay_max_lag</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-        <span class="n">delay_hold_prob</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>         <span class="c1"># 30% chance to keep previous lag</span>
-        <span class="n">delay_update_period</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>      <span class="c1"># Update lag every 10 steps</span>
+        <span class="n">delay_hold_prob</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>         <span class="c1"># 30% chance to keep current lag</span>
+        <span class="n">delay_update_period</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>      <span class="c1"># Resample lag every 10 steps</span>
     <span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Multi-target delays:</strong></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">DelayedActuatorCfg</span><span class="p">(</span>
-    <span class="n">base_cfg</span><span class="o">=</span><span class="n">IdealPdActuatorCfg</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
-    <span class="n">delay_target</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;position&quot;</span><span class="p">,</span> <span class="s2">&quot;velocity&quot;</span><span class="p">,</span> <span class="s2">&quot;effort&quot;</span><span class="p">),</span>
-    <span class="n">delay_min_lag</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-    <span class="n">delay_max_lag</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-<p>Delays are quantized to physics timesteps. For example, with 500Hz physics
-(2ms/step), <code class="docutils literal notranslate"><span class="pre">delay_min_lag=2</span></code> represents a 4ms minimum delay.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Each target gets an independent delay buffer with its own lag
-schedule. This provides maximum flexibility for modeling different
-latency characteristics for position, velocity, and effort commands.</p>
-</div>
+<p>Each step, a lag is sampled uniformly from <code class="docutils literal notranslate"><span class="pre">[delay_min_lag,</span>
+<span class="pre">delay_max_lag]</span></code>. Delays are quantized to physics timesteps. For
+example, with 500Hz physics (2ms/step), <code class="docutils literal notranslate"><span class="pre">delay_min_lag=2</span></code> represents
+a 4ms minimum delay.</p>
 </section>
 </section>
 <section id="authoring-actuator-configs">
@@ -908,12 +897,12 @@ built on top of it and serve as examples of the extension pattern.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="entity/entity_data.html"
+       href="entity/per_world_mesh.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Entity Data</p>
+        <p class="prev-next-title">Heterogeneous Worlds</p>
       </div>
     </a>
     <a class="right-next"
@@ -947,7 +936,7 @@ built on top of it and serve as examples of the extension pattern.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-actuators">Built-in actuators</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#explicit-actuators">Explicit actuators</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#xml-actuators">XML actuators</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#delayed-actuator">Delayed actuator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#actuator-delays">Actuator delays</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#authoring-actuator-configs">Authoring actuator configs</a></li>
@@ -986,7 +975,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

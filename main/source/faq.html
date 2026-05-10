@@ -59,7 +59,7 @@
     <link rel="prev" title="Migrating from Isaac Lab" href="migration_isaac_lab.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="actuators.html">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -479,6 +481,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-contact-sensor-misses-collisions-when-using-decimation">My contact sensor misses collisions when using decimation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-do-i-need-to-call-sim-forward">When do I need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code>?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-aren-t-my-training-runs-reproducible-even-with-a-fixed-seed">Why aren’t my training runs reproducible even with a fixed seed?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-xml-option-flags-are-not-taking-effect">My XML <code class="docutils literal notranslate"><span class="pre">&lt;option&gt;</span></code> flags are not taking effect</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rendering-visualization">Rendering &amp; Visualization</a><ul class="visible nav section-nav flex-column">
@@ -720,6 +723,31 @@ This is a known limitation being tracked in
 <a class="reference external" href="https://github.com/google-deepmind/mujoco_warp/issues/562">mujoco_warp#562</a>.</p>
 <p>Until determinism is implemented upstream, mjlab training runs will not be
 perfectly reproducible even when setting a seed.</p>
+</section>
+<section id="my-xml-option-flags-are-not-taking-effect">
+<h3>My XML <code class="docutils literal notranslate"><span class="pre">&lt;option&gt;</span></code> flags are not taking effect<a class="headerlink" href="#my-xml-option-flags-are-not-taking-effect" title="Link to this heading">#</a></h3>
+<p>If you set simulation options like <code class="docutils literal notranslate"><span class="pre">&lt;flag</span> <span class="pre">contact=&quot;disable&quot;/&gt;</span></code> in your
+entity XML, they will be silently ignored. This is because mjlab composes
+scenes by attaching entity specs into a parent scene spec using
+<code class="docutils literal notranslate"><span class="pre">MjSpec.attach()</span></code>, which does not propagate <code class="docutils literal notranslate"><span class="pre">&lt;option&gt;</span></code> settings from
+the child to the parent. This is a MuJoCo design decision: there is no
+sensible way to merge engine options (timestep, gravity, solver settings,
+etc.) across multiple attached models.</p>
+<p>To configure simulation options, use <a class="reference internal" href="api/sim.html#mjlab.sim.MujocoCfg" title="mjlab.sim.sim.MujocoCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">MujocoCfg</span></code></a> in
+your task’s Python config:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.sim.sim</span><span class="w"> </span><span class="kn">import</span> <span class="n">MujocoCfg</span><span class="p">,</span> <span class="n">SimulationCfg</span>
+
+<span class="n">sim</span><span class="o">=</span><span class="n">SimulationCfg</span><span class="p">(</span>
+    <span class="n">mujoco</span><span class="o">=</span><span class="n">MujocoCfg</span><span class="p">(</span>
+        <span class="n">disableflags</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;contact&quot;</span><span class="p">,),</span>
+        <span class="c1"># timestep=0.01, gravity=(0, 0, -9.81), etc.</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">MujocoCfg</span></code> applies options directly to the compiled model, so they
+always take effect. mjlab will emit a warning if it detects non-default
+<code class="docutils literal notranslate"><span class="pre">&lt;option&gt;</span></code> fields on an attached entity spec.</p>
 </section>
 </section>
 <section id="rendering-visualization">
@@ -1026,6 +1054,7 @@ being worked on.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-contact-sensor-misses-collisions-when-using-decimation">My contact sensor misses collisions when using decimation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-do-i-need-to-call-sim-forward">When do I need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code>?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-aren-t-my-training-runs-reproducible-even-with-a-fixed-seed">Why aren’t my training runs reproducible even with a fixed seed?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#my-xml-option-flags-are-not-taking-effect">My XML <code class="docutils literal notranslate"><span class="pre">&lt;option&gt;</span></code> flags are not taking effect</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rendering-visualization">Rendering &amp; Visualization</a><ul class="visible nav section-nav flex-column">
@@ -1085,7 +1114,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

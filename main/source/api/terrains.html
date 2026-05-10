@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.managers" href="managers.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -478,6 +480,7 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.textures"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.textures</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.materials"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.materials</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.lights"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.lights</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.debug_vis"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.debug_vis</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.build"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.build()</span></code></a></li>
 </ul>
 </li>
@@ -833,6 +836,13 @@ scene configuration if specified there.</p>
 <dt class="sig sig-object py" id="mjlab.terrains.TerrainEntityCfg.lights">
 <span class="sig-name descname"><span class="pre">lights</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">spec_cfg.LightCfg</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.terrains.TerrainEntityCfg.lights" title="Link to this definition">#</a></dt>
 <dd><p>Lights for the scene. Defaults to a directional sun light.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.terrains.TerrainEntityCfg.debug_vis">
+<span class="sig-name descname"><span class="pre">debug_vis</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#mjlab.terrains.TerrainEntityCfg.debug_vis" title="Link to this definition">#</a></dt>
+<dd><p>Add visualization sites for environment origins, terrain origins, and
+flat patches. Defaults to False.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1944,6 +1954,7 @@ to reduce geom count.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.textures"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.textures</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.materials"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.materials</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.lights"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.lights</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.debug_vis"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.debug_vis</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.terrains.TerrainEntityCfg.build"><code class="docutils literal notranslate"><span class="pre">TerrainEntityCfg.build()</span></code></a></li>
 </ul>
 </li>
@@ -2187,7 +2198,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

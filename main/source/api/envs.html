@@ -59,7 +59,7 @@
     <link rel="prev" title="API Reference" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -189,6 +189,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -212,6 +213,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -490,7 +492,9 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.commands"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.commands</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.curriculum"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.curriculum</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.metrics"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.metrics</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.recorders"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.recorders</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.is_finite_horizon</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.auto_reset"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.auto_reset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.scale_rewards_by_dt</span></code></a></li>
 </ul>
 </li>
@@ -595,29 +599,32 @@ then action and observation managers, then other RL managers.</p>
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnv.step">
 <span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/envs/manager_based_rl_env.html#ManagerBasedRlEnv.step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnv.step" title="Link to this definition">#</a></dt>
 <dd><p>Run one environment step: apply actions, simulate, compute RL signals.</p>
-<p><strong>Forward-call placement.</strong> MuJoCo’s <code class="docutils literal notranslate"><span class="pre">mj_step</span></code> runs forward kinematics
-<em>before</em> integration, so after stepping, derived quantities (<code class="docutils literal notranslate"><span class="pre">xpos</span></code>,
-<code class="docutils literal notranslate"><span class="pre">xquat</span></code>, <code class="docutils literal notranslate"><span class="pre">site_xpos</span></code>, <code class="docutils literal notranslate"><span class="pre">cvel</span></code>, <code class="docutils literal notranslate"><span class="pre">sensordata</span></code>) lag <code class="docutils literal notranslate"><span class="pre">qpos</span></code>/<code class="docutils literal notranslate"><span class="pre">qvel</span></code>
-by one physics substep. Rather than calling <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code> twice (once
-after the decimation loop and once after the reset block), this method
-calls it <strong>once</strong>, right before observation computation. This single call
-refreshes derived quantities for <em>all</em> envs: non-reset envs pick up
-post-decimation kinematics, reset envs pick up post-reset kinematics.</p>
-<p>The tradeoff is that termination and reward managers see derived
-quantities that are stale by one physics substep (the last <code class="docutils literal notranslate"><span class="pre">mj_step</span></code>
-ran <code class="docutils literal notranslate"><span class="pre">mj_forward</span></code> from <em>pre</em>-integration <code class="docutils literal notranslate"><span class="pre">qpos</span></code>). In practice, the
-staleness is negligible for reward shaping and termination
-checks. Critically, the staleness is <em>consistent</em>: every env,
-every step, always sees the same lag, so the MDP is well-defined
-and the value function can learn the correct mapping.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">auto_reset=True</span></code> (default), environments that terminate or time out are
+reset in place and the returned observation is the post-reset state. When
+<code class="docutils literal notranslate"><span class="pre">auto_reset=False</span></code>, the reset is skipped and the returned observation is the
+terminal state; the caller must call <code class="docutils literal notranslate"><span class="pre">reset(env_ids=...)</span></code> for done envs before
+the next <code class="docutils literal notranslate"><span class="pre">step()</span></code>.</p>
+<p><strong>Forward-call placement.</strong> MuJoCo’s <code class="docutils literal notranslate"><span class="pre">mj_step</span></code> runs forward kinematics <em>before</em>
+integration, so after stepping, derived quantities (<code class="docutils literal notranslate"><span class="pre">xpos</span></code>, <code class="docutils literal notranslate"><span class="pre">xquat</span></code>,
+<code class="docutils literal notranslate"><span class="pre">site_xpos</span></code>, <code class="docutils literal notranslate"><span class="pre">cvel</span></code>, <code class="docutils literal notranslate"><span class="pre">sensordata</span></code>) lag <code class="docutils literal notranslate"><span class="pre">qpos</span></code>/<code class="docutils literal notranslate"><span class="pre">qvel</span></code> by one physics
+substep. Rather than calling <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code> twice (once after the decimation
+loop and once after the reset block), this method calls it <strong>once</strong>, right
+before observation computation. This single call refreshes derived quantities
+for <em>all</em> envs: non-reset envs pick up post-decimation kinematics, reset envs
+pick up post-reset kinematics.</p>
+<p>The tradeoff is that termination and reward managers see derived quantities that
+are stale by one physics substep (the last <code class="docutils literal notranslate"><span class="pre">mj_step</span></code> ran <code class="docutils literal notranslate"><span class="pre">mj_forward</span></code> from
+<em>pre</em>-integration <code class="docutils literal notranslate"><span class="pre">qpos</span></code>). In practice, the staleness is negligible for reward
+shaping and termination checks. Critically, the staleness is <em>consistent</em>: every
+env, every step, always sees the same lag, so the MDP is well-defined and the
+value function can learn the correct mapping.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Event and command authors do not need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code>
-themselves. This method handles it. The only constraint is: do not
-read derived quantities (<code class="docutils literal notranslate"><span class="pre">root_link_pose_w</span></code>, <code class="docutils literal notranslate"><span class="pre">body_link_vel_w</span></code>,
-etc.) in the same function that writes state
-(<code class="docutils literal notranslate"><span class="pre">write_root_state_to_sim</span></code>, <code class="docutils literal notranslate"><span class="pre">write_joint_state_to_sim</span></code>, etc.).
-See <a class="reference internal" href="../faq.html#faq"><span class="std std-ref">FAQ &amp; Troubleshooting</span></a> for details.</p>
+<p>Event and command authors do not need to call <code class="docutils literal notranslate"><span class="pre">sim.forward()</span></code> themselves.
+This method handles it. The only constraint is: do not read derived quantities
+(<code class="docutils literal notranslate"><span class="pre">root_link_pose_w</span></code>, <code class="docutils literal notranslate"><span class="pre">body_link_vel_w</span></code>, etc.) in the same function that
+writes state (<code class="docutils literal notranslate"><span class="pre">write_root_state_to_sim</span></code>, <code class="docutils literal notranslate"><span class="pre">write_joint_state_to_sim</span></code>,
+etc.). See <a class="reference internal" href="../faq.html#faq"><span class="std std-ref">FAQ &amp; Troubleshooting</span></a> for details.</p>
 </div>
 </dd></dl>
 
@@ -731,6 +738,13 @@ contact parameters, and NaN guarding.</p>
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.recorders">
+<span class="sig-name descname"><span class="pre">recorders</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="managers.html#mjlab.managers.RecorderTermCfg" title="mjlab.managers.recorder_manager.RecorderTermCfg"><span class="pre">RecorderTermCfg</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.recorders" title="Link to this definition">#</a></dt>
+<dd><p>Recorder terms for logging observations, actions, or other data during rollouts.
+If empty, a no-op manager is used with zero overhead.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon">
 <span class="sig-name descname"><span class="pre">is_finite_horizon</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon" title="Link to this definition">#</a></dt>
 <dd><p>Whether the task has a finite or infinite horizon. Defaults to False (infinite).</p>
@@ -741,6 +755,19 @@ no future value exists beyond it, so the agent receives a terminal done signal.<
 receives a truncated done signal to bootstrap the value of continuing beyond the
 limit.</p></li>
 </ul>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mjlab.envs.ManagerBasedRlEnvCfg.auto_reset">
+<span class="sig-name descname"><span class="pre">auto_reset</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#mjlab.envs.ManagerBasedRlEnvCfg.auto_reset" title="Link to this definition">#</a></dt>
+<dd><p>Whether to automatically reset environments that terminate or time out.</p>
+<p>When True (default), <code class="docutils literal notranslate"><span class="pre">step()</span></code> resets done environments and returns post-reset
+observations. When False, <code class="docutils literal notranslate"><span class="pre">step()</span></code> returns the true terminal observation and the
+caller must explicitly call <code class="docutils literal notranslate"><span class="pre">reset(env_ids=...)</span></code> for done environments before the
+next <code class="docutils literal notranslate"><span class="pre">step()</span></code>.</p>
+<p>Note: mjlab’s bundled <code class="docutils literal notranslate"><span class="pre">train.py</span></code> goes through rsl_rl’s <code class="docutils literal notranslate"><span class="pre">OnPolicyRunner</span></code>, which
+does not drive manual resets. <code class="docutils literal notranslate"><span class="pre">auto_reset=False</span></code> is intended for users running
+their own training loop (or a wrapper that handles the reset between steps).</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -853,7 +880,9 @@ If iterable is specified the tuple is initialized from iterable’s items.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.commands"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.commands</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.curriculum"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.curriculum</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.metrics"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.metrics</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.recorders"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.recorders</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.is_finite_horizon"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.is_finite_horizon</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.auto_reset"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.auto_reset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.envs.ManagerBasedRlEnvCfg.scale_rewards_by_dt"><code class="docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg.scale_rewards_by_dt</span></code></a></li>
 </ul>
 </li>
@@ -900,7 +929,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

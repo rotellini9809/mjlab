@@ -118,16 +118,14 @@ For simple cases a lambda suffices:
 
     spec_fn = lambda: mujoco.MjSpec.from_file("robot.xml")
 
-For anything more involved, use a regular function. The asset zoo robots
-all follow this pattern: load the XML, attach mesh assets, and return
-the spec.
+For anything more involved, use a regular function. MuJoCo resolves mesh
+assets from disk automatically, so ``get_spec`` only needs to load the
+XML:
 
 .. code-block:: python
 
     def get_spec() -> mujoco.MjSpec:
-        spec = mujoco.MjSpec.from_file(str(ROBOT_XML))
-        spec.assets = get_assets(spec.meshdir)
-        return spec
+        return mujoco.MjSpec.from_file(str(ROBOT_XML))
 
 Because ``spec_fn`` is an arbitrary callable, you can perform any
 `MjSpec edits <https://mujoco.readthedocs.io/en/stable/python.html#spec>`_
@@ -198,6 +196,17 @@ Each editor accepts regex patterns to target specific elements. For
 example, a ``CollisionCfg`` with ``geom_names_expr=(".*_foot.*",)``
 sets contact parameters only on foot geoms. See the asset zoo
 (``mjlab.asset_zoo.robots``) for complete examples.
+
+Heterogeneous worlds
+^^^^^^^^^^^^^^^^^^^^
+
+For scenes that need different mesh assets in different parallel worlds
+(for example, training a manipulation policy that generalizes across
+object shapes), use ``VariantEntityCfg`` instead of ``EntityCfg``. Each
+world is assigned a variant proportional to a configurable weight, and
+mesh-dependent compiled constants (collision bounds, body inertials,
+subtree mass) are stored as per-world arrays so domain randomization and
+viewers stay consistent. See :ref:`heterogeneous_worlds`.
 
 Subclassing Entity
 ^^^^^^^^^^^^^^^^^^
@@ -328,3 +337,4 @@ that span multiple entities.
    :maxdepth: 1
 
    entity_data
+   per_world_mesh

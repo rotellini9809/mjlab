@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -188,6 +188,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../source/entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/actuators.html">Actuators</a></li>
@@ -211,6 +212,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -402,20 +404,25 @@ document.write(`
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypeVar</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">mujoco</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">mujoco_warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mjwarp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.utils.buffers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelayBuffer</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
   <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.entity</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entity</span>
   <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.entity.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityData</span>
 
 <span class="n">ActuatorCfgT</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;ActuatorCfgT&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s2">&quot;ActuatorCfg&quot;</span><span class="p">)</span>
+
+<span class="n">CommandField</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">,</span> <span class="s2">&quot;velocity&quot;</span><span class="p">,</span> <span class="s2">&quot;effort&quot;</span><span class="p">]</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">TransmissionType</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
@@ -433,32 +440,80 @@ document.write(`
   <span class="n">target_names_expr</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Targets that are part of this actuator group.</span>
 
-<span class="sd">  Can be a tuple of names or tuple of regex expressions.</span>
-<span class="sd">  Interpreted based on transmission_type (joint/tendon/site).</span>
+<span class="sd">  Can be a tuple of names or tuple of regex expressions. Interpreted based on</span>
+<span class="sd">  transmission_type.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">transmission_type</span><span class="p">:</span> <span class="n">TransmissionType</span> <span class="o">=</span> <span class="n">TransmissionType</span><span class="o">.</span><span class="n">JOINT</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Transmission type. Defaults to JOINT.&quot;&quot;&quot;</span>
 
-  <span class="n">armature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Reflected rotor inertia.&quot;&quot;&quot;</span>
+  <span class="n">armature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Reflected rotor inertia. None preserves the XML value.&quot;&quot;&quot;</span>
 
-  <span class="n">frictionloss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Friction loss force limit.</span>
+  <span class="n">frictionloss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Friction loss force limit. None preserves the XML value.</span>
 
 <span class="sd">  Applies a constant friction force opposing motion, independent of load or velocity.</span>
 <span class="sd">  Also known as dry friction or load-independent friction.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
 
+  <span class="n">viscous_damping</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Passive viscous damping coefficient. None preserves the XML value.</span>
+
+<span class="sd">  Produces a dissipative force f(v) = -b·v proportional to velocity. Always present</span>
+<span class="sd">  regardless of actuator activity. Unlike ``damping`` (the PD derivative gain kv, which</span>
+<span class="sd">  is active control), this is a passive property.</span>
+
+<span class="sd">  Maps to ``&lt;joint damping&gt;`` for JOINT transmission and ``&lt;tendon damping&gt;``</span>
+<span class="sd">  for TENDON transmission. Ignored for SITE.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">delay_min_lag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Minimum command delay in physics timesteps.</span>
+
+<span class="sd">  Each step, a lag is sampled uniformly from [min, max]. The command target arrives</span>
+<span class="sd">  that many steps late at the actuator&#39;s control law. Models communication and bus</span>
+<span class="sd">  latency between the policy and the motor (as opposed to observation delay, which</span>
+<span class="sd">  models sensor pipeline latency).</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">delay_max_lag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Maximum command delay in physics timesteps. Set &gt; 0 to enable delay.&quot;&quot;&quot;</span>
+
+  <span class="n">delay_hold_prob</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Probability of keeping the current lag instead of resampling.&quot;&quot;&quot;</span>
+
+  <span class="n">delay_update_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;How often to resample the lag, in physics timesteps (0 = every step).&quot;&quot;&quot;</span>
+
+  <span class="n">delay_per_env_phase</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Stagger lag resampling across environments so they don&#39;t all update</span>
+<span class="sd">  on the same step.&quot;&quot;&quot;</span>
+
   <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">armature</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;armature must be non-negative.&quot;</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frictionloss</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;frictionloss must be non-negative.&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">armature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">armature</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;armature must be non-negative.&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frictionloss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frictionloss</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;frictionloss must be non-negative.&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscous_damping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscous_damping</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;viscous_damping must be non-negative.&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission_type</span> <span class="o">==</span> <span class="n">TransmissionType</span><span class="o">.</span><span class="n">SITE</span><span class="p">:</span>
-      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">armature</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">frictionloss</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+      <span class="k">if</span> <span class="p">(</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">armature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">armature</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frictionloss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">frictionloss</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">viscous_damping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscous_damping</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
+      <span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-          <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: armature and frictionloss are not supported for &quot;</span>
-          <span class="s2">&quot;SITE transmission type.&quot;</span>
+          <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: armature, frictionloss, and viscous_damping are &quot;</span>
+          <span class="s2">&quot;not supported for SITE transmission type.&quot;</span>
         <span class="p">)</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_min_lag</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;delay_min_lag must be non-negative.&quot;</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_max_lag</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;delay_max_lag must be non-negative.&quot;</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_min_lag</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_max_lag</span><span class="p">,</span> <span class="p">(</span>
+      <span class="s2">&quot;delay_min_lag must be &lt;= delay_max_lag.&quot;</span>
+    <span class="p">)</span>
+    <span class="k">assert</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_hold_prob</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;delay_hold_prob must be in [0, 1].&quot;</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_update_period</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;delay_update_period must be non-negative.&quot;</span>
 
 <div class="viewcode-block" id="ActuatorCfg.build">
 <a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.ActuatorCfg.build">[docs]</a>
@@ -526,8 +581,23 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl_ids</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_global_ctrl_ids</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_mjs_actuators</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">mujoco</span><span class="o">.</span><span class="n">MjsActuator</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_site_zeros</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_site_zeros</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="p">:</span> <span class="n">DelayBuffer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
 
+
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">has_delay</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether this actuator has delay configured.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_max_lag</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">command_field</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CommandField</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The primary command field this actuator consumes.</span>
+
+<span class="sd">    Returns None by default. Subclasses should override to return the</span>
+<span class="sd">    appropriate field.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span>
 
   <span class="nd">@property</span>
   <span class="k">def</span><span class="w"> </span><span class="nf">target_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
@@ -614,7 +684,67 @@ document.write(`
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission_type</span> <span class="o">==</span> <span class="n">TransmissionType</span><span class="o">.</span><span class="n">SITE</span><span class="p">:</span>
       <span class="n">nenvs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">nworld</span>
       <span class="n">ntargets</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_target_ids_list</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_site_zeros</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nenvs</span><span class="p">,</span> <span class="n">ntargets</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span></div>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_site_zeros</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nenvs</span><span class="p">,</span> <span class="n">ntargets</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_init_delay_buffer</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">nworld</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span></div>
+
+
+  <span class="k">def</span><span class="w"> </span><span class="nf">_init_delay_buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_envs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create delay buffer. Called during initialize().&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_delay</span><span class="p">:</span>
+      <span class="k">return</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">command_field</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: delay is configured (delay_max_lag=&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_max_lag</span><span class="si">}</span><span class="s2">) but command_field is not defined.&quot;</span>
+      <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span> <span class="o">=</span> <span class="n">DelayBuffer</span><span class="p">(</span>
+      <span class="n">min_lag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_min_lag</span><span class="p">,</span>
+      <span class="n">max_lag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_max_lag</span><span class="p">,</span>
+      <span class="n">batch_size</span><span class="o">=</span><span class="n">num_envs</span><span class="p">,</span>
+      <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+      <span class="n">hold_prob</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_hold_prob</span><span class="p">,</span>
+      <span class="n">update_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_update_period</span><span class="p">,</span>
+      <span class="n">per_env_phase</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">delay_per_env_phase</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="Actuator.apply_delay">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.Actuator.apply_delay">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">apply_delay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ActuatorCmd</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ActuatorCmd</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply delay to the command_field target. No-op without delay.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">cmd</span>
+    <span class="n">cf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">command_field</span>
+    <span class="k">if</span> <span class="n">cf</span> <span class="o">==</span> <span class="s2">&quot;position&quot;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">position_target</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">position_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+    <span class="k">elif</span> <span class="n">cf</span> <span class="o">==</span> <span class="s2">&quot;velocity&quot;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">velocity_target</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">velocity_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">effort_target</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">effort_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="Actuator.set_lags">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.Actuator.set_lags">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">set_lags</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">lags</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">env_ids</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">slice</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set delay lag values for specified environments.</span>
+
+<span class="sd">    Built-in actuators with the same delay config share a fused delay</span>
+<span class="sd">    buffer for performance. Calling ``set_lags`` on any one of them</span>
+<span class="sd">    affects the entire fused group.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      lags: Lag values in physics timesteps. Shape: (num_env_ids,) or scalar.</span>
+<span class="sd">      env_ids: Environment indices to set. If None, sets all environments.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">set_lags</span><span class="p">(</span><span class="n">lags</span><span class="p">,</span> <span class="n">env_ids</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Actuator.get_command">
@@ -679,13 +809,14 @@ document.write(`
   <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_ids</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">slice</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset actuator state for specified environments.</span>
 
-<span class="sd">    Base implementation does nothing. Override in subclasses that maintain</span>
-<span class="sd">    internal state.</span>
+<span class="sd">    Resets delay buffers if present. Subclasses that override this should</span>
+<span class="sd">    call ``super().reset(env_ids)``.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">      env_ids: Environment indices to reset. If None, reset all environments.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">del</span> <span class="n">env_ids</span>  <span class="c1"># Unused.</span></div>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_delay_buffer</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">env_ids</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Actuator.update">
@@ -749,7 +880,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>

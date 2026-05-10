@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Apr 08, 2026"/>
+    <meta name="docbuild:last-update" content="May 10, 2026"/>
   </head>
   
   
@@ -188,6 +188,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../source/entity/entity_data.html">Entity Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/actuators.html">Actuators</a></li>
@@ -211,6 +212,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/metrics.html">Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -398,7 +400,25 @@ document.write(`
                 <article class="bd-article">
                   
   <h1>Source code for mjlab.sensor.contact_sensor</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Contact sensors track collisions between geoms, bodies, or subtrees.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Contact sensors track collisions between geoms, bodies, or subtrees.</span>
+
+<span class="sd">A ``ContactSensor`` resolves regex patterns into a set of *primary* MuJoCo</span>
+<span class="sd">elements and (optionally) a single *secondary* element to filter against. Each</span>
+<span class="sd">physics step it pulls per-primary contact data from MuJoCo&#39;s native contact</span>
+<span class="sd">sensor and packages it into a batched ``ContactData`` dataclass.</span>
+
+<span class="sd">Shape conventions on ``ContactData``:</span>
+
+<span class="sd">- ``P`` = number of primary elements resolved from the pattern (see</span>
+<span class="sd">  :attr:`ContactSensor.primary_names` for the index→name mapping).</span>
+<span class="sd">- ``N`` = ``P * num_slots`` (per-contact axis, primary-major layout).</span>
+<span class="sd">- Per-contact fields (``found``, ``force``, ``torque``, ``dist``, ``pos``,</span>
+<span class="sd">  ``normal``, ``tangent``) have shape ``[B, N, ...]``.</span>
+<span class="sd">- Per-primary fields (``current_air_time`` etc.) have shape ``[B, P]``.</span>
+
+<span class="sd">Most users want the default ``num_slots=1``, in which case ``N == P`` and the</span>
+<span class="sd">two shape families coincide.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -453,10 +473,16 @@ document.write(`
 <span class="k">class</span><span class="w"> </span><span class="nc">ContactMatch</span><span class="p">:</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;Specifies what to match on one side of a contact.</span>
 
-<span class="sd">  mode: &quot;geom&quot;, &quot;body&quot;, or &quot;subtree&quot;</span>
-<span class="sd">  pattern: Regex or tuple of regexes (expands within entity if specified)</span>
-<span class="sd">  entity: Entity name to search within (None = treat pattern as literal MuJoCo name)</span>
-<span class="sd">  exclude: Filter out matches using these regex patterns or exact names.</span>
+<span class="sd">  Args:</span>
+<span class="sd">    mode: MuJoCo element type to match against (&quot;geom&quot;, &quot;body&quot;, or &quot;subtree&quot;).</span>
+<span class="sd">    pattern: A regex (or tuple of regexes) matched against element names within</span>
+<span class="sd">      ``entity``. If ``entity`` is unset, the pattern is treated as a literal</span>
+<span class="sd">      MuJoCo name (no regex expansion).</span>
+<span class="sd">    entity: Entity name to scope the pattern to. If ``None``/``&quot;&quot;``, the</span>
+<span class="sd">      pattern is taken as a literal MuJoCo name.</span>
+<span class="sd">    exclude: Names to filter out of the match. Each entry is treated as a</span>
+<span class="sd">      regex if it contains any regex metacharacters, otherwise as an exact</span>
+<span class="sd">      name.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;geom&quot;</span><span class="p">,</span> <span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="s2">&quot;subtree&quot;</span><span class="p">]</span>
@@ -470,25 +496,61 @@ document.write(`
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.ContactSensorCfg">[docs]</a>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ContactSensorCfg</span><span class="p">(</span><span class="n">SensorCfg</span><span class="p">):</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Tracks contacts between primary and secondary patterns.</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Configuration for a :class:`ContactSensor`.</span>
 
-<span class="sd">  Output shape: [B, N * num_slots] or [B, N * num_slots, 3] where N = # of primaries</span>
+<span class="sd">  A contact sensor watches contacts between a ``primary`` set of elements and</span>
+<span class="sd">  an optional ``secondary`` element. Patterns expand to multiple primaries</span>
+<span class="sd">  (e.g. all four feet on a quadruped); each primary becomes one column on the</span>
+<span class="sd">  per-contact axis of the output tensors.</span>
 
-<span class="sd">  Fields (choose subset):</span>
-<span class="sd">    - found: 0=no contact, &gt;0=match count before reduction</span>
-<span class="sd">    - force, torque: 3D vectors in contact frame (or global if reduce=&quot;netforce&quot;)</span>
-<span class="sd">    - dist: penetration depth</span>
-<span class="sd">    - pos, normal, tangent: 3D vectors in global frame (normal: primary→secondary)</span>
+<span class="sd">  See the module docstring for shape conventions (``P``, ``N``, primary-major</span>
+<span class="sd">  layout) and :attr:`ContactSensor.primary_names` for index→name lookup.</span>
 
-<span class="sd">  Reduction modes (selects top num_slots from all matches):</span>
-<span class="sd">    - &quot;none&quot;: fast, non-deterministic</span>
-<span class="sd">    - &quot;mindist&quot;, &quot;maxforce&quot;: closest/strongest contacts</span>
-<span class="sd">    - &quot;netforce&quot;: sum all forces (global frame)</span>
+<span class="sd">  Args:</span>
+<span class="sd">    primary: Elements to measure (e.g. the robot&#39;s feet). Typically a regex</span>
+<span class="sd">      that resolves to multiple elements.</span>
+<span class="sd">    secondary: Optional filter on what the primary may contact (e.g. terrain).</span>
+<span class="sd">      ``None`` means &quot;any contact with a primary counts&quot;.</span>
+<span class="sd">    fields: Which contact quantities to extract. Only requested fields are</span>
+<span class="sd">      allocated and computed; the rest are ``None`` on ``ContactData``.</span>
 
-<span class="sd">  Policies:</span>
-<span class="sd">    - secondary_policy: &quot;first&quot;, &quot;any&quot;, or &quot;error&quot; when secondary matches multiple</span>
-<span class="sd">    - track_air_time: enables landing/takeoff detection</span>
-<span class="sd">    - global_frame: rotates force/torque to global (requires normal+tangent fields)</span>
+<span class="sd">      - ``&quot;found&quot;``: 0 = no contact; &gt;0 = number of matched contacts.</span>
+<span class="sd">      - ``&quot;force&quot;``, ``&quot;torque&quot;``: 3D vectors in the contact frame (or in the</span>
+<span class="sd">        global frame when ``reduce=&quot;netforce&quot;`` or ``global_frame=True``).</span>
+<span class="sd">      - ``&quot;dist&quot;``: penetration depth (scalar).</span>
+<span class="sd">      - ``&quot;pos&quot;``, ``&quot;normal&quot;``, ``&quot;tangent&quot;``: 3D vectors in the global</span>
+<span class="sd">        frame (normal points primary → secondary).</span>
+
+<span class="sd">    reduce: How to collapse simultaneous contacts on the same primary down to</span>
+<span class="sd">      ``num_slots`` representative contacts.</span>
+
+<span class="sd">      - ``&quot;none&quot;``: fast, non-deterministic ordering.</span>
+<span class="sd">      - ``&quot;mindist&quot;``: keep the closest (deepest) contacts.</span>
+<span class="sd">      - ``&quot;maxforce&quot;``: keep the strongest contacts.</span>
+<span class="sd">      - ``&quot;netforce&quot;``: sum all contacts into a single net wrench (always</span>
+<span class="sd">        produces one slot per primary regardless of ``num_slots``).</span>
+
+<span class="sd">    num_slots: Number of contacts to retain per primary after reduction.</span>
+<span class="sd">      Almost always ``1``: most policies want one representative contact per</span>
+<span class="sd">      primary, and pattern expansion already gives you many primaries. Only</span>
+<span class="sd">      raise this when a single primary may have multiple distinct contacts</span>
+<span class="sd">      you want to inspect separately, paired with ``reduce`` in</span>
+<span class="sd">      ``{&quot;none&quot;, &quot;mindist&quot;, &quot;maxforce&quot;}``. Ignored by ``reduce=&quot;netforce&quot;``.</span>
+<span class="sd">    secondary_policy: How to handle a secondary pattern that resolves to</span>
+<span class="sd">      multiple elements: ``&quot;first&quot;`` picks the first match, ``&quot;any&quot;`` drops</span>
+<span class="sd">      the secondary filter entirely, ``&quot;error&quot;`` raises.</span>
+<span class="sd">    track_air_time: Allocate per-primary air/contact time accumulators</span>
+<span class="sd">      (useful for gait rewards). Requires ``&quot;found&quot;`` in ``fields``. Slot</span>
+<span class="sd">      reduction within a primary uses an &quot;any slot in contact&quot; rule.</span>
+<span class="sd">    global_frame: Rotate ``force``/``torque`` from the contact frame to the</span>
+<span class="sd">      global frame. Requires ``&quot;normal&quot;`` and ``&quot;tangent&quot;`` in ``fields``.</span>
+<span class="sd">      Implicit when ``reduce=&quot;netforce&quot;``.</span>
+<span class="sd">    history_length: If &gt;0, keep a rolling buffer of the last N substeps of</span>
+<span class="sd">      ``force``/``torque``/``dist`` data. Set to your decimation value so the</span>
+<span class="sd">      buffer covers exactly one policy step; useful for catching brief</span>
+<span class="sd">      collisions that resolve mid-substep. ``0`` disables the buffer.</span>
+<span class="sd">    debug: Print each MuJoCo sensor as it is added to the spec. Useful for</span>
+<span class="sd">      checking that pattern expansion produced the elements you expected.</span>
 <span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">primary</span><span class="p">:</span> <span class="n">ContactMatch</span>
@@ -500,19 +562,6 @@ document.write(`
   <span class="n">track_air_time</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
   <span class="n">global_frame</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
   <span class="n">history_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Number of substeps to store in history buffer for force/torque/dist fields.</span>
-
-<span class="sd">  When 0 (default): No history buffer is allocated. History fields (force_history,</span>
-<span class="sd">  torque_history, dist_history) are None. Use the regular fields (force, torque, dist)</span>
-<span class="sd">  for the current instantaneous values.</span>
-
-<span class="sd">  When &gt;0: Allocates a history buffer that stores the last N substeps of contact data.</span>
-<span class="sd">  Shape is [B, N, history_length, ...] where index 0 is the most recent substep.</span>
-<span class="sd">  Set to your decimation value to capture all substeps within one policy step.</span>
-
-<span class="sd">  Note: history_length=1 is redundant with the regular fields but provides a consistent</span>
-<span class="sd">  [B, N, H, ...] shape if your code expects a history dimension.</span>
-<span class="sd">  &quot;&quot;&quot;</span>
   <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
 <div class="viewcode-block" id="ContactSensorCfg.build">
@@ -535,7 +584,7 @@ document.write(`
 
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">_AirTimeState</span><span class="p">:</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Tracks how long contacts have been in air/contact. Shape: [B, N].&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Tracks how long contacts have been in air/contact. Shape: [B, P].&quot;&quot;&quot;</span>
 
   <span class="n">current_air_time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
   <span class="n">last_air_time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
@@ -548,7 +597,12 @@ document.write(`
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.ContactData">[docs]</a>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ContactData</span><span class="p">:</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Contact sensor output (only requested fields are populated).&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Contact sensor output (only requested fields are populated).</span>
+
+<span class="sd">  Shape conventions: P = number of primaries; N = P * num_slots (per-contact</span>
+<span class="sd">  fields are laid out primary-major). Air-time fields are per-primary and</span>
+<span class="sd">  reduce across slots (any slot in contact → primary in contact).</span>
+<span class="sd">  &quot;&quot;&quot;</span>
 
   <span class="n">found</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] 0=no contact, &gt;0=match count&quot;&quot;&quot;</span>
@@ -566,13 +620,13 @@ document.write(`
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N, 3] global frame&quot;&quot;&quot;</span>
 
   <span class="n">current_air_time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] time in air (if track_air_time=True)&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, P] time in air per primary (if track_air_time=True)&quot;&quot;&quot;</span>
   <span class="n">last_air_time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] duration of last air phase (if track_air_time=True)&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, P] duration of last air phase per primary (if track_air_time=True)&quot;&quot;&quot;</span>
   <span class="n">current_contact_time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] time in contact (if track_air_time=True)&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, P] time in contact per primary (if track_air_time=True)&quot;&quot;&quot;</span>
   <span class="n">last_contact_time</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N] duration of last contact phase (if track_air_time=True)&quot;&quot;&quot;</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, P] duration of last contact phase per primary (if track_air_time=True)&quot;&quot;&quot;</span>
 
   <span class="n">force_history</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">  </span><span class="sd">&quot;&quot;&quot;[B, N, H, 3] contact forces over last H substeps (index 0 = most recent)&quot;&quot;&quot;</span>
@@ -608,6 +662,16 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_history_state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+  <span class="nd">@property</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">primary_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Primary names in the order they appear along the per-contact dim.</span>
+
+<span class="sd">    Per-contact fields ([B, N, ...]) are laid out primary-major, so primary</span>
+<span class="sd">    `primary_names[i]` occupies indices [i * num_slots : (i + 1) * num_slots].</span>
+<span class="sd">    Per-primary fields ([B, P, ...]) have one entry per name in this list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">primary_name</span> <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">))</span>
+
 <div class="viewcode-block" id="ContactSensor.edit_spec">
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.ContactSensor.edit_spec">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="nf">edit_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scene_spec</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="p">,</span> <span class="n">entities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Entity</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -622,6 +686,11 @@ document.write(`
         <span class="n">entities</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">secondary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">secondary_policy</span>
       <span class="p">)</span>
 
+    <span class="c1"># MuJoCo allows packing multiple fields into one contact sensor via the</span>
+    <span class="c1"># `dataspec` bitfield, but we register one sensor per (primary, field) pair</span>
+    <span class="c1"># so each sensor&#39;s `sensordata` block is laid out as `[B, num_slots * dim]`</span>
+    <span class="c1"># and `_extract_sensor_data` can reshape per field without computing</span>
+    <span class="c1"># per-field offsets within an interleaved per-slot layout.</span>
     <span class="k">for</span> <span class="n">prim</span> <span class="ow">in</span> <span class="n">primary_names</span><span class="p">:</span>
       <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
         <span class="n">sensor_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">prim</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -661,9 +730,10 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">data</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_device</span> <span class="o">=</span> <span class="n">device</span>
 
+    <span class="n">n_primary</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">primary_names</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">track_air_time</span><span class="p">:</span>
       <span class="n">n_envs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-      <span class="n">n_primary</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">primary_name</span> <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">))</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">_air_time_state</span> <span class="o">=</span> <span class="n">_AirTimeState</span><span class="p">(</span>
         <span class="n">current_air_time</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_envs</span><span class="p">,</span> <span class="n">n_primary</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
         <span class="n">last_air_time</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_envs</span><span class="p">,</span> <span class="n">n_primary</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
@@ -674,7 +744,6 @@ document.write(`
 
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">history_length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="n">n_envs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-      <span class="n">n_primary</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">primary_name</span> <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">))</span>
       <span class="n">n_contacts</span> <span class="o">=</span> <span class="n">n_primary</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_slots</span>
       <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">history_length</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">_history_state</span> <span class="o">=</span> <span class="p">{}</span>
@@ -739,8 +808,8 @@ document.write(`
 
 <div class="viewcode-block" id="ContactSensor.compute_first_contact">
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.ContactSensor.compute_first_contact">[docs]</a>
-  <span class="k">def</span><span class="w"> </span><span class="nf">compute_first_contact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">abs_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns [B, N] bool: True for contacts established within last dt seconds.&quot;&quot;&quot;</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">compute_first_contact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">abs_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-6</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns [B, P] bool: True for primaries that landed within the last dt seconds.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_air_time_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
       <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;Sensor &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; must have track_air_time=True &quot;</span>
@@ -753,8 +822,8 @@ document.write(`
 
 <div class="viewcode-block" id="ContactSensor.compute_first_air">
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.ContactSensor.compute_first_air">[docs]</a>
-  <span class="k">def</span><span class="w"> </span><span class="nf">compute_first_air</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">abs_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns [B, N] bool: True for contacts broken within last dt seconds.&quot;&quot;&quot;</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">compute_first_air</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">abs_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-6</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns [B, P] bool: True for primaries that took off within the last dt seconds.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_air_time_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
       <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;Sensor &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; must have track_air_time=True &quot;</span>
@@ -796,7 +865,7 @@ document.write(`
     <span class="n">normal</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">normal</span>
     <span class="n">tangent</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">tangent</span>
     <span class="n">tangent2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">normal</span><span class="p">,</span> <span class="n">tangent</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">R</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">tangent</span><span class="p">,</span> <span class="n">tangent2</span><span class="p">,</span> <span class="n">normal</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">normal</span><span class="p">,</span> <span class="n">tangent</span><span class="p">,</span> <span class="n">tangent2</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="n">has_contact</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">normal</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-8</span>
 
@@ -822,7 +891,12 @@ document.write(`
     <span class="n">elapsed_time</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_air_time_state</span><span class="o">.</span><span class="n">last_time</span>
     <span class="n">elapsed_time</span> <span class="o">=</span> <span class="n">elapsed_time</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">is_contact</span> <span class="o">=</span> <span class="n">contact_data</span><span class="o">.</span><span class="n">found</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="c1"># Reduce `found` from [B, P*num_slots] to [B, P]: a primary is in contact</span>
+    <span class="c1"># if any of its slots reports a match. Air-time is tracked per primary.</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="n">contact_data</span><span class="o">.</span><span class="n">found</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_slots</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">found</span> <span class="o">=</span> <span class="n">found</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">found</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_slots</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">is_contact</span> <span class="o">=</span> <span class="n">found</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
     <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_air_time_state</span>
     <span class="n">is_first_contact</span> <span class="o">=</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">current_air_time</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">is_contact</span>
@@ -985,57 +1059,59 @@ document.write(`
     <span class="n">reduce_mode</span> <span class="o">=</span> <span class="n">_CONTACT_REDUCE_MAP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">reduce</span><span class="p">]</span>
     <span class="n">intprm</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_bits</span><span class="p">,</span> <span class="n">reduce_mode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_slots</span><span class="p">]</span>
 
-    <span class="n">primary_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">primary</span><span class="o">.</span><span class="n">entity</span>
-    <span class="k">if</span> <span class="n">primary_entity</span> <span class="ow">and</span> <span class="n">primary_entity</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-      <span class="n">prefixed_primary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">primary_entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">primary_name</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="n">prefixed_primary</span> <span class="o">=</span> <span class="n">primary_name</span>
-
     <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
       <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">sensor_name</span><span class="p">,</span>
       <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">mjtSensor</span><span class="o">.</span><span class="n">mjSENS_CONTACT</span><span class="p">,</span>
       <span class="s2">&quot;objtype&quot;</span><span class="p">:</span> <span class="n">_MODE_TO_OBJTYPE</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">primary</span><span class="o">.</span><span class="n">mode</span><span class="p">],</span>
-      <span class="s2">&quot;objname&quot;</span><span class="p">:</span> <span class="n">prefixed_primary</span><span class="p">,</span>
+      <span class="s2">&quot;objname&quot;</span><span class="p">:</span> <span class="n">_prefix_name</span><span class="p">(</span><span class="n">primary_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">primary</span><span class="o">.</span><span class="n">entity</span><span class="p">),</span>
       <span class="s2">&quot;intprm&quot;</span><span class="p">:</span> <span class="n">intprm</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="k">if</span> <span class="n">secondary_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
       <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">secondary</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-      <span class="n">secondary_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">secondary</span><span class="o">.</span><span class="n">entity</span>
-      <span class="k">if</span> <span class="n">secondary_entity</span> <span class="ow">and</span> <span class="n">secondary_entity</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-        <span class="n">prefixed_secondary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">secondary_entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">secondary_name</span><span class="si">}</span><span class="s2">&quot;</span>
-      <span class="k">else</span><span class="p">:</span>
-        <span class="n">prefixed_secondary</span> <span class="o">=</span> <span class="n">secondary_name</span>
       <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;reftype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_MODE_TO_OBJTYPE</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">secondary</span><span class="o">.</span><span class="n">mode</span><span class="p">]</span>
-      <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;refname&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prefixed_secondary</span>
+      <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;refname&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_prefix_name</span><span class="p">(</span><span class="n">secondary_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">secondary</span><span class="o">.</span><span class="n">entity</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_print_debug</span><span class="p">(</span><span class="n">sensor_name</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">intprm</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
 
-      <span class="k">def</span><span class="w"> </span><span class="nf">_ename</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+    <span class="n">scene_spec</span><span class="o">.</span><span class="n">add_sensor</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-      <span class="n">objtype_name</span> <span class="o">=</span> <span class="n">_ename</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;objtype&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;mjOBJ_&quot;</span><span class="p">)</span>
-      <span class="n">reftype_val</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reftype&quot;</span><span class="p">)</span>
-      <span class="n">refname_val</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;refname&quot;</span><span class="p">)</span>
-      <span class="n">reftype_name</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">_ename</span><span class="p">(</span><span class="n">reftype_val</span><span class="p">)</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;mjOBJ_&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">reftype_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="k">else</span> <span class="s2">&quot;&lt;any&gt;&quot;</span>
-      <span class="p">)</span>
+  <span class="k">def</span><span class="w"> </span><span class="nf">_print_debug</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">sensor_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">intprm</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">objtype_name</span> <span class="o">=</span> <span class="n">_objtype_name</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;objtype&quot;</span><span class="p">])</span>
+    <span class="n">reftype_val</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reftype&quot;</span><span class="p">)</span>
+    <span class="n">refname_val</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;refname&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">refname_val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">ref_str</span> <span class="o">=</span> <span class="s2">&quot;&lt;any&gt;&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">ref_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_objtype_name</span><span class="p">(</span><span class="n">reftype_val</span><span class="p">)</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">refname_val</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="nb">print</span><span class="p">(</span>
+      <span class="s2">&quot;Adding contact sensor</span><span class="se">\n</span><span class="s2">&quot;</span>
+      <span class="sa">f</span><span class="s2">&quot;  name    : </span><span class="si">{</span><span class="n">sensor_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+      <span class="sa">f</span><span class="s2">&quot;  object  : </span><span class="si">{</span><span class="n">objtype_name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;objname&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+      <span class="sa">f</span><span class="s2">&quot;  ref     : </span><span class="si">{</span><span class="n">ref_str</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+      <span class="sa">f</span><span class="s2">&quot;  field   : </span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">  bits=0b</span><span class="si">{</span><span class="n">intprm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">b</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+      <span class="sa">f</span><span class="s2">&quot;  reduce  : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">reduce</span><span class="si">}</span><span class="s2">  num_slots=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_slots</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span></div>
 
-      <span class="n">ref_str</span> <span class="o">=</span> <span class="s2">&quot;&lt;any&gt;&quot;</span> <span class="k">if</span> <span class="n">refname_val</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">reftype_name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">refname_val</span><span class="si">}</span><span class="s2">&quot;</span>
 
-      <span class="nb">print</span><span class="p">(</span>
-        <span class="s2">&quot;Adding contact sensor</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;  name    : </span><span class="si">{</span><span class="n">sensor_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;  object  : </span><span class="si">{</span><span class="n">objtype_name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;objname&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;  ref     : </span><span class="si">{</span><span class="n">ref_str</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;  field   : </span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">  bits=0b</span><span class="si">{</span><span class="n">intprm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">b</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;  reduce  : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">reduce</span><span class="si">}</span><span class="s2">  num_slots=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_slots</span><span class="si">}</span><span class="s2">&quot;</span>
-      <span class="p">)</span>
 
-    <span class="n">scene_spec</span><span class="o">.</span><span class="n">add_sensor</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+<span class="k">def</span><span class="w"> </span><span class="nf">_prefix_name</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Prepend ``entity/`` to a MuJoCo name when an entity scope is set.&quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="n">entity</span><span class="p">:</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+  <span class="k">return</span> <span class="n">name</span>
 
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_objtype_name</span><span class="p">(</span><span class="n">objtype</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Pretty-print a MuJoCo object type, dropping the ``mjOBJ_`` prefix.&quot;&quot;&quot;</span>
+  <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">objtype</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">objtype</span><span class="p">))</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;mjOBJ_&quot;</span><span class="p">)</span>
 </pre></div>
 
                 </article>
@@ -1083,7 +1159,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Apr 08, 2026.
+  Last updated on May 10, 2026.
   <br/>
 </p>
   </div>
