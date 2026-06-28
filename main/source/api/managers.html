@@ -31,7 +31,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=3ea80bc3" />
@@ -46,7 +46,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -59,7 +59,7 @@
     <link rel="prev" title="mjlab.sensor" href="sensor.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -189,7 +189,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../entity/entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -213,7 +212,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -499,8 +497,6 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.light_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.light_ids</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.material_names"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.material_names</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.material_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.material_ids</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.pair_names"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.pair_names</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.pair_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.pair_ids</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.preserve_order"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.preserve_order</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.resolve"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.resolve()</span></code></a></li>
 </ul>
@@ -567,8 +563,6 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager"><code class="docutils literal notranslate"><span class="pre">RewardManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.__init__"><code class="docutils literal notranslate"><span class="pre">RewardManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.reset"><code class="docutils literal notranslate"><span class="pre">RewardManager.reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">RewardManager.debug_vis()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.get_visualizable_terms"><code class="docutils literal notranslate"><span class="pre">RewardManager.get_visualizable_terms()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a><ul class="nav section-nav flex-column">
@@ -594,8 +588,6 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager"><code class="docutils literal notranslate"><span class="pre">CommandManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.__init__"><code class="docutils literal notranslate"><span class="pre">CommandManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.create_gui"><code class="docutils literal notranslate"><span class="pre">CommandManager.create_gui()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.on_viewer_pause"><code class="docutils literal notranslate"><span class="pre">CommandManager.on_viewer_pause()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.apply_gui_reset"><code class="docutils literal notranslate"><span class="pre">CommandManager.apply_gui_reset()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.create_debug_vis_gui"><code class="docutils literal notranslate"><span class="pre">CommandManager.create_debug_vis_gui()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.reset"><code class="docutils literal notranslate"><span class="pre">CommandManager.reset()</span></code></a></li>
 </ul>
@@ -607,8 +599,6 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm"><code class="docutils literal notranslate"><span class="pre">CommandTerm</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.__init__"><code class="docutils literal notranslate"><span class="pre">CommandTerm.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.create_gui"><code class="docutils literal notranslate"><span class="pre">CommandTerm.create_gui()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.on_viewer_pause"><code class="docutils literal notranslate"><span class="pre">CommandTerm.on_viewer_pause()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.apply_gui_reset"><code class="docutils literal notranslate"><span class="pre">CommandTerm.apply_gui_reset()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.reset"><code class="docutils literal notranslate"><span class="pre">CommandTerm.reset()</span></code></a></li>
 </ul>
 </li>
@@ -655,42 +645,13 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager"><code class="docutils literal notranslate"><span class="pre">MetricsManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">MetricsManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.reset"><code class="docutils literal notranslate"><span class="pre">MetricsManager.reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.compute_substep"><code class="docutils literal notranslate"><span class="pre">MetricsManager.compute_substep()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg.per_substep"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg.per_substep</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg.reduce"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg.reduce</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#recorder-manager">Recorder Manager</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager"><code class="docutils literal notranslate"><span class="pre">RecorderManager</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.__init__"><code class="docutils literal notranslate"><span class="pre">RecorderManager.__init__()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.record_pre_reset"><code class="docutils literal notranslate"><span class="pre">RecorderManager.record_pre_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.record_post_reset"><code class="docutils literal notranslate"><span class="pre">RecorderManager.record_post_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.record_post_step"><code class="docutils literal notranslate"><span class="pre">RecorderManager.record_post_step()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.close"><code class="docutils literal notranslate"><span class="pre">RecorderManager.close()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullRecorderManager"><code class="docutils literal notranslate"><span class="pre">NullRecorderManager</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullRecorderManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullRecorderManager.__init__()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm"><code class="docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.__init__"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.__init__()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.record_pre_reset"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.record_pre_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.record_post_reset"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.record_post_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.record_post_step"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.record_post_step()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.close"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.close()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTermCfg"><code class="docutils literal notranslate"><span class="pre">RecorderTermCfg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -718,10 +679,10 @@ document.write(`
 <li><p><a class="reference internal" href="#mjlab.managers.ActionTermCfg" title="mjlab.managers.ActionTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">ActionTermCfg</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.ObservationManager" title="mjlab.managers.ObservationManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.ObservationGroupCfg" title="mjlab.managers.ObservationGroupCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationGroupCfg</span></code></a></p></li>
-<li><p><a class="reference internal" href="#mjlab.managers.ObservationTermCfg" title="mjlab.managers.ObservationTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a></p></li>
-<li><p><a class="reference internal" href="#mjlab.managers.RewardManager" title="mjlab.managers.RewardManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">RewardManager</span></code></a></p></li>
 </ul>
 </td><td><ul class="simple">
+<li><p><a class="reference internal" href="#mjlab.managers.ObservationTermCfg" title="mjlab.managers.ObservationTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObservationTermCfg</span></code></a></p></li>
+<li><p><a class="reference internal" href="#mjlab.managers.RewardManager" title="mjlab.managers.RewardManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">RewardManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.RewardTermCfg" title="mjlab.managers.RewardTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.TerminationManager" title="mjlab.managers.TerminationManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">TerminationManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.TerminationTermCfg" title="mjlab.managers.TerminationTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">TerminationTermCfg</span></code></a></p></li>
@@ -729,21 +690,17 @@ document.write(`
 <li><p><a class="reference internal" href="#mjlab.managers.NullCommandManager" title="mjlab.managers.NullCommandManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">NullCommandManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.CommandTerm" title="mjlab.managers.CommandTerm"><code class="xref py py-class docutils literal notranslate"><span class="pre">CommandTerm</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.CommandTermCfg" title="mjlab.managers.CommandTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">CommandTermCfg</span></code></a></p></li>
+</ul>
+</td><td><ul class="simple">
 <li><p><a class="reference internal" href="#mjlab.managers.CurriculumManager" title="mjlab.managers.CurriculumManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">CurriculumManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.NullCurriculumManager" title="mjlab.managers.NullCurriculumManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">NullCurriculumManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.CurriculumTermCfg" title="mjlab.managers.CurriculumTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">CurriculumTermCfg</span></code></a></p></li>
-</ul>
-</td><td><ul class="simple">
 <li><p><a class="reference internal" href="#mjlab.managers.EventManager" title="mjlab.managers.EventManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">EventManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.EventMode" title="mjlab.managers.EventMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">EventMode</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.EventTermCfg" title="mjlab.managers.EventTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">EventTermCfg</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.MetricsManager" title="mjlab.managers.MetricsManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">MetricsManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.NullMetricsManager" title="mjlab.managers.NullMetricsManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">NullMetricsManager</span></code></a></p></li>
 <li><p><a class="reference internal" href="#mjlab.managers.MetricsTermCfg" title="mjlab.managers.MetricsTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a></p></li>
-<li><p><a class="reference internal" href="#mjlab.managers.RecorderManager" title="mjlab.managers.RecorderManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderManager</span></code></a></p></li>
-<li><p><a class="reference internal" href="#mjlab.managers.NullRecorderManager" title="mjlab.managers.NullRecorderManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">NullRecorderManager</span></code></a></p></li>
-<li><p><a class="reference internal" href="#mjlab.managers.RecorderTerm" title="mjlab.managers.RecorderTerm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a></p></li>
-<li><p><a class="reference internal" href="#mjlab.managers.RecorderTermCfg" title="mjlab.managers.RecorderTermCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderTermCfg</span></code></a></p></li>
 </ul>
 </td></tr></table>
 <section id="base">
@@ -949,18 +906,6 @@ optimize to slice(None) when all components are selected.</p>
 <dt class="sig sig-object py" id="mjlab.managers.SceneEntityCfg.material_ids">
 <span class="sig-name descname"><span class="pre">material_ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a></em><a class="headerlink" href="#mjlab.managers.SceneEntityCfg.material_ids" title="Link to this definition">#</a></dt>
 <dd><p>IDs of materials to include. Can be a list or slice.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="mjlab.managers.SceneEntityCfg.pair_names">
-<span class="sig-name descname"><span class="pre">pair_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mjlab.managers.SceneEntityCfg.pair_names" title="Link to this definition">#</a></dt>
-<dd><p>Names of contact pairs to include. Can be a single string or tuple.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="mjlab.managers.SceneEntityCfg.pair_ids">
-<span class="sig-name descname"><span class="pre">pair_ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)"><span class="pre">slice</span></a></em><a class="headerlink" href="#mjlab.managers.SceneEntityCfg.pair_ids" title="Link to this definition">#</a></dt>
-<dd><p>IDs of contact pairs to include. Can be a list or slice.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1317,18 +1262,6 @@ the unscaled reward rate (raw_value * weight)</p></li>
 <dd><p>Resets the manager and returns logging info for the current step.</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RewardManager.debug_vis">
-<span class="sig-name descname"><span class="pre">debug_vis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visualizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DebugVisualizer</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/reward_manager.html#RewardManager.debug_vis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RewardManager.debug_vis" title="Link to this definition">#</a></dt>
-<dd><p>Delegate debug visualization to class-based reward terms.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RewardManager.get_visualizable_terms">
-<span class="sig-name descname"><span class="pre">get_visualizable_terms</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/mjlab/managers/reward_manager.html#RewardManager.get_visualizable_terms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RewardManager.get_visualizable_terms" title="Link to this definition">#</a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(name,</span> <span class="pre">func)</span></code> pairs for class-based terms with debug_vis.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
@@ -1403,25 +1336,13 @@ intervals and can track metrics for logging.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.managers.CommandManager.create_gui">
-<span class="sig-name descname"><span class="pre">create_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">viser.ViserServer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_env_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_change</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request_action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandManager.create_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandManager.create_gui" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">create_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">viser.ViserServer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_env_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandManager.create_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandManager.create_gui" title="Link to this definition">#</a></dt>
 <dd><p>Let each command term create its GUI controls.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.CommandManager.on_viewer_pause">
-<span class="sig-name descname"><span class="pre">on_viewer_pause</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paused</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandManager.on_viewer_pause"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandManager.on_viewer_pause" title="Link to this definition">#</a></dt>
-<dd><p>Notify all command terms of viewer pause state change.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.CommandManager.apply_gui_reset">
-<span class="sig-name descname"><span class="pre">apply_gui_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandManager.apply_gui_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandManager.apply_gui_reset" title="Link to this definition">#</a></dt>
-<dd><p>Apply GUI-selected state from all terms. Returns True if any applied.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="mjlab.managers.CommandManager.create_debug_vis_gui">
-<span class="sig-name descname"><span class="pre">create_debug_vis_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">viser.ViserServer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_change</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandManager.create_debug_vis_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandManager.create_debug_vis_gui" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">create_debug_vis_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">viser.ViserServer</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandManager.create_debug_vis_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandManager.create_debug_vis_gui" title="Link to this definition">#</a></dt>
 <dd><p>Add per-term debug visualization checkboxes.</p>
 </dd></dl>
 
@@ -1457,25 +1378,12 @@ intervals and can track metrics for logging.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mjlab.managers.CommandTerm.create_gui">
-<span class="sig-name descname"><span class="pre">create_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">viser.ViserServer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_env_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_change</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request_action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandTerm.create_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandTerm.create_gui" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">create_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">viser.ViserServer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_env_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandTerm.create_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandTerm.create_gui" title="Link to this definition">#</a></dt>
 <dd><p>Create interactive GUI controls for this command term.</p>
-<p>Override in subclasses to add task-specific controls (e.g., velocity sliders) to
-the Viser viewer. Called once during viewer setup.</p>
-<p>The <em>name</em> argument is the term’s key in the command manager config (e.g.,
-<code class="docutils literal notranslate"><span class="pre">&quot;twist&quot;</span></code>).</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.CommandTerm.on_viewer_pause">
-<span class="sig-name descname"><span class="pre">on_viewer_pause</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paused</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandTerm.on_viewer_pause"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandTerm.on_viewer_pause" title="Link to this definition">#</a></dt>
-<dd><p>Called when the viewer pause state changes.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.CommandTerm.apply_gui_reset">
-<span class="sig-name descname"><span class="pre">apply_gui_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/command_manager.html#CommandTerm.apply_gui_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.CommandTerm.apply_gui_reset" title="Link to this definition">#</a></dt>
-<dd><p>Apply GUI-selected state as an env reset override.</p>
-<p>Returns True if this term wrote state to sim.</p>
+<p>Override in subclasses to add task-specific controls (e.g., velocity
+sliders) to the Viser viewer. Called once during viewer setup.</p>
+<p>The <em>name</em> argument is the term’s key in the command manager config
+(e.g., <code class="docutils literal notranslate"><span class="pre">&quot;twist&quot;</span></code>).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1683,13 +1591,6 @@ in the logger.</p>
 <dd><p>Resets the manager and returns logging info for the current step.</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.MetricsManager.compute_substep">
-<span class="sig-name descname"><span class="pre">compute_substep</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsManager.compute_substep"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsManager.compute_substep" title="Link to this definition">#</a></dt>
-<dd><p>Accumulate per-substep metric values inside the decimation loop.</p>
-<p>No-op when no <code class="docutils literal notranslate"><span class="pre">per_substep</span></code> terms are configured.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
@@ -1708,241 +1609,6 @@ in the logger.</p>
 <dt class="sig sig-object py" id="mjlab.managers.MetricsTermCfg">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">MetricsTermCfg</span></span><a class="reference internal" href="../../_modules/mjlab/managers/metrics_manager.html#MetricsTermCfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.MetricsTermCfg" title="Link to this definition">#</a></dt>
 <dd><p>Configuration for a metrics term.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="mjlab.managers.MetricsTermCfg.per_substep">
-<span class="sig-name descname"><span class="pre">per_substep</span></span><a class="headerlink" href="#mjlab.managers.MetricsTermCfg.per_substep" title="Link to this definition">#</a></dt>
-<dd><p>If True, evaluate this term once per physics substep inside the</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">decimation</span> <span class="pre">loop</span> <span class="pre">and</span> <span class="pre">report</span> <span class="pre">the</span> <span class="pre">per-step</span> <span class="pre">mean.</span> <span class="pre">Only</span> <span class="pre">the</span> <span class="pre">integrated</span> <span class="pre">state</span></span></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">(qpos,</span> <span class="pre">qvel,</span> <span class="pre">act)</span> <span class="pre">is</span> <span class="pre">current</span> <span class="pre">mid-loop;</span> <span class="pre">all</span> <span class="pre">derived</span> <span class="pre">quantities</span> <span class="pre">(xpos,</span> <span class="pre">xquat,</span></span></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">site_xpos,</span> <span class="pre">actuator_force,</span> <span class="pre">contacts,</span> <span class="pre">...)</span> <span class="pre">are</span> <span class="pre">stale.</span></span></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="mjlab.managers.MetricsTermCfg.reduce">
-<span class="sig-name descname"><span class="pre">reduce</span></span><a class="headerlink" href="#mjlab.managers.MetricsTermCfg.reduce" title="Link to this definition">#</a></dt>
-<dd><p>How to aggregate per-step values into an episode metric.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Literal[‘mean’, ‘last’]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">``&quot;mean&quot;``</span></span></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>default</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">the</span> <span class="pre">value</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">final</span> <span class="pre">step</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">episode,</span> <span class="pre">which</span> <span class="pre">is</span> <span class="pre">useful</span> <span class="pre">for</span> <span class="pre">binary</span></span></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">success</span> <span class="pre">metrics</span> <span class="pre">that</span> <span class="pre">should</span> <span class="pre">not</span> <span class="pre">be</span> <span class="pre">averaged</span> <span class="pre">over</span> <span class="pre">timesteps.</span></span></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="recorder-manager">
-<h2>Recorder Manager<a class="headerlink" href="#recorder-manager" title="Link to this heading">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderManager">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">RecorderManager</span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderManager" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#mjlab.managers.ManagerBase" title="mjlab.managers.manager_base.ManagerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManagerBase</span></code></a></p>
-<p>Orchestrates recorder terms during environment rollouts.</p>
-<p>Holds a collection of <a class="reference internal" href="#mjlab.managers.RecorderTerm" title="mjlab.managers.RecorderTerm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a> instances and calls their lifecycle
-methods at the appropriate points in the environment loop. The manager has no opinion
-on how data is stored; each term handles its own I/O entirely.</p>
-<p>Register terms by adding them to the <code class="docutils literal notranslate"><span class="pre">recorders</span></code> dict on
-<a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnvCfg" title="mjlab.envs.ManagerBasedRlEnvCfg"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManagerBasedRlEnvCfg</span></code></a>. If the dict is empty, the environment
-substitutes a <a class="reference internal" href="#mjlab.managers.NullRecorderManager" title="mjlab.managers.NullRecorderManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">NullRecorderManager</span></code></a> with zero overhead.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderManager.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#mjlab.managers.RecorderTermCfg" title="mjlab.managers.RecorderTermCfg"><span class="pre">RecorderTermCfg</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnv" title="mjlab.envs.ManagerBasedRlEnv"><span class="pre">ManagerBasedRlEnv</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderManager.__init__" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderManager.record_pre_reset">
-<span class="sig-name descname"><span class="pre">record_pre_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderManager.record_pre_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderManager.record_pre_reset" title="Link to this definition">#</a></dt>
-<dd><p>Forward to each term’s <a class="reference internal" href="#mjlab.managers.RecorderTerm.record_pre_reset" title="mjlab.managers.RecorderTerm.record_pre_reset"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RecorderTerm.record_pre_reset()</span></code></a>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderManager.record_post_reset">
-<span class="sig-name descname"><span class="pre">record_post_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderManager.record_post_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderManager.record_post_reset" title="Link to this definition">#</a></dt>
-<dd><p>Forward to each term’s <a class="reference internal" href="#mjlab.managers.RecorderTerm.record_post_reset" title="mjlab.managers.RecorderTerm.record_post_reset"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RecorderTerm.record_post_reset()</span></code></a>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderManager.record_post_step">
-<span class="sig-name descname"><span class="pre">record_post_step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderManager.record_post_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderManager.record_post_step" title="Link to this definition">#</a></dt>
-<dd><p>Forward to each term’s <a class="reference internal" href="#mjlab.managers.RecorderTerm.record_post_step" title="mjlab.managers.RecorderTerm.record_post_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RecorderTerm.record_post_step()</span></code></a>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderManager.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderManager.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderManager.close" title="Link to this definition">#</a></dt>
-<dd><p>Forward to each term’s <a class="reference internal" href="#mjlab.managers.RecorderTerm.close" title="mjlab.managers.RecorderTerm.close"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RecorderTerm.close()</span></code></a>.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="mjlab.managers.NullRecorderManager">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">NullRecorderManager</span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#NullRecorderManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullRecorderManager" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>No-op fallback used when no recorder terms are configured.</p>
-<p>All methods are no-ops. This class is not a <a class="reference internal" href="#mjlab.managers.ManagerBase" title="mjlab.managers.ManagerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManagerBase</span></code></a> subclass
-so it carries zero overhead.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.NullRecorderManager.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#NullRecorderManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.NullRecorderManager.__init__" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTerm">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">RecorderTerm</span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTerm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTerm" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#mjlab.managers.ManagerTermBase" title="mjlab.managers.manager_base.ManagerTermBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManagerTermBase</span></code></a></p>
-<p>Base class for recorder terms.</p>
-<p>Override only the lifecycle methods you need. Each method is a no-op by default so
-subclasses are not required to implement all of them.</p>
-<p>The environment is available as <code class="docutils literal notranslate"><span class="pre">self._env</span></code>, giving access to <code class="docutils literal notranslate"><span class="pre">self._env.obs_buf</span></code>,
-<code class="docutils literal notranslate"><span class="pre">self._env.action_manager.action</span></code>, and all other environment state.</p>
-<p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CsvRecorder</span><span class="p">(</span><span class="n">RecorderTerm</span><span class="p">):</span>
-  <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
-    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">],</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="p">)</span>
-
-  <span class="k">def</span><span class="w"> </span><span class="nf">record_pre_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_ids</span><span class="p">):</span>
-    <span class="c1"># Terminal transition: action is still intact here.</span>
-    <span class="c1"># It will be zeroed by _reset_idx immediately after this returns.</span>
-    <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">obs_buf</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">][</span><span class="n">env_ids</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="n">act</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">action_manager</span><span class="o">.</span><span class="n">action</span><span class="p">[</span><span class="n">env_ids</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">act</span><span class="p">):</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">+</span> <span class="n">a</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-
-  <span class="k">def</span><span class="w"> </span><span class="nf">record_post_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="c1"># Skip envs that just reset: their terminal pair was written in record_pre_reset</span>
-    <span class="c1"># and their action is now zeroed.</span>
-    <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">reset_buf</span>
-    <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">obs_buf</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">][</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="n">act</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">action_manager</span><span class="o">.</span><span class="n">action</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">act</span><span class="p">):</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">+</span> <span class="n">a</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-
-  <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</pre></div>
-</div>
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTerm.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mjlab.managers.RecorderTermCfg" title="mjlab.managers.RecorderTermCfg"><span class="pre">RecorderTermCfg</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="envs.html#mjlab.envs.ManagerBasedRlEnv" title="mjlab.envs.ManagerBasedRlEnv"><span class="pre">ManagerBasedRlEnv</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTerm.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTerm.__init__" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTerm.record_pre_reset">
-<span class="sig-name descname"><span class="pre">record_pre_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTerm.record_pre_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTerm.record_pre_reset" title="Link to this definition">#</a></dt>
-<dd><p>Called in <code class="docutils literal notranslate"><span class="pre">env.step()</span></code> before terminated environments are reset.</p>
-<p><strong>What is available:</strong></p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">obs_buf</span></code> contains the observation from the <em>end of the previous step</em> (the
-input the agent used to choose the terminal action). It does <strong>not</strong> contain the
-post-action terminal observation (the state reached after applying the action),
-which is never computed for resetting environments.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">action_manager.action</span></code> contains the action applied during this step. This is
-the correct terminal action. It will be zeroed for these environments by
-<code class="docutils literal notranslate"><span class="pre">_reset_idx</span></code> immediately after this hook returns, so capture it here if you
-need it later.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">reward_buf</span></code> contains the reward for this terminal step.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">reset_terminated</span></code> and <code class="docutils literal notranslate"><span class="pre">reset_time_outs</span></code> reflect why each environment is
-resetting.</p></li>
-</ul>
-<p>This is the right hook to record the terminal transition
-<code class="docutils literal notranslate"><span class="pre">(obs_t,</span> <span class="pre">action_t,</span> <span class="pre">reward_t,</span> <span class="pre">done=True)</span></code> for each resetting environment.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>env_ids</strong> – Indices of environments that are about to be reset.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTerm.record_post_reset">
-<span class="sig-name descname"><span class="pre">record_post_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTerm.record_post_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTerm.record_post_reset" title="Link to this definition">#</a></dt>
-<dd><p>Called after a reset completes with fresh observations computed.</p>
-<p>Fires at the end of <code class="docutils literal notranslate"><span class="pre">env.reset()</span></code> (covering all environments on the initial call)
-and within <code class="docutils literal notranslate"><span class="pre">env.step()</span></code> for each batch of environments that terminates, after
-state has been overwritten and new observations computed.</p>
-<p>At this point <code class="docutils literal notranslate"><span class="pre">obs_buf[env_ids]</span></code> holds the initial observation of the new episode
-and <code class="docutils literal notranslate"><span class="pre">action_manager.action[env_ids]</span></code> is zero (no action has been taken in the new
-episode yet).</p>
-<p>Use this hook to initialize per-episode state or record the first observation of a
-new episode.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>env_ids</strong> – Indices of environments that were reset.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTerm.record_post_step">
-<span class="sig-name descname"><span class="pre">record_post_step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTerm.record_post_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTerm.record_post_step" title="Link to this definition">#</a></dt>
-<dd><p>Called at the end of every <code class="docutils literal notranslate"><span class="pre">env.step()</span></code> with fresh observations.</p>
-<p>At this point <code class="docutils literal notranslate"><span class="pre">obs_buf</span></code> holds the new observation for every environment and
-<code class="docutils literal notranslate"><span class="pre">action_manager.action</span></code> holds the action that was applied during this step.
-<strong>Exception:</strong> for environments that reset during this step,
-<code class="docutils literal notranslate"><span class="pre">action_manager.action</span></code> has been zeroed by <code class="docutils literal notranslate"><span class="pre">_reset_idx</span></code> and <code class="docutils literal notranslate"><span class="pre">obs_buf</span></code> holds
-the initial observation of the new episode rather than the post-action terminal
-observation. Use <code class="docutils literal notranslate"><span class="pre">record_pre_reset</span></code> to capture the terminal <code class="docutils literal notranslate"><span class="pre">(obs,</span> <span class="pre">action)</span></code>
-pair for those environments. Resetting environments are identified by
-<code class="docutils literal notranslate"><span class="pre">self._env.reset_buf</span></code>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTerm.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTerm.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTerm.close" title="Link to this definition">#</a></dt>
-<dd><p>Called when the environment closes.</p>
-<p>Release file handles, flush write buffers, or finalize output here.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="mjlab.managers.RecorderTermCfg">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mjlab.managers.</span></span><span class="sig-name descname"><span class="pre">RecorderTermCfg</span></span><a class="reference internal" href="../../_modules/mjlab/managers/recorder_manager.html#RecorderTermCfg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mjlab.managers.RecorderTermCfg" title="Link to this definition">#</a></dt>
-<dd><p>Configuration for a recorder term.</p>
-<p><code class="docutils literal notranslate"><span class="pre">func</span></code> must be a <a class="reference internal" href="#mjlab.managers.RecorderTerm" title="mjlab.managers.RecorderTerm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a> subclass. Function-based terms are not
-supported because recorder terms are stateful (file handles, buffers, etc.).</p>
 </dd></dl>
 
 </section>
@@ -2029,8 +1695,6 @@ supported because recorder terms are stateful (file handles, buffers, etc.).</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.light_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.light_ids</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.material_names"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.material_names</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.material_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.material_ids</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.pair_names"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.pair_names</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.pair_ids"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.pair_ids</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.preserve_order"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.preserve_order</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.SceneEntityCfg.resolve"><code class="docutils literal notranslate"><span class="pre">SceneEntityCfg.resolve()</span></code></a></li>
 </ul>
@@ -2097,8 +1761,6 @@ supported because recorder terms are stateful (file handles, buffers, etc.).</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager"><code class="docutils literal notranslate"><span class="pre">RewardManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.__init__"><code class="docutils literal notranslate"><span class="pre">RewardManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.reset"><code class="docutils literal notranslate"><span class="pre">RewardManager.reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.debug_vis"><code class="docutils literal notranslate"><span class="pre">RewardManager.debug_vis()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardManager.get_visualizable_terms"><code class="docutils literal notranslate"><span class="pre">RewardManager.get_visualizable_terms()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RewardTermCfg"><code class="docutils literal notranslate"><span class="pre">RewardTermCfg</span></code></a><ul class="nav section-nav flex-column">
@@ -2124,8 +1786,6 @@ supported because recorder terms are stateful (file handles, buffers, etc.).</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager"><code class="docutils literal notranslate"><span class="pre">CommandManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.__init__"><code class="docutils literal notranslate"><span class="pre">CommandManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.create_gui"><code class="docutils literal notranslate"><span class="pre">CommandManager.create_gui()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.on_viewer_pause"><code class="docutils literal notranslate"><span class="pre">CommandManager.on_viewer_pause()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.apply_gui_reset"><code class="docutils literal notranslate"><span class="pre">CommandManager.apply_gui_reset()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.create_debug_vis_gui"><code class="docutils literal notranslate"><span class="pre">CommandManager.create_debug_vis_gui()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandManager.reset"><code class="docutils literal notranslate"><span class="pre">CommandManager.reset()</span></code></a></li>
 </ul>
@@ -2137,8 +1797,6 @@ supported because recorder terms are stateful (file handles, buffers, etc.).</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm"><code class="docutils literal notranslate"><span class="pre">CommandTerm</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.__init__"><code class="docutils literal notranslate"><span class="pre">CommandTerm.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.create_gui"><code class="docutils literal notranslate"><span class="pre">CommandTerm.create_gui()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.on_viewer_pause"><code class="docutils literal notranslate"><span class="pre">CommandTerm.on_viewer_pause()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.apply_gui_reset"><code class="docutils literal notranslate"><span class="pre">CommandTerm.apply_gui_reset()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.CommandTerm.reset"><code class="docutils literal notranslate"><span class="pre">CommandTerm.reset()</span></code></a></li>
 </ul>
 </li>
@@ -2185,42 +1843,13 @@ supported because recorder terms are stateful (file handles, buffers, etc.).</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager"><code class="docutils literal notranslate"><span class="pre">MetricsManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">MetricsManager.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.reset"><code class="docutils literal notranslate"><span class="pre">MetricsManager.reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsManager.compute_substep"><code class="docutils literal notranslate"><span class="pre">MetricsManager.compute_substep()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullMetricsManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullMetricsManager.__init__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg.per_substep"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg.per_substep</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg.reduce"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg.reduce</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#recorder-manager">Recorder Manager</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager"><code class="docutils literal notranslate"><span class="pre">RecorderManager</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.__init__"><code class="docutils literal notranslate"><span class="pre">RecorderManager.__init__()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.record_pre_reset"><code class="docutils literal notranslate"><span class="pre">RecorderManager.record_pre_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.record_post_reset"><code class="docutils literal notranslate"><span class="pre">RecorderManager.record_post_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.record_post_step"><code class="docutils literal notranslate"><span class="pre">RecorderManager.record_post_step()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderManager.close"><code class="docutils literal notranslate"><span class="pre">RecorderManager.close()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullRecorderManager"><code class="docutils literal notranslate"><span class="pre">NullRecorderManager</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.NullRecorderManager.__init__"><code class="docutils literal notranslate"><span class="pre">NullRecorderManager.__init__()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm"><code class="docutils literal notranslate"><span class="pre">RecorderTerm</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.__init__"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.__init__()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.record_pre_reset"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.record_pre_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.record_post_reset"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.record_post_reset()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.record_post_step"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.record_post_step()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTerm.close"><code class="docutils literal notranslate"><span class="pre">RecorderTerm.close()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.RecorderTermCfg"><code class="docutils literal notranslate"><span class="pre">RecorderTermCfg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mjlab.managers.MetricsTermCfg"><code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2256,7 +1885,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

@@ -71,7 +71,6 @@ Table of Contents
    source/randomization
    source/curriculum
    source/metrics
-   source/recorders
 
 .. toctree::
    :maxdepth: 1

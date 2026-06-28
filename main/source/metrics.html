@@ -31,7 +31,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=3ea80bc3" />
@@ -46,7 +46,7 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -55,11 +55,11 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Recorders" href="recorders.html" />
+    <link rel="next" title="Training with RSL-RL" href="training/rsl_rl.html" />
     <link rel="prev" title="Curriculum" href="curriculum.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -189,7 +189,6 @@
 <li class="toctree-l1"><a class="reference internal" href="architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="entity/entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="actuators.html">Actuators</a></li>
@@ -213,7 +212,6 @@
 <li class="toctree-l1"><a class="reference internal" href="randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="curriculum.html">Curriculum</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -518,19 +516,12 @@ environment. On every call to <code class="docutils literal notranslate"><span c
 <li><p>Each term function is called with the current environment state.</p></li>
 <li><p>The returned per-environment values are added to the running sums.</p></li>
 </ol>
-<p>When an environment resets, the manager reduces each term’s accumulated
-values to a scalar, averages the result across all resetting environments,
-and returns it under the key <code class="docutils literal notranslate"><span class="pre">Episode_Metrics/&lt;term_name&gt;</span></code>. The sums and
-counters are then zeroed for the reset environments.</p>
-<p>The reduction is controlled by the <code class="docutils literal notranslate"><span class="pre">reduce</span></code> field on <code class="docutils literal notranslate"><span class="pre">MetricsTermCfg</span></code>:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;mean&quot;</span></code> (default): divides the accumulated sum by the step count for
-each environment. Division is per-environment, so environments that
-terminated early are not diluted by longer-running ones.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code>: reports the value from the final step of the episode. This is
-useful for binary success metrics (such as whether the robot is standing)
-that should not be averaged over time.</p></li>
-</ul>
+<p>When an environment resets, the manager divides each term’s accumulated sum
+by the step count for that environment, averages the result across all
+resetting environments, and returns the scalar under the key
+<code class="docutils literal notranslate"><span class="pre">Episode_Metrics/&lt;term_name&gt;</span></code>. The sums and counters are then zeroed for
+the reset environments. Division is per-environment, so environments that
+terminated early are not diluted by longer-running ones.</p>
 <p>These scalars flow through <code class="docutils literal notranslate"><span class="pre">env.extras[&quot;log&quot;]</span></code> into the training runner,
 which writes them to the configured logger. In a typical training run they
 appear as:</p>
@@ -585,11 +576,11 @@ calls it automatically on episode resets.</p>
       </div>
     </a>
     <a class="right-next"
-       href="recorders.html"
+       href="training/rsl_rl.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Recorders</p>
+        <p class="prev-next-title">Training with RSL-RL</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -645,7 +636,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

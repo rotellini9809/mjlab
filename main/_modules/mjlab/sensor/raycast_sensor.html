@@ -30,7 +30,7 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=3ea80bc3" />
@@ -45,7 +45,7 @@
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../../../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -188,7 +188,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../source/entity/entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/actuators.html">Actuators</a></li>
@@ -212,7 +211,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -402,11 +400,191 @@ document.write(`
   <h1>Source code for mjlab.sensor.raycast_sensor</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Raycast sensor for terrain and obstacle detection.</span>
 
-<span class="sd">Provides :class:`RayCastSensor` and :class:`RayCastSensorCfg` for BVH-accelerated</span>
-<span class="sd">raycasting with grid, pinhole camera, and ring patterns. Supports multi-frame</span>
-<span class="sd">attachment, configurable ray alignment, and geom group filtering.</span>
+<span class="sd">Ray Patterns</span>
+<span class="sd">------------</span>
 
-<span class="sd">See :doc:`/sensors/raycast_sensor` for usage guide and examples.</span>
+<span class="sd">This module provides three ray pattern types for different use cases:</span>
+
+<span class="sd">**Grid Pattern** - Parallel rays in a 2D grid::</span>
+
+<span class="sd">    Camera at any height:</span>
+<span class="sd">          ↓   ↓   ↓   ↓   ↓      ← All rays point same direction</span>
+<span class="sd">          ↓   ↓   ↓   ↓   ↓</span>
+<span class="sd">          ↓   ↓   ↓   ↓   ↓</span>
+<span class="sd">        ──●───●───●───●───●──    ← Fixed spacing (e.g., 10cm apart)</span>
+<span class="sd">             Ground</span>
+
+<span class="sd">- Rays are parallel (all point in the same direction, e.g., -Z down)</span>
+<span class="sd">- Spacing is defined in world units (meters)</span>
+<span class="sd">- Height doesn&#39;t affect the hit pattern - same footprint regardless of altitude</span>
+<span class="sd">- Good for: height maps, terrain scanning with consistent spatial sampling</span>
+
+<span class="sd">**Pinhole Camera Pattern** - Diverging rays from a single point::</span>
+
+<span class="sd">    Camera LOW:                    Camera HIGH:</span>
+<span class="sd">             📷                            📷</span>
+<span class="sd">            /|\\                          /  |  \\</span>
+<span class="sd">           / | \\                        /   |   \\</span>
+<span class="sd">          /  |  \\                      /    |    \\</span>
+<span class="sd">        ─●───●───●─                 ───●─────●─────●───</span>
+<span class="sd">        (small footprint)           (large footprint)</span>
+
+<span class="sd">- Rays diverge from a single point (like light entering a camera)</span>
+<span class="sd">- FOV is fixed in angular units (degrees)</span>
+<span class="sd">- Higher altitude → wider ground coverage, more spread between hits</span>
+<span class="sd">- Lower altitude → tighter ground coverage, denser hits</span>
+<span class="sd">- Good for: simulating depth cameras, LiDAR with angular resolution</span>
+
+<span class="sd">**Ring Pattern** - Rays in concentric rings around the origin::</span>
+
+<span class="sd">    Ring (8 samples):</span>
+<span class="sd">         ●   ●</span>
+<span class="sd">       ●       ●     ← evenly spaced on circle</span>
+<span class="sd">       ●       ●</span>
+<span class="sd">         ●   ●</span>
+<span class="sd">           ●         ← center (optional)</span>
+
+<span class="sd">- Rays cast from offsets arranged in rings around the attachment frame</span>
+<span class="sd">- Supports multiple concentric rings at different radii</span>
+<span class="sd">- Good for: per-site height sensing, foot clearance, terrain sampling</span>
+
+<span class="sd">**Pattern Comparison**:</span>
+
+<span class="sd">============== ==================== ========================== =================</span>
+<span class="sd">Aspect         Grid                 Pinhole                    Ring</span>
+<span class="sd">============== ==================== ========================== =================</span>
+<span class="sd">Ray direction  All parallel         Diverge from origin        All parallel</span>
+<span class="sd">Spacing        Meters               Degrees (FOV)              Radius + count</span>
+<span class="sd">Height affect  No                   Yes                        No</span>
+<span class="sd">Real-world     Orthographic proj.   Perspective camera / LiDAR Terrain probe</span>
+<span class="sd">============== ==================== ========================== =================</span>
+
+<span class="sd">The pinhole behavior matches real depth sensors (RealSense, LiDAR) - when</span>
+<span class="sd">you&#39;re farther from an object, each pixel covers more area.</span>
+
+
+<span class="sd">Frame Attachment</span>
+<span class="sd">----------------</span>
+
+<span class="sd">Rays are attached to one or more frames in the scene via ``ObjRef``. Supported</span>
+<span class="sd">frame types:</span>
+
+<span class="sd">- **body**: Attach to a body&#39;s origin. Rays follow body position and orientation.</span>
+<span class="sd">- **site**: Attach to a site. Useful for precise placement or offset from body.</span>
+<span class="sd">- **geom**: Attach to a geometry. Useful for sensors mounted on specific parts.</span>
+
+<span class="sd">Single frame::</span>
+
+<span class="sd">    from mjlab.sensor import ObjRef, RayCastSensorCfg, GridPatternCfg</span>
+
+<span class="sd">    cfg = RayCastSensorCfg(</span>
+<span class="sd">        name=&quot;terrain_scan&quot;,</span>
+<span class="sd">        frame=ObjRef(type=&quot;body&quot;, name=&quot;base&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">        pattern=GridPatternCfg(size=(1.0, 1.0), resolution=0.1),</span>
+<span class="sd">    )</span>
+
+<span class="sd">Multiple frames (e.g. per-foot height sensing)::</span>
+
+<span class="sd">    cfg = RayCastSensorCfg(</span>
+<span class="sd">        name=&quot;foot_heights&quot;,</span>
+<span class="sd">        frame=(</span>
+<span class="sd">            ObjRef(type=&quot;site&quot;, name=&quot;left_foot&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">            ObjRef(type=&quot;site&quot;, name=&quot;right_foot&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">        ),</span>
+<span class="sd">        pattern=RingPatternCfg.single_ring(radius=0.05, num_samples=8),</span>
+<span class="sd">    )</span>
+
+<span class="sd">With multiple frames, the output ``distances`` has shape ``[B, F*N]`` where</span>
+<span class="sd">F is the number of frames and N is rays per frame. Each frame&#39;s parent body</span>
+<span class="sd">is excluded independently when ``exclude_parent_body`` is True.</span>
+
+<span class="sd">The ``exclude_parent_body`` option (default: True) prevents rays from hitting</span>
+<span class="sd">the body they&#39;re attached to.</span>
+
+
+<span class="sd">Ray Alignment</span>
+<span class="sd">-------------</span>
+
+<span class="sd">The ``ray_alignment`` setting controls how rays orient relative to the frame::</span>
+
+<span class="sd">    Robot tilted 30°:</span>
+
+<span class="sd">    &quot;base&quot; (default)          &quot;yaw&quot;                    &quot;world&quot;</span>
+<span class="sd">    Rays tilt with body       Rays stay level          Rays fixed to world</span>
+<span class="sd">          ↘ ↓ ↙                    ↓ ↓ ↓                    ↓ ↓ ↓</span>
+<span class="sd">           \\|/                     |||                      |||</span>
+<span class="sd">            🤖  ← tilted            🤖  ← tilted             🤖  ← tilted</span>
+<span class="sd">           /                       /                        /</span>
+
+<span class="sd">- **base**: Full position + rotation. Rays rotate with the body. Good for</span>
+<span class="sd">  body-mounted sensors that should scan relative to the robot&#39;s orientation.</span>
+
+<span class="sd">- **yaw**: Position + yaw only, ignores pitch/roll. Rays always point straight</span>
+<span class="sd">  down regardless of body tilt. Good for height maps where you want consistent</span>
+<span class="sd">  vertical sampling even when the robot is on a slope.</span>
+
+<span class="sd">- **world**: Fixed in world frame, only position follows body. Rays always</span>
+<span class="sd">  point in a fixed world direction. Good for gravity-aligned measurements.</span>
+
+
+<span class="sd">Debug Visualization</span>
+<span class="sd">-------------------</span>
+
+<span class="sd">Enable visualization with ``debug_vis=True`` and customize via ``VizCfg``::</span>
+
+<span class="sd">    cfg = RayCastSensorCfg(</span>
+<span class="sd">        name=&quot;scan&quot;,</span>
+<span class="sd">        frame=ObjRef(type=&quot;body&quot;, name=&quot;base&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">        pattern=GridPatternCfg(),</span>
+<span class="sd">        debug_vis=True,</span>
+<span class="sd">        viz=RayCastSensorCfg.VizCfg(</span>
+<span class="sd">            hit_color=(0, 1, 0, 0.8),      # Green for hits</span>
+<span class="sd">            miss_color=(1, 0, 0, 0.4),     # Red for misses</span>
+<span class="sd">            show_rays=True,                 # Draw ray arrows</span>
+<span class="sd">            show_normals=True,              # Draw surface normals</span>
+<span class="sd">            normal_color=(1, 1, 0, 1),     # Yellow normals</span>
+<span class="sd">        ),</span>
+<span class="sd">    )</span>
+
+<span class="sd">Visualization options:</span>
+
+<span class="sd">- ``hit_color`` / ``miss_color``: RGBA colors for ray arrows</span>
+<span class="sd">- ``hit_sphere_color`` / ``hit_sphere_radius``: Spheres at hit points</span>
+<span class="sd">- ``show_rays``: Draw arrows from origin to hit/miss points</span>
+<span class="sd">- ``show_normals`` / ``normal_color`` / ``normal_length``: Surface normal arrows</span>
+
+
+<span class="sd">Geom Group Filtering</span>
+<span class="sd">--------------------</span>
+
+<span class="sd">MuJoCo geoms can be assigned to groups 0-5. Use ``include_geom_groups`` to</span>
+<span class="sd">filter which groups the rays can hit::</span>
+
+<span class="sd">    cfg = RayCastSensorCfg(</span>
+<span class="sd">        name=&quot;terrain_only&quot;,</span>
+<span class="sd">        frame=ObjRef(type=&quot;body&quot;, name=&quot;base&quot;, entity=&quot;robot&quot;),</span>
+<span class="sd">        pattern=GridPatternCfg(),</span>
+<span class="sd">        include_geom_groups=(0, 1),  # Only hit geoms in groups 0 and 1</span>
+<span class="sd">    )</span>
+
+<span class="sd">This is useful for ignoring certain geometry (e.g., visual-only geoms in</span>
+<span class="sd">group 3) while still detecting collisions with terrain (group 0).</span>
+
+
+<span class="sd">Output Data</span>
+<span class="sd">-----------</span>
+
+<span class="sd">Access sensor data via the ``data`` property, which returns ``RayCastData``:</span>
+
+<span class="sd">- ``distances``: [B, N] Distance to hit, or -1 if no hit / beyond max_distance</span>
+<span class="sd">- ``hit_pos_w``: [B, N, 3] World-space hit positions</span>
+<span class="sd">- ``normals_w``: [B, N, 3] Surface normals at hit points (world frame)</span>
+<span class="sd">- ``pos_w``: [B, 3] First frame position (backward compat)</span>
+<span class="sd">- ``quat_w``: [B, 4] First frame orientation (backward compat)</span>
+<span class="sd">- ``frame_pos_w``: [B, F, 3] All frame positions</span>
+<span class="sd">- ``frame_quat_w``: [B, F, 4] All frame orientations</span>
+
+<span class="sd">Where B = environments, F = frames, N = F * num_rays_per_frame (total rays).</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -871,7 +1049,7 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">:</span> <span class="n">mjwarp</span><span class="o">.</span><span class="n">Model</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_mj_model</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjModel</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_wp_device</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Device</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_wp_device</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">Device</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="c1"># Per-frame info: list of (frame_type, obj_id, body_id).</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;body&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;geom&quot;</span><span class="p">],</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1154,7 +1332,7 @@ document.write(`
     <span class="c1"># affects ray directions (applied to frame_mat below).</span>
     <span class="n">pos_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">mat_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">frame_type</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">frame_type</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">,</span> <span class="n">_body_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame_infos</span><span class="p">:</span>
       <span class="k">if</span> <span class="n">frame_type</span> <span class="o">==</span> <span class="s2">&quot;body&quot;</span><span class="p">:</span>
         <span class="n">pos_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xpos</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">])</span>
         <span class="n">mat_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">xmat</span><span class="p">[:,</span> <span class="n">obj_id</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
@@ -1202,23 +1380,17 @@ document.write(`
 <a class="viewcode-back" href="../../../source/api/sensor.html#mjlab.sensor.RayCastSensor.raycast_kernel">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="nf">raycast_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">:</span> <span class="n">mjwarp</span><span class="o">.</span><span class="n">RenderContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;IN-GRAPH: Execute BVH-accelerated raycast kernel.&quot;&quot;&quot;</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_bodyexclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_geomid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="n">rays</span><span class="p">(</span>
       <span class="n">m</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">struct</span><span class="p">,</span>  <span class="c1"># type: ignore[attr-defined]</span>
       <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">struct</span><span class="p">,</span>  <span class="c1"># type: ignore[attr-defined]</span>
-      <span class="n">pnt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
-      <span class="n">vec</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
+      <span class="n">pnt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_pnt</span><span class="p">,</span>
+      <span class="n">vec</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_vec</span><span class="p">,</span>
       <span class="n">geomgroup</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_geomgroup</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
       <span class="n">flg_static</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
       <span class="n">bodyexclude</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_bodyexclude</span><span class="p">,</span>
-      <span class="n">dist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
-      <span class="n">geomid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_geomid</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
-      <span class="n">normal</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">,</span>  <span class="c1"># pyright: ignore[reportArgumentType]</span>
+      <span class="n">dist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span><span class="p">,</span>
+      <span class="n">geomid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_geomid</span><span class="p">,</span>
+      <span class="n">normal</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">,</span>
       <span class="n">rc</span><span class="o">=</span><span class="n">rc</span><span class="p">,</span>
     <span class="p">)</span></div>
 
@@ -1236,22 +1408,19 @@ document.write(`
     <span class="n">F</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_frames</span>
 
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="n">distances</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span><span class="p">)</span>
-    <span class="n">normals_w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-    <span class="n">distances</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">distances</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">max_distance</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_dist</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ray_normal</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rays</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">max_distance</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
 
-    <span class="n">hit_mask</span> <span class="o">=</span> <span class="n">distances</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-    <span class="c1"># ``origin + ray * max(distance, 0)`` collapses miss rays to ``origin``</span>
-    <span class="c1"># (clamped distance is 0) without any branching.</span>
-    <span class="n">clamped</span> <span class="o">=</span> <span class="n">distances</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_hit_pos_w</span> <span class="o">=</span> <span class="p">(</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_origins</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_rays</span> <span class="o">*</span> <span class="n">clamped</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="p">)</span>
+    <span class="n">hit_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+    <span class="n">hit_pos_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_origins</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+    <span class="n">hit_pos_w</span><span class="p">[</span><span class="n">hit_mask</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_origins</span><span class="p">[</span>
+      <span class="n">hit_mask</span>
+    <span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_world_rays</span><span class="p">[</span><span class="n">hit_mask</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span><span class="p">[</span><span class="n">hit_mask</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_hit_pos_w</span> <span class="o">=</span> <span class="n">hit_pos_w</span>
 
     <span class="c1"># Zero out normals for misses.</span>
-    <span class="n">normals_w</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="o">~</span><span class="n">hit_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">=</span> <span class="n">distances</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span> <span class="o">=</span> <span class="n">normals_w</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_normals_w</span><span class="p">[</span><span class="o">~</span><span class="n">hit_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
     <span class="c1"># All frames: [B, F, 3] / [B, F, 4].</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_frame_pos_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_frame_pos</span>
@@ -1379,7 +1548,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

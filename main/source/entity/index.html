@@ -31,7 +31,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=3ea80bc3" />
@@ -46,7 +46,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -59,7 +59,7 @@
     <link rel="prev" title="Architecture Overview" href="../architecture_overview.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -189,7 +189,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Entity</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -213,7 +212,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -468,7 +466,6 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#init-state"><code class="docutils literal notranslate"><span class="pre">init_state</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#articulation"><code class="docutils literal notranslate"><span class="pre">articulation</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spec-editors">Spec editors</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#heterogeneous-worlds">Heterogeneous worlds</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subclassing-entity">Subclassing Entity</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#finding-elements">Finding elements</a></li>
 </ul>
@@ -608,11 +605,13 @@ everything into a shared <code class="docutils literal notranslate"><span class=
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">spec_fn</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="s2">&quot;robot.xml&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For anything more involved, use a regular function. MuJoCo resolves mesh
-assets from disk automatically, so <code class="docutils literal notranslate"><span class="pre">get_spec</span></code> only needs to load the
-XML:</p>
+<p>For anything more involved, use a regular function. The asset zoo robots
+all follow this pattern: load the XML, attach mesh assets, and return
+the spec.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">get_spec</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ROBOT_XML</span><span class="p">))</span>
+    <span class="n">spec</span> <span class="o">=</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ROBOT_XML</span><span class="p">))</span>
+    <span class="n">spec</span><span class="o">.</span><span class="n">assets</span> <span class="o">=</span> <span class="n">get_assets</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">meshdir</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">spec</span>
 </pre></div>
 </div>
 <p>Because <code class="docutils literal notranslate"><span class="pre">spec_fn</span></code> is an arbitrary callable, you can perform any
@@ -688,16 +687,6 @@ modify the <code class="docutils literal notranslate"><span class="pre">MjSpec</
 example, a <code class="docutils literal notranslate"><span class="pre">CollisionCfg</span></code> with <code class="docutils literal notranslate"><span class="pre">geom_names_expr=(&quot;.*_foot.*&quot;,)</span></code>
 sets contact parameters only on foot geoms. See the asset zoo
 (<code class="docutils literal notranslate"><span class="pre">mjlab.asset_zoo.robots</span></code>) for complete examples.</p>
-</section>
-<section id="heterogeneous-worlds">
-<h3>Heterogeneous worlds<a class="headerlink" href="#heterogeneous-worlds" title="Link to this heading">#</a></h3>
-<p>For scenes that need different mesh assets in different parallel worlds
-(for example, training a manipulation policy that generalizes across
-object shapes), use <code class="docutils literal notranslate"><span class="pre">VariantEntityCfg</span></code> instead of <code class="docutils literal notranslate"><span class="pre">EntityCfg</span></code>. Each
-world is assigned a variant proportional to a configurable weight, and
-mesh-dependent compiled constants (collision bounds, body inertials,
-subtree mass) are stored as per-world arrays so domain randomization and
-viewers stay consistent. See <a class="reference internal" href="per_world_mesh.html#heterogeneous-worlds"><span class="std std-ref">Heterogeneous Worlds</span></a>.</p>
 </section>
 <section id="subclassing-entity">
 <h3>Subclassing Entity<a class="headerlink" href="#subclassing-entity" title="Link to this heading">#</a></h3>
@@ -809,7 +798,6 @@ their corresponding data views without manual index bookkeeping.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="entity_data.html">Entity Data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </div>
 </section>
@@ -866,7 +854,6 @@ their corresponding data views without manual index bookkeeping.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#init-state"><code class="docutils literal notranslate"><span class="pre">init_state</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#articulation"><code class="docutils literal notranslate"><span class="pre">articulation</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spec-editors">Spec editors</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#heterogeneous-worlds">Heterogeneous worlds</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subclassing-entity">Subclassing Entity</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#finding-elements">Finding elements</a></li>
 </ul>
@@ -910,7 +897,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

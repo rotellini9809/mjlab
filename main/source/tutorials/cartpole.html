@@ -31,7 +31,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=3ea80bc3" />
@@ -46,7 +46,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -61,7 +61,7 @@
     <link rel="prev" title="Tutorials" href="../tutorials.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -191,7 +191,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../entity/entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../actuators.html">Actuators</a></li>
@@ -215,7 +214,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -551,7 +549,7 @@ state.</p>
 
 <span class="c1"># Tell mjlab to use the motor defined in the XML as is.</span>
 <span class="n">_CARTPOLE_ARTICULATION</span> <span class="o">=</span> <span class="n">EntityArticulationInfoCfg</span><span class="p">(</span>
-    <span class="n">actuators</span><span class="o">=</span><span class="p">(</span><span class="n">XmlActuatorCfg</span><span class="p">(</span><span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;slider&quot;</span><span class="p">,)),),</span>
+    <span class="n">actuators</span><span class="o">=</span><span class="p">(</span><span class="n">XmlMotorActuatorCfg</span><span class="p">(</span><span class="n">target_names_expr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;slider&quot;</span><span class="p">,)),),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -703,7 +701,7 @@ you can give the critic clean observations
 <h3>Actions: what the agent does<a class="headerlink" href="#actions-what-the-agent-does" title="Link to this heading">#</a></h3>
 <p>The agent outputs a single scalar: the force on the cart.
 <code class="docutils literal notranslate"><span class="pre">JointEffortActionCfg</span></code> writes the policy output to the actuator’s
-effort target. The <code class="docutils literal notranslate"><span class="pre">XmlActuator</span></code> passes it to MuJoCo’s <code class="docutils literal notranslate"><span class="pre">ctrl</span></code>
+effort target. The <code class="docutils literal notranslate"><span class="pre">XmlMotorActuator</span></code> passes it to MuJoCo’s <code class="docutils literal notranslate"><span class="pre">ctrl</span></code>
 buffer, which clamps it to [-1, 1] and multiplies by the gear ratio:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">actions</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;effort&quot;</span><span class="p">:</span> <span class="n">JointEffortActionCfg</span><span class="p">(</span>
@@ -827,7 +825,7 @@ config is in <code class="docutils literal notranslate"><span class="pre">cartpo
 </pre></div>
 </div>
 <p>Train:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>train<span class="w"> </span>Mjlab-Cartpole-Swingup<span class="w"> </span>--env.scene.num-envs<span class="w"> </span><span class="m">4096</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>train<span class="w"> </span>Mjlab-Cartpole-Swingup<span class="w"> </span>--num-envs<span class="w"> </span><span class="m">4096</span>
 </pre></div>
 </div>
 <p>Play back a trained checkpoint, either from a local file or a W&amp;B run:</p>
@@ -971,7 +969,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

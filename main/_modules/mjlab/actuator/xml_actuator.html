@@ -30,7 +30,7 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=3ea80bc3" />
@@ -45,7 +45,7 @@
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../../../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -188,7 +188,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../source/entity/entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/actuators.html">Actuators</a></li>
@@ -212,7 +211,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../source/metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -400,87 +398,39 @@ document.write(`
                 <article class="bd-article">
                   
   <h1>Source code for mjlab.actuator.xml_actuator</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Use actuators already defined in your robot XML.</span>
+<span></span><span class="sd">&quot;&quot;&quot;Wrappers for XML-defined actuators.</span>
 
-<span class="sd">When your MJCF already has ``&lt;position&gt;``, ``&lt;velocity&gt;``, ``&lt;motor&gt;``, or ``&lt;muscle&gt;``</span>
-<span class="sd">elements, ``XmlActuatorCfg`` wraps them without re-specifying gains or limits. The</span>
-<span class="sd">actuator type is auto-detected from the spec element. Delay and other ``ActuatorCfg``</span>
-<span class="sd">fields work as usual.</span>
-
-<span class="sd">If your XML has actuators on both joints and tendons, use two configs with different</span>
-<span class="sd">``transmission_type`` values; a single config can only target one namespace.</span>
+<span class="sd">This module provides wrappers for actuators already defined in robot XML/MJCF files.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">mujoco</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Actuator</span><span class="p">,</span> <span class="n">ActuatorCfg</span><span class="p">,</span> <span class="n">ActuatorCmd</span><span class="p">,</span> <span class="n">CommandField</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.utils.mujoco</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_command_field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.actuator.actuator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Actuator</span><span class="p">,</span> <span class="n">ActuatorCfg</span><span class="p">,</span> <span class="n">ActuatorCmd</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
   <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.entity</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entity</span>
 
-
-<div class="viewcode-block" id="XmlActuatorCfg">
-<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlActuatorCfg">[docs]</a>
-<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">XmlActuatorCfg</span><span class="p">(</span><span class="n">ActuatorCfg</span><span class="p">):</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrap existing XML-defined actuators.</span>
-
-<span class="sd">  Detects the actuator type (position, velocity, motor, muscle) from the MuJoCo spec</span>
-<span class="sd">  element during ``edit_spec``, or validates against an explicit ``command_field`` if</span>
-<span class="sd">  provided.</span>
-<span class="sd">  &quot;&quot;&quot;</span>
-
-  <span class="n">command_field</span><span class="p">:</span> <span class="n">CommandField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;If provided, require XML actuators to match this command field.</span>
-<span class="sd">  If None, auto-detect strictly from the spec element.&quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="XmlActuatorCfg.build">
-<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlActuatorCfg.build">[docs]</a>
-  <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XmlActuator</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">XmlActuator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">,</span> <span class="n">target_names</span><span class="p">)</span></div>
-</div>
+<span class="n">XmlActuatorCfgT</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;XmlActuatorCfgT&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">ActuatorCfg</span><span class="p">)</span>
 
 
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlActuator</span><span class="p">(</span><span class="n">Actuator</span><span class="p">[</span><span class="n">XmlActuatorCfgT</span><span class="p">],</span> <span class="n">Generic</span><span class="p">[</span><span class="n">XmlActuatorCfgT</span><span class="p">]):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Base class for XML-defined actuators.&quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="XmlActuator">
-<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlActuator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">XmlActuator</span><span class="p">(</span><span class="n">Actuator</span><span class="p">[</span><span class="n">XmlActuatorCfg</span><span class="p">]):</span>
-<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrapper for XML-defined actuators.&quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="XmlActuator.__init__">
-<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlActuator.__init__">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
-    <span class="n">cfg</span><span class="p">:</span> <span class="n">XmlActuatorCfg</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">XmlActuatorCfgT</span><span class="p">,</span>
     <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span>
     <span class="n">target_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">,</span> <span class="n">target_names</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span><span class="p">:</span> <span class="n">CommandField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
 
-
-  <span class="nd">@property</span>
-  <span class="k">def</span><span class="w"> </span><span class="nf">command_field</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CommandField</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The resolved command field (detected or explicit), not the raw config value.</span>
-
-<span class="sd">    Set during ``edit_spec``. Use ``self.cfg.command_field`` to access the user&#39;s</span>
-<span class="sd">    original input (which may be None for auto-detection).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span>
-
-<div class="viewcode-block" id="XmlActuator.edit_spec">
-<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlActuator.edit_spec">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="nf">edit_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="p">,</span> <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="c1"># Filter to only targets that have corresponding XML actuators.</span>
     <span class="n">filtered_target_ids</span> <span class="o">=</span> <span class="p">[]</span>
@@ -504,51 +454,129 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_target_ids_list</span> <span class="o">=</span> <span class="n">filtered_target_ids</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_target_names</span> <span class="o">=</span> <span class="n">filtered_target_names</span>
 
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">command_field</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="c1"># Validate that every matched actuator is compatible with the</span>
-      <span class="c1"># requested command field.</span>
-      <span class="k">for</span> <span class="n">act</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mjs_actuators</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_names</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-          <span class="n">detected</span> <span class="o">=</span> <span class="n">detect_command_field</span><span class="p">(</span><span class="n">act</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-          <span class="k">continue</span>  <span class="c1"># Unrecognized type; trust the explicit override.</span>
-        <span class="k">if</span> <span class="n">detected</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">command_field</span><span class="p">:</span>
-          <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;XML actuator for &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; is type &#39;</span><span class="si">{</span><span class="n">detected</span><span class="si">}</span><span class="s2">&#39;, but &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;command_field=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">command_field</span><span class="si">}</span><span class="s2">&#39; was requested.&quot;</span>
-          <span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">command_field</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="c1"># Auto-detect from spec elements. Raises for unrecognized types.</span>
-      <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">detect_command_field</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mjs_actuators</span><span class="p">]</span>
-      <span class="n">unique</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
-      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">breakdown</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_target_names</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-          <span class="sa">f</span><span class="s2">&quot;Mixed XML actuator types for targets: </span><span class="si">{</span><span class="n">breakdown</span><span class="si">}</span><span class="s2">. &quot;</span>
-          <span class="sa">f</span><span class="s2">&quot;Split into separate XmlActuatorCfg groups.&quot;</span>
-        <span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">CommandField</span><span class="p">,</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
-
-
-<div class="viewcode-block" id="XmlActuator.compute">
-<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlActuator.compute">[docs]</a>
-  <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ActuatorCmd</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span> <span class="o">==</span> <span class="s2">&quot;position&quot;</span><span class="p">:</span>
-      <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">position_target</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command_field</span> <span class="o">==</span> <span class="s2">&quot;velocity&quot;</span><span class="p">:</span>
-      <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">velocity_target</span>
-    <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">effort_target</span></div>
-
-
   <span class="k">def</span><span class="w"> </span><span class="nf">_find_actuator_for_target</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjSpec</span><span class="p">,</span> <span class="n">target_name</span><span class="p">:</span> <span class="nb">str</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjsActuator</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find an actuator that targets the given target.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find an actuator that targets the given target (joint, tendon, or site).&quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">actuator</span> <span class="ow">in</span> <span class="n">spec</span><span class="o">.</span><span class="n">actuators</span><span class="p">:</span>
       <span class="k">if</span> <span class="n">actuator</span><span class="o">.</span><span class="n">target</span> <span class="o">==</span> <span class="n">target_name</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">actuator</span>
-    <span class="k">return</span> <span class="kc">None</span></div>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="XmlPositionActuatorCfg">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlPositionActuatorCfg">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlPositionActuatorCfg</span><span class="p">(</span><span class="n">ActuatorCfg</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrap existing XML-defined &lt;position&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlPositionActuatorCfg.build">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlPositionActuatorCfg.build">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XmlPositionActuator</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">XmlPositionActuator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">,</span> <span class="n">target_names</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlPositionActuator">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlPositionActuator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlPositionActuator</span><span class="p">(</span><span class="n">XmlActuator</span><span class="p">[</span><span class="n">XmlPositionActuatorCfg</span><span class="p">]):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrapper for XML-defined &lt;position&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlPositionActuator.compute">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlPositionActuator.compute">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ActuatorCmd</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">position_target</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlMotorActuatorCfg">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMotorActuatorCfg">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlMotorActuatorCfg</span><span class="p">(</span><span class="n">ActuatorCfg</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrap existing XML-defined &lt;motor&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlMotorActuatorCfg.build">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMotorActuatorCfg.build">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XmlMotorActuator</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">XmlMotorActuator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">,</span> <span class="n">target_names</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlMotorActuator">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMotorActuator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlMotorActuator</span><span class="p">(</span><span class="n">XmlActuator</span><span class="p">[</span><span class="n">XmlMotorActuatorCfg</span><span class="p">]):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrapper for XML-defined &lt;motor&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlMotorActuator.compute">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMotorActuator.compute">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ActuatorCmd</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">effort_target</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlVelocityActuatorCfg">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlVelocityActuatorCfg">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlVelocityActuatorCfg</span><span class="p">(</span><span class="n">ActuatorCfg</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrap existing XML-defined &lt;velocity&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlVelocityActuatorCfg.build">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlVelocityActuatorCfg.build">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XmlVelocityActuator</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">XmlVelocityActuator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">,</span> <span class="n">target_names</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlVelocityActuator">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlVelocityActuator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlVelocityActuator</span><span class="p">(</span><span class="n">XmlActuator</span><span class="p">[</span><span class="n">XmlVelocityActuatorCfg</span><span class="p">]):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrapper for XML-defined &lt;velocity&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlVelocityActuator.compute">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlVelocityActuator.compute">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ActuatorCmd</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">velocity_target</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlMuscleActuatorCfg">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMuscleActuatorCfg">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlMuscleActuatorCfg</span><span class="p">(</span><span class="n">ActuatorCfg</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrap existing XML-defined &lt;muscle&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlMuscleActuatorCfg.build">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMuscleActuatorCfg.build">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">target_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XmlMuscleActuator</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">XmlMuscleActuator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">,</span> <span class="n">target_names</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlMuscleActuator">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMuscleActuator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlMuscleActuator</span><span class="p">(</span><span class="n">XmlActuator</span><span class="p">[</span><span class="n">XmlMuscleActuatorCfg</span><span class="p">]):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Wrapper for XML-defined &lt;muscle&gt; actuators.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="XmlMuscleActuator.compute">
+<a class="viewcode-back" href="../../../source/api/actuator.html#mjlab.actuator.XmlMuscleActuator.compute">[docs]</a>
+  <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ActuatorCmd</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">effort_target</span></div>
+</div>
 
 </pre></div>
 
@@ -597,7 +625,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

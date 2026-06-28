@@ -30,7 +30,7 @@
     <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/twemoji.css" />
-    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/css/all.min.css?v=53359634" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=3ea80bc3" />
@@ -45,7 +45,7 @@
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
     <script src="../../../../_static/twemoji.js"></script>
-    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.13/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
+    <script src="/home/runner/work/mjlab/mjlab/.venv/lib/python3.12/site-packages/sphinxcontrib/icon/node_modules/@fortawesome/fontawesome-free/js/all.min.js?v=ec35c6c9"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -56,7 +56,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Jun 22, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 28, 2026"/>
   </head>
   
   
@@ -188,7 +188,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../source/architecture_overview.html">Architecture Overview</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../../source/entity/index.html">Entity</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../../source/entity/entity_data.html">Entity Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../../source/entity/per_world_mesh.html">Heterogeneous Worlds</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../source/actuators.html">Actuators</a></li>
@@ -212,7 +211,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../source/randomization.html">Domain Randomization</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../source/curriculum.html">Curriculum</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../source/metrics.html">Metrics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../source/recorders.html">Recorders</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Training &amp; Debugging</span></p>
 <ul class="nav bd-sidenav">
@@ -400,46 +398,7 @@ document.write(`
                 <article class="bd-article">
                   
   <h1>Source code for mjlab.viewer.native.viewer</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Environment viewer built on MuJoCo&#39;s passive viewer.</span>
-
-<span class="sd">Overview</span>
-<span class="sd">--------</span>
-<span class="sd">The simulation runs on the GPU via mujoco_warp, but MuJoCo&#39;s passive viewer</span>
-<span class="sd">requires CPU ``MjModel`` and ``MjData`` structures. Each frame, this module</span>
-<span class="sd">copies the GPU state for one environment into CPU buffers, calls</span>
-<span class="sd">``mj_forward`` to recompute kinematics and contacts, and hands the result to</span>
-<span class="sd">the render thread via ``v.sync()``. Contacts visible in the viewer are</span>
-<span class="sd">computed by C MuJoCo on the CPU, not by mujoco_warp on the GPU.</span>
-
-<span class="sd">The per frame sync has four steps:</span>
-
-<span class="sd">1. ``_sync_env_state_to_mjdata``: copy ``qpos``, ``qvel``, ``mocap``, and</span>
-<span class="sd">   ``xfrc_applied`` from GPU tensors into CPU ``MjData``.</span>
-<span class="sd">2. ``mj_forward``: recompute kinematics, collisions, and derived quantities.</span>
-<span class="sd">3. ``_sync_model_fields``: if domain randomization expanded visual fields</span>
-<span class="sd">   (geom colors, body poses, camera parameters, etc.), copy the per world</span>
-<span class="sd">   values from GPU ``sim.model`` into CPU ``MjModel``.</span>
-<span class="sd">4. ``v.sync()``: hand ``MjModel``/``MjData`` to the passive viewer&#39;s render</span>
-<span class="sd">   thread.</span>
-
-<span class="sd">For multi environment scenes, steps 1 and 2 are repeated for neighboring</span>
-<span class="sd">environments into a secondary ``MjData`` (``self.vd``), and their geoms are</span>
-<span class="sd">injected via ``mjv_addGeoms``.</span>
-
-<span class="sd">External force channels</span>
-<span class="sd">-----------------------</span>
-<span class="sd">MuJoCo sums two external force inputs during forward dynamics:</span>
-
-<span class="sd">* ``xfrc_applied``: Cartesian forces per body (GPU to CPU, for rendering).</span>
-<span class="sd">* ``qfrc_applied``: generalized forces per DoF (CPU to GPU, for mouse input).</span>
-
-<span class="sd">Programmatic forces (e.g. ``apply_body_impulse``) write to ``xfrc_applied``</span>
-<span class="sd">on the GPU and flow one way to the CPU ``MjData`` for visualization. Mouse</span>
-<span class="sd">perturbation forces flow the opposite direction: the viewer computes them on</span>
-<span class="sd">the CPU via ``mjv_applyPerturbForce``, converts to joint space with</span>
-<span class="sd">``mj_applyFT``, and writes to ``qfrc_applied`` on the GPU. Each field flows</span>
-<span class="sd">in one direction only, so the two sources never overwrite each other.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Environment viewer built on MuJoCo&#39;s passive viewer.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -460,12 +419,6 @@ document.write(`
   <span class="n">PolicyProtocol</span><span class="p">,</span>
   <span class="n">VerbosityLevel</span><span class="p">,</span>
   <span class="n">ViewerAction</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.viewer.model_sync</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-  <span class="n">VIEWER_INERTIAL_FIELDS</span><span class="p">,</span>
-  <span class="n">VIEWER_MODEL_FIELDS</span><span class="p">,</span>
-  <span class="n">disable_model_sameframe_shortcuts</span><span class="p">,</span>
-  <span class="n">sync_model_fields</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mjlab.viewer.native.visualizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">MujocoNativeDebugVisualizer</span>
 
@@ -496,9 +449,6 @@ document.write(`
   <span class="n">qvel</span><span class="p">:</span> <span class="s2">&quot;_TensorArrayProtocol&quot;</span>
   <span class="n">mocap_pos</span><span class="p">:</span> <span class="s2">&quot;_TensorArrayProtocol&quot;</span>
   <span class="n">mocap_quat</span><span class="p">:</span> <span class="s2">&quot;_TensorArrayProtocol&quot;</span>
-  <span class="n">ctrl</span><span class="p">:</span> <span class="s2">&quot;_TensorArrayProtocol&quot;</span>
-  <span class="n">xfrc_applied</span><span class="p">:</span> <span class="s2">&quot;_TensorArrayProtocol&quot;</span>
-  <span class="n">qfrc_applied</span><span class="p">:</span> <span class="s2">&quot;_TensorArrayProtocol&quot;</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_CpuArrayProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
@@ -553,7 +503,7 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">_yrange</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Per-term y-range.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Per-term display scale factor.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_show_plots</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_show_debug_vis</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_show_debug_vis</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_show_all_envs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_plot_cfg</span> <span class="o">=</span> <span class="n">plot_cfg</span> <span class="ow">or</span> <span class="n">PlotCfg</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_figures_dirty</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
@@ -570,7 +520,6 @@ document.write(`
     <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">mj_model</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">mj_data</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="n">disable_model_sameframe_shortcuts</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">)</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">fovy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="o">.</span><span class="n">vis</span><span class="o">.</span><span class="n">global_</span><span class="o">.</span><span class="n">fovy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">fovy</span>
 
@@ -612,7 +561,14 @@ document.write(`
 
 
   <span class="k">def</span><span class="w"> </span><span class="nf">is_running</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">viewer</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">is_running</span><span class="p">())</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span>
+    <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">is_running</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+      <span class="c1"># Viewer handle can raise while the window is being torn down.</span>
+      <span class="k">return</span> <span class="kc">False</span>
 
 <div class="viewcode-block" id="NativeMujocoViewer.sync_env_to_viewer">
 <a class="viewcode-back" href="../../../../source/api/viewer.html#mjlab.viewer.NativeMujocoViewer.sync_env_to_viewer">[docs]</a>
@@ -622,37 +578,35 @@ document.write(`
     <span class="k">assert</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">vopt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
-    <span class="c1"># Window may have been closed between is_running() check and here.</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
-      <span class="k">return</span>
-
-    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mj_lock</span><span class="p">:</span>
-      <span class="n">sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">unwrapped</span><span class="o">.</span><span class="n">sim</span>
-      <span class="n">sim_data</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">data</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_sync_env_state_to_mjdata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">,</span> <span class="n">sim_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_sync_model_fields</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">)</span>
-      <span class="n">mujoco</span><span class="o">.</span><span class="n">mj_forward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">)</span>
-
-      <span class="c1"># The viewer window can close at any time. Re-check before set_texts</span>
-      <span class="c1"># / set_figures since those use spin-wait sync with the render loop.</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="c1"># Window may have been closed between is_running() check and here.</span>
       <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
         <span class="k">return</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_set_status_overlay</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-      <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
-        <span class="k">return</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_update_reward_figures</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
-      <span class="bp">self</span><span class="o">.</span><span class="n">_update_debug_visualizers</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_add_env_selection_marker</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_render_other_env_geoms</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">sim</span><span class="p">,</span> <span class="n">sim_data</span><span class="p">)</span>
+      <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mj_lock</span><span class="p">:</span>
+        <span class="n">sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">unwrapped</span><span class="o">.</span><span class="n">sim</span>
+        <span class="n">sim_data</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sync_env_state_to_mjdata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">,</span> <span class="n">sim_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sync_model_fields</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">)</span>
+        <span class="n">mujoco</span><span class="o">.</span><span class="n">mj_forward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">)</span>
 
-      <span class="c1"># Pin tracking camera to body frame origin so DR-induced COM shifts don&#39;t move</span>
-      <span class="c1"># the camera.</span>
-      <span class="k">if</span> <span class="n">sim</span><span class="o">.</span><span class="n">expanded_fields</span> <span class="o">&amp;</span> <span class="n">VIEWER_INERTIAL_FIELDS</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_stabilize_tracking_camera</span><span class="p">()</span>
+        <span class="c1"># The viewer window can close at any time. Re-check before set_texts</span>
+        <span class="c1"># / set_figures since those use spin-wait sync with the render loop.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
+          <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_status_overlay</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
+          <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_reward_figures</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
-      <span class="n">has_visual_dr</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">sim</span><span class="o">.</span><span class="n">expanded_fields</span> <span class="o">&amp;</span> <span class="n">VIEWER_MODEL_FIELDS</span><span class="p">)</span>
-      <span class="n">v</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">state_only</span><span class="o">=</span><span class="ow">not</span> <span class="n">has_visual_dr</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_debug_visualizers</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_render_other_env_geoms</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">sim</span><span class="p">,</span> <span class="n">sim_data</span><span class="p">)</span>
+
+        <span class="n">has_visual_dr</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">sim</span><span class="o">.</span><span class="n">expanded_fields</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_VISUAL_FIELDS</span><span class="p">)</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">state_only</span><span class="o">=</span><span class="ow">not</span> <span class="n">has_visual_dr</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+      <span class="c1"># If the native window is closed while syncing, stop the viewer loop cleanly.</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
   <span class="k">def</span><span class="w"> </span><span class="nf">_set_status_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">Handle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -714,37 +668,6 @@ document.write(`
       <span class="p">)</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">unwrapped</span><span class="o">.</span><span class="n">update_visualizers</span><span class="p">(</span><span class="n">visualizer</span><span class="p">)</span>
 
-  <span class="k">def</span><span class="w"> </span><span class="nf">_add_env_selection_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">Handle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Draw a downward arrow above the selected environment.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">unwrapped</span><span class="o">.</span><span class="n">num_envs</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-      <span class="k">return</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="o">.</span><span class="n">nbody</span> <span class="o">-</span> <span class="mi">1</span>
-    <span class="n">center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xpos</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">last</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">arrow_top</span> <span class="o">=</span> <span class="n">center</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">])</span>
-    <span class="n">arrow_bottom</span> <span class="o">=</span> <span class="n">center</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">])</span>
-    <span class="n">scn</span> <span class="o">=</span> <span class="n">viewer</span><span class="o">.</span><span class="n">user_scn</span>
-    <span class="k">if</span> <span class="n">scn</span><span class="o">.</span><span class="n">ngeom</span> <span class="o">&gt;=</span> <span class="n">scn</span><span class="o">.</span><span class="n">maxgeom</span><span class="p">:</span>
-      <span class="k">return</span>
-    <span class="n">scn</span><span class="o">.</span><span class="n">ngeom</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="n">geom</span> <span class="o">=</span> <span class="n">scn</span><span class="o">.</span><span class="n">geoms</span><span class="p">[</span><span class="n">scn</span><span class="o">.</span><span class="n">ngeom</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-    <span class="n">geom</span><span class="o">.</span><span class="n">category</span> <span class="o">=</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">mjtCatBit</span><span class="o">.</span><span class="n">mjCAT_DECOR</span>
-    <span class="n">mujoco</span><span class="o">.</span><span class="n">mjv_initGeom</span><span class="p">(</span>
-      <span class="n">geom</span><span class="o">=</span><span class="n">geom</span><span class="p">,</span>
-      <span class="nb">type</span><span class="o">=</span><span class="n">mujoco</span><span class="o">.</span><span class="n">mjtGeom</span><span class="o">.</span><span class="n">mjGEOM_ARROW</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-      <span class="n">size</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
-      <span class="n">pos</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
-      <span class="n">mat</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">9</span><span class="p">),</span>
-      <span class="n">rgba</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">mujoco</span><span class="o">.</span><span class="n">mjv_connector</span><span class="p">(</span>
-      <span class="n">geom</span><span class="o">=</span><span class="n">geom</span><span class="p">,</span>
-      <span class="nb">type</span><span class="o">=</span><span class="n">mujoco</span><span class="o">.</span><span class="n">mjtGeom</span><span class="o">.</span><span class="n">mjGEOM_ARROW</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-      <span class="n">width</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
-      <span class="n">from_</span><span class="o">=</span><span class="n">arrow_top</span><span class="p">,</span>
-      <span class="n">to</span><span class="o">=</span><span class="n">arrow_bottom</span><span class="p">,</span>
-    <span class="p">)</span>
-
   <span class="k">def</span><span class="w"> </span><span class="nf">_sync_env_state_to_mjdata</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">target_data</span><span class="p">:</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">MjData</span><span class="p">,</span> <span class="n">sim_data</span><span class="p">:</span> <span class="n">_SimDataProtocol</span><span class="p">,</span> <span class="n">env_idx</span><span class="p">:</span> <span class="nb">int</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -753,12 +676,9 @@ document.write(`
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="o">.</span><span class="n">nq</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="n">target_data</span><span class="o">.</span><span class="n">qpos</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="o">.</span><span class="n">qpos</span><span class="p">[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
       <span class="n">target_data</span><span class="o">.</span><span class="n">qvel</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="o">.</span><span class="n">qvel</span><span class="p">[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="o">.</span><span class="n">nu</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-      <span class="n">target_data</span><span class="o">.</span><span class="n">ctrl</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="o">.</span><span class="n">ctrl</span><span class="p">[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="o">.</span><span class="n">nmocap</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="n">target_data</span><span class="o">.</span><span class="n">mocap_pos</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="o">.</span><span class="n">mocap_pos</span><span class="p">[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
       <span class="n">target_data</span><span class="o">.</span><span class="n">mocap_quat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="o">.</span><span class="n">mocap_quat</span><span class="p">[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="n">target_data</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 
   <span class="k">def</span><span class="w"> </span><span class="nf">_render_other_env_geoms</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
@@ -786,68 +706,52 @@ document.write(`
     <span class="c1"># Restore main env&#39;s model fields.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_sync_model_fields</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">)</span>
 
+  <span class="c1"># Fields that affect rendering. Physics-only fields (geom_aabb,</span>
+  <span class="c1"># geom_rbound, dof_*, jnt_*, actuator_*, tendon_*, etc.) are skipped.</span>
+  <span class="n">_VISUAL_FIELDS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;geom_rgba&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;geom_size&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;geom_pos&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;geom_quat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;mat_rgba&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;site_pos&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;site_quat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;body_pos&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;body_quat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;body_ipos&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;body_inertia&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;body_iquat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;body_mass&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;cam_pos&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;cam_quat&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;cam_fovy&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;cam_intrinsic&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;light_pos&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;light_dir&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+  <span class="p">)</span>
+
   <span class="k">def</span><span class="w"> </span><span class="nf">_sync_model_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sim</span><span class="p">:</span> <span class="n">_SimProtocol</span><span class="p">,</span> <span class="n">env_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Sync visually-relevant DR&#39;d model fields from GPU to MjModel.&quot;&quot;&quot;</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="n">fields</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">expanded_fields</span> <span class="o">&amp;</span> <span class="n">VIEWER_MODEL_FIELDS</span>
-    <span class="n">sync_model_fields</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">env_idx</span><span class="p">)</span>
-
-  <span class="k">def</span><span class="w"> </span><span class="nf">_stabilize_tracking_camera</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pin the tracked body&#39;s subtree_com to its frame origin (xpos).</span>
-
-<span class="sd">    MuJoCo&#39;s tracking camera centers on ``subtree_com[trackbodyid]``, which</span>
-<span class="sd">    shifts when inertial fields (body_ipos, body_mass) are domain randomized.</span>
-<span class="sd">    Overwriting that single entry with ``xpos`` (the body frame origin,</span>
-<span class="sd">    unaffected by body_ipos) keeps the camera stable.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">mujoco</span><span class="o">.</span><span class="n">mjtCamera</span><span class="o">.</span><span class="n">mjCAMERA_TRACKING</span><span class="o">.</span><span class="n">value</span>
-    <span class="p">):</span>
-      <span class="k">return</span>
-    <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">trackbodyid</span>
-    <span class="k">if</span> <span class="n">bid</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">subtree_com</span><span class="p">[</span><span class="n">bid</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xpos</span><span class="p">[</span><span class="n">bid</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">sim</span><span class="o">.</span><span class="n">expanded_fields</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_VISUAL_FIELDS</span><span class="p">:</span>
+      <span class="n">src</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">sim</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">field_name</span><span class="p">)[</span><span class="n">env_idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+      <span class="n">dst</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">,</span> <span class="n">field_name</span><span class="p">)</span>
+      <span class="n">dst</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">dst</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
 <div class="viewcode-block" id="NativeMujocoViewer.sync_viewer_to_env">
 <a class="viewcode-back" href="../../../../source/api/viewer.html#mjlab.viewer.NativeMujocoViewer.sync_viewer_to_env">[docs]</a>
   <span class="k">def</span><span class="w"> </span><span class="nf">sync_viewer_to_env</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sync mouse perturbation to sim via ``qfrc_applied``.</span>
-
-<span class="sd">    Mouse perturbation forces are converted from Cartesian body space</span>
-<span class="sd">    (``xfrc_applied``) to generalized joint space (``qfrc_applied``)</span>
-<span class="sd">    so that they coexist with programmatic forces on ``xfrc_applied``.</span>
-<span class="sd">    See the module docstring for details on the channel separation.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span>
-    <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Copy perturbation forces from viewer to env.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_perturbations</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_paused</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">:</span>
       <span class="k">return</span>
-
-    <span class="n">sim_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">unwrapped</span><span class="o">.</span><span class="n">sim</span><span class="o">.</span><span class="n">data</span>
-    <span class="n">pert</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">perturb</span>
-
-    <span class="k">if</span> <span class="n">pert</span><span class="o">.</span><span class="n">active</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">pert</span><span class="o">.</span><span class="n">select</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-      <span class="c1"># Compute mouse perturbation force in Cartesian space.</span>
-      <span class="n">mujoco</span><span class="o">.</span><span class="n">mjv_applyPerturbForce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">,</span> <span class="n">pert</span><span class="p">)</span>
-
-      <span class="n">body_id</span> <span class="o">=</span> <span class="n">pert</span><span class="o">.</span><span class="n">select</span>
-      <span class="n">force</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">[</span><span class="n">body_id</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-      <span class="n">torque</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">[</span><span class="n">body_id</span><span class="p">,</span> <span class="mi">3</span><span class="p">:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-      <span class="n">point</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xipos</span><span class="p">[</span><span class="n">body_id</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-      <span class="c1"># Convert to generalized forces.</span>
-      <span class="n">qfrc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="o">.</span><span class="n">nv</span><span class="p">)</span>
-      <span class="n">mujoco</span><span class="o">.</span><span class="n">mj_applyFT</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mjm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="p">,</span> <span class="n">force</span><span class="p">,</span> <span class="n">torque</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">body_id</span><span class="p">,</span> <span class="n">qfrc</span><span class="p">)</span>
-
-      <span class="n">sim_data</span><span class="o">.</span><span class="n">qfrc_applied</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">qfrc</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span>
-        <span class="n">device</span><span class="o">=</span><span class="n">sim_data</span><span class="o">.</span><span class="n">qfrc_applied</span><span class="o">.</span><span class="n">device</span>
+    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mjm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mj_lock</span><span class="p">:</span>
+      <span class="n">xfrc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">device</span>
       <span class="p">)</span>
-
-      <span class="c1"># Clear so _sync_env_state_to_mjdata writes clean programmatic</span>
-      <span class="c1"># forces next frame.</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">mjd</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">[</span><span class="n">body_id</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="n">sim_data</span><span class="o">.</span><span class="n">qfrc_applied</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+    <span class="n">sim_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">unwrapped</span><span class="o">.</span><span class="n">sim</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">sim_data</span><span class="o">.</span><span class="n">xfrc_applied</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">env_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">xfrc</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="NativeMujocoViewer.close">
@@ -857,7 +761,10 @@ document.write(`
     <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">v</span><span class="p">:</span>
-      <span class="n">v</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+      <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;[INFO] MuJoCo viewer closed&quot;</span><span class="p">,</span> <span class="n">VerbosityLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span></div>
 
 
@@ -961,10 +868,8 @@ document.write(`
       <span class="bp">self</span><span class="o">.</span><span class="n">_set_camera_auto_track</span><span class="p">()</span>
       <span class="k">return</span>
 
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">origin_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">OriginType</span><span class="o">.</span><span class="n">AUTO</span><span class="p">:</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">origin_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">OriginType</span><span class="o">.</span><span class="n">WORLD</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">_set_camera_auto_track</span><span class="p">()</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">origin_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">OriginType</span><span class="o">.</span><span class="n">WORLD</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_set_camera_world</span><span class="p">()</span>
     <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">origin_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">OriginType</span><span class="o">.</span><span class="n">ASSET_ROOT</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">_set_camera_asset_root</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>  <span class="c1"># ASSET_BODY</span>
@@ -1218,7 +1123,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Jun 22, 2026.
+  Last updated on Jun 28, 2026.
   <br/>
 </p>
   </div>

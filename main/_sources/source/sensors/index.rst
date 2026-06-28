@@ -48,8 +48,8 @@ independent of any entity entirely. This is why sensors live in
     # Access at runtime.
     imu = env.scene["robot/imu_acc"].data        # [B, 3] acceleration
     feet = env.scene["feet_contact"].data         # ContactData
-    feet.found                                    # [B, P] contact count per foot
-    feet.force                                    # [B, P, 3] contact force per foot
+    feet.found                                    # [B, N] contact count
+    feet.force                                    # [B, N, 3] contact force
 
 mjlab provides four sensor types: ``BuiltinSensor`` for native MuJoCo
 measurements, ``ContactSensor`` for structured contact detection,
@@ -187,52 +187,12 @@ names within the entity.
         fields=("found",),
     )
 
-Output shape
-^^^^^^^^^^^^
-
-A pattern like ``r".*_foot$"`` resolves to ``P`` primary elements (e.g.
-four feet on a quadruped). Each primary becomes one column on the
-per-contact axis of the output tensors:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 35 25 40
-
-   * - Field group
-     - Shape
-     - Notes
-   * - Per-contact
-       (``found``, ``force``, ``torque``, ``dist``, ``pos``, ``normal``,
-       ``tangent``)
-     - ``[B, P * num_slots, ...]``
-     - Primary-major: indices
-       ``[i * num_slots : (i + 1) * num_slots]`` belong to primary ``i``.
-   * - Per-primary
-       (``current_air_time``, ``last_air_time``,
-       ``current_contact_time``, ``last_contact_time``)
-     - ``[B, P]``
-     - Air-time fields are accumulated per primary, reducing across
-       slots (any slot in contact counts as the primary in contact).
-
-With the default ``num_slots=1`` the two shape families coincide
-(``N == P``), which is why most code can treat both as ``[B, P, ...]``.
-
-Use :attr:`mjlab.sensor.contact_sensor.ContactSensor.primary_names` to
-recover the index-to-name mapping after pattern expansion:
-
-.. code-block:: python
-
-    sensor = env.scene["feet_contact"]
-    sensor.primary_names                # ["FR_foot", "FL_foot", "RR_foot", "RL_foot"]
-    sensor.data.current_air_time[:, 0]  # air time for FR_foot
-
 Reduction
 ^^^^^^^^^
 
-A single primary element can have many simultaneous contacts with the
-secondary (e.g. a flat foot resting on rough terrain has multiple
-contact points). The ``reduce`` mode collapses those raw contacts down
-to ``num_slots`` representative contacts:
+A single foot geom can have many simultaneous contacts with the ground.
+Policies typically need one representative contact per element, not the
+raw list. The ``reduce`` mode selects which contacts to keep.
 
 .. list-table::
    :header-rows: 1
@@ -241,49 +201,21 @@ to ``num_slots`` representative contacts:
    * - Mode
      - Behavior
    * - ``"none"``
-     - Fast, non-deterministic selection of up to ``num_slots`` contacts.
+     - Fast, non-deterministic selection
    * - ``"mindist"``
-     - Keep the deepest ``num_slots`` contacts.
+     - Closest contacts by penetration depth
    * - ``"maxforce"``
-     - Keep the strongest ``num_slots`` contacts by force magnitude.
+     - Strongest contacts by force magnitude
    * - ``"netforce"``
-     - Sum all contacts into a single net wrench at the force-weighted
-       centroid. Always emits one slot per primary regardless of
-       ``num_slots``.
+     - Sums all contacts into a single synthetic contact at the
+       force-weighted centroid with the net wrench
 
-When to set ``num_slots > 1``
-"""""""""""""""""""""""""""""
-
-Almost all configurations leave ``num_slots`` at its default of ``1``,
-because pattern expansion already produces one column per element of
-interest (one per foot, one per finger, one per body link). Increase
-``num_slots`` only when a single primary may have several physically
-distinct contact points that you want to inspect separately, for
-example:
-
-- Computing a center of pressure on a flat foot from its corner
-  contacts.
-- Reasoning about grasp quality from multiple fingertip-to-object
-  contact points.
-- Detecting tipping by watching whether one corner of a contact patch
-  loses contact.
-
-In those cases pair ``num_slots`` with ``reduce`` in
-``{"mindist", "maxforce", "none"}``. With ``reduce="netforce"`` it has
-no effect.
-
-.. note::
-
-   ``num_slots`` is a ceiling on what the sensor will store, not a
-   guarantee that MuJoCo will produce that many contacts. The collision
-   detector caps the number of contact points generated for each
-   geom-pair according to the geom types involved. For example a
-   sphere-vs-plane pair produces at most one contact, and a box-vs-box
-   pair produces at most four. Setting ``num_slots=8`` on a sphere
-   primary against a plane secondary therefore leaves seven slots
-   permanently zero. Check
-   `MuJoCo's collision documentation <https://mujoco.readthedocs.io/en/stable/computation/index.html#collision-detection>`_
-   for the per-pair limits.
+``num_slots`` controls how many contacts are retained per primary
+element after reduction. The default is 1, which gives one
+representative contact per primary match. The output shape is
+``[B, N * num_slots, ...]`` where ``N`` is the number of primary
+matches. With ``reduce="netforce"``, the output is always one contact
+per primary regardless of ``num_slots``.
 
 Fields
 ^^^^^^
@@ -293,34 +225,21 @@ requested fields are allocated; the rest are ``None`` on the output
 dataclass. Available fields are ``"found"``, ``"force"``,
 ``"torque"``, ``"dist"``, ``"pos"``, ``"normal"``, and ``"tangent"``.
 
-.. note::
-
-   ``torque`` and the friction-tangent component of ``force`` are zero
-   unless the contact pair has friction enabled, which requires
-   ``condim >= 3`` on at least one geom in the pair. With ``condim=1``
-   (frictionless), the contact only produces a normal force. This is a
-   physics property of the contact, not a sensor limitation.
-
 Air time tracking
 ^^^^^^^^^^^^^^^^^
 
 Locomotion tasks often need to know when feet land and take off for
-gait rewards. Setting ``track_air_time=True`` enables per-primary
+gait rewards. Setting ``track_air_time=True`` enables per-element
 timing. The sensor maintains four additional tensors on
-``ContactData``, each shaped ``[B, P]``: ``current_air_time``,
-``last_air_time``, ``current_contact_time``, and
-``last_contact_time``. Two helper methods provide edge detection for
-transition events:
+``ContactData``: ``current_air_time``, ``last_air_time``,
+``current_contact_time``, and ``last_contact_time``. Two helper
+methods provide edge detection for transition events.
 
 .. code-block:: python
 
     sensor = env.scene["feet_air"]
-    first_contact = sensor.compute_first_contact(dt)  # [B, P], True for primaries that just landed
-    first_air = sensor.compute_first_air(dt)           # [B, P], True for primaries that just took off
-
-Air time is per primary even when ``num_slots > 1``: the sensor reduces
-``found`` across slots so that any slot in contact counts as the
-primary being in contact.
+    first_contact = sensor.compute_first_contact(dt)  # Just landed
+    first_air = sensor.compute_first_air(dt)           # Just took off
 
 .. _contact-sensor-history:
 
