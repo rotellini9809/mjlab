@@ -305,21 +305,38 @@ class SetShotCommand(CommandTerm):
     if not env_indices:
       return
 
+    color = (1.0, 0.1, 0.1, 0.25)
+    disk_radius = 0.14
+    half_thickness_x = 0.004
+    sphere_radius = 0.085
+
     for batch in env_indices:
       center = self._aim_pos_w[batch]
       if not torch.isfinite(center).all():
         continue
 
-      visualizer.add_sphere(
-        center.cpu().numpy(),
-        radius=0.12,
-        color=(1.0, 0.0, 0.0, 0.9),
-        label=f"set_shot_target_sphere_{batch}",
-      )
+      # Thin cylinder axis along world X => disk-like marker on the goal (YZ) plane.
+      start = center.clone()
+      end = center.clone()
+      start[0] -= half_thickness_x
+      end[0] += half_thickness_x
 
-  def queue_viser_overlays(self, visualizer) -> None:
-    # Reuse the command debug marker path so target cues are visible in Viser too.
-    self._debug_vis_impl(visualizer)
+      label = f"set_shot_target_disk_{batch}"
+      try:
+        visualizer.add_cylinder(
+          start.cpu().numpy(),
+          end.cpu().numpy(),
+          radius=float(disk_radius),
+          color=color,
+          label=label,
+        )
+      except Exception:
+        visualizer.add_sphere(
+          center.cpu().numpy(),
+          radius=float(sphere_radius),
+          color=color,
+          label=f"set_shot_target_sphere_{batch}",
+        )
 
   def _reset_robot_pose(self, env_ids: torch.Tensor) -> None:
     default_root_state = self._robot.data.default_root_state
@@ -1137,9 +1154,8 @@ def post_strike_phase_mask(
     origins = env.scene.env_origins
     ball_local = ball.data.root_link_pos_w - origins
 
-    spawn_local_xy = cmd._ball_spawn_xy_w - origins[:, :2]
-    spawn_x = spawn_local_xy[:, 0]
-    spawn_y = spawn_local_xy[:, 1]
+    spawn_x = float(cmd.cfg.ball_spawn_x_range[0])
+    spawn_y = float(cmd.cfg.ball_spawn_y_range[0])
 
     dx = ball_local[:, 0] - spawn_x
     dy = ball_local[:, 1] - spawn_y
@@ -1162,18 +1178,6 @@ def post_strike_phase_mask(
 
 def post_strike_upright_reward(env, command_name: str = "set_shot") -> torch.Tensor:
   return post_strike_phase_mask(env, command_name) * upright_stability_reward(env)
-
-
-def post_strike_yaw_alignment_reward(
-  env,
-  command_name: str = "set_shot",
-  **kwargs,
-) -> torch.Tensor:
-  return post_strike_phase_mask(env, command_name) * yaw_alignment_reward(
-    env,
-    command_name=command_name,
-    **kwargs,
-  )
 
 
 
@@ -1961,116 +1965,6 @@ def post_strike_left_support_move_penalty(
   denom = max(float(max_dist - deadzone), 1.0e-6)
   excess = ((dist - float(deadzone)) / denom).clamp(0.0, 1.0)
   return lock * excess
-
-
-def kick_phase_left_support_move_penalty(
-  env,
-  command_name: str = "set_shot",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  left_foot_body_name: str = r"^left_foot_link$",
-  deadzone: float = 0.008,
-  max_dist: float = 0.06,
-) -> torch.Tensor:
-  kick = kick_phase_mask(env, command_name)
-  if not torch.any(kick > 0.0):
-    return kick
-
-  robot: Entity = env.scene[asset_cfg.name]
-  ids, _ = robot.find_bodies((left_foot_body_name,), preserve_order=True)
-  if len(ids) != 1 or not hasattr(robot.data, "body_link_pos_w"):
-    return torch.zeros(env.num_envs, device=env.device, dtype=torch.float32)
-
-  latched_xy = _get_float_state_buffer(
-    env,
-    key=f"p1_left_foot_latched_xy::{command_name}",
-    shape_tail=(2,),
-    dtype=torch.float32,
-  )
-
-  left_idx = int(ids[0])
-  current_xy = robot.data.body_link_pos_w[:, left_idx, :2]
-  dist = torch.linalg.norm(current_xy - latched_xy, dim=1)
-  denom = max(float(max_dist - deadzone), 1.0e-6)
-  excess = ((dist - float(deadzone)) / denom).clamp(0.0, 1.0)
-  return kick * excess
-
-
-def kick_phase_left_support_speed_penalty(
-  env,
-  command_name: str = "set_shot",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  left_foot_body_name: str = r"^left_foot_link$",
-  max_speed: float = 0.20,
-) -> torch.Tensor:
-  kick = kick_phase_mask(env, command_name)
-  if not torch.any(kick > 0.0):
-    return kick
-
-  robot: Entity = env.scene[asset_cfg.name]
-  ids, _ = robot.find_bodies((left_foot_body_name,), preserve_order=True)
-  if len(ids) != 1 or not hasattr(robot.data, "body_com_lin_vel_w"):
-    return torch.zeros(env.num_envs, device=env.device, dtype=torch.float32)
-
-  left_idx = int(ids[0])
-  speed_xy = torch.linalg.norm(robot.data.body_com_lin_vel_w[:, left_idx, :2], dim=1)
-  return kick * torch.clamp(speed_xy / float(max_speed), 0.0, 1.0)
-
-
-def kick_phase_left_support_backslide_penalty(
-  env,
-  command_name: str = "set_shot",
-  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-  left_foot_body_name: str = r"^left_foot_link$",
-  deadzone: float = 0.003,
-  max_backslide: float = 0.04,
-) -> torch.Tensor:
-  robot: Entity = env.scene[asset_cfg.name]
-  cmd = cast(SetShotCommand, env.command_manager.get_term(command_name))
-  kick = kick_phase_mask(env, command_name).to(torch.float32)
-
-  zeros = torch.zeros((env.num_envs,), device=env.device, dtype=torch.float32)
-  ids, _ = robot.find_bodies((left_foot_body_name,), preserve_order=True)
-  if len(ids) != 1 or not hasattr(robot.data, "body_link_pos_w"):
-    return zeros
-
-  left_idx = int(ids[0])
-  current_left_xy = robot.data.body_link_pos_w[:, left_idx, :2].to(torch.float32)
-
-  latched_xy = _get_float_state_buffer(
-    env,
-    key=f"p1_left_foot_latched_xy::{command_name}",
-    shape_tail=(2,),
-    dtype=torch.float32,
-  )
-
-  ball: Entity = env.scene[cmd.cfg.ball_entity_name]
-  ball_xy = ball.data.root_link_pos_w[:, :2]
-  aim_xy = cmd.aim_pos_w[:, :2]
-  shot_dir, _ = _shot_frame_basis(ball_xy, aim_xy)
-
-  delta_xy = current_left_xy - latched_xy
-  signed_along_shot = torch.sum(delta_xy * shot_dir, dim=1)
-
-  # Backward slide means moving opposite to shot_dir.
-  backslide = (-signed_along_shot - float(deadzone)).clamp_min(0.0)
-  backslide = backslide.clamp(max=float(max_backslide)) / max(float(max_backslide), 1.0e-6)
-
-  return kick * backslide
-
-
-def kick_phase_left_support_lost_ground_penalty(
-  env,
-  command_name: str = "set_shot",
-  left_ground_sensor_name: str = "p1_left_foot_ground_contact",
-) -> torch.Tensor:
-  kick = kick_phase_mask(env, command_name)
-  grounded = _support_bool_from_ground_sensor(
-    env,
-    left_ground_sensor_name,
-    fz_thresh=10.0,
-    support_sign="neg",
-  )
-  return kick * (~grounded).to(torch.float32)
 
 
 def post_strike_left_support_speed_penalty(
@@ -3032,7 +2926,7 @@ def lateral_goal_reward(
     target_y = aim_local[:, 1]
     sigma_y_safe = max(float(sigma_y), 1.0e-6)
     y_score = torch.exp(-0.5 * torch.square((y - target_y) / sigma_y_safe))
-    return event.to(torch.float32) * y_score
+    return  event * y_score  # put event.to(torch.float32) * y_score only in the kick fase
 
 
 def post_strike_upright_reward_strong(

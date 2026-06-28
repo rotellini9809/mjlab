@@ -1,6 +1,7 @@
 import os
 
 import mujoco
+import torch
 from mjlab.entity import EntityCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg  # solo se vuoi anche il sensore curb
 
@@ -11,12 +12,13 @@ from mjlab.asset_zoo.robocup_assets.goalpost import get_robocup_goalpost_cfg
 
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp.events import reset_scene_to_default
-from mjlab.managers.event_manager import EventTermCfg
+from mjlab.managers.event_manager import EventTermCfg, requires_model_fields
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
 from mjlab.terrains import TerrainEntityCfg
+from mjlab.utils.spec_config import CollisionCfg
 from mjlab.viewer import ViewerConfig
 
 from mjlab.tasks.penalty_expert.p1_set_shot import mdp
@@ -84,6 +86,44 @@ P1_STRIKER_AREA_RGBA = (0.05, 0.60, 0.95, 0.30)
 # (optional) curb contact sensor name
 P1_BALL_CURB_CONTACT_SENSOR_NAME = "p1_ball_curb_contact"
 P1_FIELD_BODY_NAME = "field"
+
+# Grip presets for penalty strike tuning.
+# Select with:
+#   MJLAB_PENALTY_GRIP_PRESET=a
+#   MJLAB_PENALTY_GRIP_PRESET=b
+#   MJLAB_PENALTY_GRIP_PRESET=c
+#   MJLAB_PENALTY_GRIP_PRESET=random_abc
+GRIP_PRESET = os.environ.get("MJLAB_PENALTY_GRIP_PRESET", "b").strip().lower()
+GRIP_PRESETS: dict[str, dict[str, tuple[float, float, float]]] = {
+  "a": {
+    "ball": (0.85, 0.006, 0.0002),
+    "foot": (1.00, 0.015, 0.0008),
+    "terrain": (0.95, 0.008, 0.0008),
+  },
+  "b": {
+    "ball": (0.90, 0.008, 0.0003),
+    "foot": (1.10, 0.020, 0.0010),
+    "terrain": (1.00, 0.010, 0.0010),
+  },
+  "c": {
+    "ball": (0.95, 0.010, 0.0005),
+    "foot": (1.25, 0.030, 0.0015),
+    "terrain": (1.10, 0.015, 0.0012),
+  },
+}
+if GRIP_PRESET == "random_abc":
+  _static_grip_key = "b"
+elif GRIP_PRESET in GRIP_PRESETS:
+  _static_grip_key = GRIP_PRESET
+else:
+  raise ValueError(
+    f"Invalid MJLAB_PENALTY_GRIP_PRESET='{GRIP_PRESET}'. "
+    "Valid values: 'a', 'b', 'c', 'random_abc'."
+  )
+_grip_cfg = GRIP_PRESETS[_static_grip_key]
+BALL_FRICTION = _grip_cfg["ball"]
+FOOT_FRICTION = _grip_cfg["foot"]
+TERRAIN_FRICTION = _grip_cfg["terrain"]
 
 
 def _add_p1_test_walls(
@@ -213,6 +253,80 @@ def get_p1_field_cfg_with_test_walls(
   return field_cfg
 
 
+@requires_model_fields("geom_friction")
+def randomize_penalty_grip_abc(
+  env,
+  env_ids: torch.Tensor | slice | None,
+  robot_entity_name: str = "robot",
+  ball_entity_name: str = "soccer_ball",
+  terrain_entity_name: str = "terrain",
+  foot_geom_expr: str = r"^(left|right)_foot_collision$",
+  ball_geom_expr: str = r"^ball_collision$",
+  terrain_geom_expr: str = r"terrain$",
+) -> None:
+  if env_ids is None:
+    env_ids_t = torch.arange(env.num_envs, device=env.device, dtype=torch.long)
+  elif isinstance(env_ids, slice):
+    env_ids_t = torch.arange(env.num_envs, device=env.device, dtype=torch.long)[env_ids]
+  else:
+    env_ids_t = env_ids.to(device=env.device, dtype=torch.long)
+  if env_ids_t.numel() == 0:
+    return
+
+  robot = env.scene[robot_entity_name]
+  ball = env.scene[ball_entity_name]
+  terrain = env.scene[terrain_entity_name]
+
+  foot_local_ids, _ = robot.find_geoms(foot_geom_expr, preserve_order=True)
+  ball_local_ids, _ = ball.find_geoms(ball_geom_expr, preserve_order=True)
+  terrain_local_ids, _ = terrain.find_geoms(terrain_geom_expr, preserve_order=True)
+  if not foot_local_ids or not ball_local_ids or not terrain_local_ids:
+    raise ValueError(
+      "randomize_penalty_grip_abc could not resolve required geoms "
+      f"(foot={foot_local_ids}, ball={ball_local_ids}, terrain={terrain_local_ids})."
+    )
+
+  foot_ids = robot.indexing.geom_ids[
+    torch.as_tensor(foot_local_ids, device=env.device, dtype=torch.long)
+  ]
+  ball_ids = ball.indexing.geom_ids[
+    torch.as_tensor(ball_local_ids, device=env.device, dtype=torch.long)
+  ]
+  terrain_ids = terrain.indexing.geom_ids[
+    torch.as_tensor(terrain_local_ids, device=env.device, dtype=torch.long)
+  ]
+
+  preset_keys = ("a", "b", "c")
+  ball_table = torch.tensor(
+    [GRIP_PRESETS[k]["ball"] for k in preset_keys],
+    dtype=torch.float32,
+    device=env.device,
+  )
+  foot_table = torch.tensor(
+    [GRIP_PRESETS[k]["foot"] for k in preset_keys],
+    dtype=torch.float32,
+    device=env.device,
+  )
+  terrain_table = torch.tensor(
+    [GRIP_PRESETS[k]["terrain"] for k in preset_keys],
+    dtype=torch.float32,
+    device=env.device,
+  )
+  sampled = torch.randint(0, len(preset_keys), (env_ids_t.numel(),), device=env.device)
+
+  geom_friction = env.sim.model.geom_friction
+  if geom_friction.ndim == 2:
+    k = int(sampled[0].item())
+    geom_friction[foot_ids, :] = foot_table[k]
+    geom_friction[ball_ids, :] = ball_table[k]
+    geom_friction[terrain_ids, :] = terrain_table[k]
+    return
+
+  geom_friction[env_ids_t[:, None], foot_ids[None, :], :] = foot_table[sampled][:, None, :]
+  geom_friction[env_ids_t[:, None], ball_ids[None, :], :] = ball_table[sampled][:, None, :]
+  geom_friction[env_ids_t[:, None], terrain_ids[None, :], :] = terrain_table[sampled][:, None, :]
+
+
 
 def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     cfg = make_tracking_env_cfg()
@@ -260,10 +374,24 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     # robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
 
     robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+    robot_cfg.collisions = (
+        CollisionCfg(
+            geom_names_expr=(r"^(left|right)_foot_collision$",),
+            friction=FOOT_FRICTION,
+            disable_other_geoms=False,
+        ),
+    )
 
     # ------------------ ball -------------------
     ball_cfg = get_robocup_ball_cfg()
     ball_cfg.init_state.pos = (ball_x, 0.0, BALL_R)
+    ball_cfg.collisions = (
+        CollisionCfg(
+            geom_names_expr=(r"^ball_collision$",),
+            friction=BALL_FRICTION,
+            disable_other_geoms=False,
+        ),
+    )
     # ------------------ goals ------------------
     goal_left_cfg = get_robocup_goalpost_cfg()
     goal_left_cfg.init_state.pos = (GOALPOST_X, 0.0, 0.0)
@@ -276,6 +404,13 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     # ------------------ scene ------------------
     cfg.scene.terrain = TerrainEntityCfg(
         terrain_type="plane",
+        collisions=(
+            CollisionCfg(
+                geom_names_expr=("terrain$",),
+                friction=TERRAIN_FRICTION,
+                disable_other_geoms=False,
+            ),
+        ),
     )
     cfg.scene.num_envs = 512 if not play else 1
     cfg.scene.entities = {
@@ -345,6 +480,25 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     cfg.events = {
         "reset_scene_to_default": EventTermCfg(mode="reset", func=reset_scene_to_default),
     }
+    if GRIP_PRESET == "random_abc":
+        random_grip_params = {
+            "robot_entity_name": "robot",
+            "ball_entity_name": "soccer_ball",
+            "terrain_entity_name": "terrain",
+            "foot_geom_expr": r"^(left|right)_foot_collision$",
+            "ball_geom_expr": r"^ball_collision$",
+            "terrain_geom_expr": r"terrain$",
+        }
+        cfg.events["randomize_penalty_grip_startup"] = EventTermCfg(
+            mode="startup",
+            func=randomize_penalty_grip_abc,
+            params=random_grip_params,
+        )
+        cfg.events["randomize_penalty_grip_reset"] = EventTermCfg(
+            mode="reset",
+            func=randomize_penalty_grip_abc,
+            params=random_grip_params,
+        )
 
 
     cfg.viewer = ViewerConfig(
@@ -377,7 +531,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     # visual_left/right_corner_y are GOAL-LINE Y targets (x = GOAL_X_LINE).
     # The command can use fixed or random_binary corner selection with explicit semantics.
     VISUAL_LEFT_CORNER_Y = 1.0
-    VISUAL_RIGHT_CORNER_Y = -1.0
+    VISUAL_RIGHT_CORNER_Y = 0.0
     TARGET_MODE = "random_binary"        # allowed: "fixed", "random_binary"
     FIXED_TARGET_CORNER = "left" # used only when TARGET_MODE == "fixed"
     # aim_z is the target Z on the goal line.
@@ -754,7 +908,7 @@ def booster_t1_23_penalty_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         ),
         "bad_posture_at_strike": RewardTermCfg(
             func=mdp.bad_posture_at_strike_penalty,
-            weight=-20.0,
+            weight=-30.0,
             params={
                 "command_name": "set_shot",
                 "left_sensor_name": P1_LEFT_FOOT_BALL_CONTACT_SENSOR_NAME,

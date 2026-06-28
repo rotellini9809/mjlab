@@ -2891,7 +2891,7 @@ def lateral_goal_reward(
     target_y = aim_local[:, 1]
     sigma_y_safe = max(float(sigma_y), 1.0e-6)
     y_score = torch.exp(-0.5 * torch.square((y - target_y) / sigma_y_safe))
-    return  y_score  # put event.to(torch.float32) * y_score only in the kick fase
+    return  event.to(torch.float32) * y_score  # put event.to(torch.float32) * y_score only in the kick fase
 
 
 def post_strike_upright_reward_strong(

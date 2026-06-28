@@ -294,7 +294,7 @@ def booster_t1_23_penalty_out_area_env_cfg(play: bool = False) -> ManagerBasedRl
     cfg.scene.entities = {
         "robot": robot_cfg,
         "soccer_field": get_p1_field_cfg_with_test_walls(
-            striker_area_bounds=striker_area_bounds,
+            striker_area_bounds=None,
             hard_margin=hard_area_margin,
         ),
         "soccer_ball": ball_cfg,
@@ -808,7 +808,7 @@ def booster_t1_23_penalty_out_area_env_cfg(play: bool = False) -> ManagerBasedRl
         ),
         "pre_strike_yaw_alignment": RewardTermCfg(
             func=mdp.pre_strike_yaw_alignment_reward,
-            weight=2.0,
+            weight=0.35,
             params={
                 "command_name": "set_shot",
                 "k": 3.0,
@@ -818,7 +818,7 @@ def booster_t1_23_penalty_out_area_env_cfg(play: bool = False) -> ManagerBasedRl
         ),
         "yaw_alignment_full": RewardTermCfg(
             func=mdp.yaw_alignment_reward,
-            weight=0.5,
+            weight=0.7,
             params={
                 "command_name": "set_shot",
                 "k": 2.5,

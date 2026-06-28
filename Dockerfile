@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libegl-dev \
-    mesa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 ENV UV_COMPILE_BYTECODE=1
